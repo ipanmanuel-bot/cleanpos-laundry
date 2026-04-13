@@ -672,7 +672,7 @@ tr:hover td{background:#FAFAF7}
   </div>
 </div>
 <!-- MODALS -->
-<div class="mbg" id="m-rcpt"><div class="mbox"><div class="mhd"><span class="mht">🧾 Struk Pesanan</span><button class="xb" onclick="cm('m-rcpt')">×</button></div><div class="mbd" id="m-rcpt-body"></div><div class="mft"><button class="btn" onclick="cm('m-rcpt')">Tutup</button><button class="btn bbl bsm" onclick="toast('🖨️ Mencetak label...')">🏷️ Cetak Label</button><button class="btn bp bsm" onclick="toast('🖨️ Mencetak struk...')">🧾 Cetak Struk</button></div></div></div>
+<div class="mbg" id="m-rcpt"><div class="mbox"><div class="mhd"><span class="mht">🧾 Struk Pesanan</span><button class="xb" onclick="cm('m-rcpt')">×</button></div><div class="mbd" id="m-rcpt-body"></div><div class="mft"><button class="btn" onclick="cm('m-rcpt')">Tutup</button><button class="btn bbl bsm" onclick="printCurrentLabel()">🏷️ Cetak Label</button><button class="btn bp bsm" onclick="printCurrentReceipt()">🧾 Cetak Struk</button></div></div></div>
 <div class="mbg" id="m-detail"><div class="mbox"><div class="mhd"><span class="mht" id="m-detail-title">Detail Pesanan</span><button class="xb" onclick="cm('m-detail')">×</button></div><div class="mbd" id="m-detail-body"></div><div class="mft" id="m-detail-ft"></div></div></div>
 <div class="mbg" id="m-wa"><div class="mbox"><div class="mhd"><div class="mht">💬 Kirim Notifikasi WA</div><button class="xb" onclick="cm('m-wa')">×</button></div><div class="mbd" id="m-wa-body"></div><div class="mft"><button class="btn" onclick="cm('m-wa')">Batal</button><button class="btn bwa" id="m-wa-send">💬 Buka WhatsApp &amp; Kirim</button></div></div></div>
 <div class="mbg" id="m-wa-new"><div class="mbox"><div class="mhd"><div class="mht">💬 Kirim WA ke Pelanggan</div><button class="xb" onclick="cm('m-wa-new')">×</button></div><div class="mbd"><div class="chips" id="wa-new-chips"><span class="chip on" onclick="setWaNewType('konfirmasi',this)">✅ Konfirmasi Terima</span><span class="chip" onclick="setWaNewType('tagih_dp',this)">💰 Minta DP</span><span class="chip" onclick="setWaNewType('tagih_lunas',this)">💳 Tagih Lunas</span></div><div class="wa-bg"><div class="wa-bbl" id="wa-new-preview">-</div></div></div><div class="mft"><button class="btn" onclick="cm('m-wa-new')">Lewati</button><button class="btn bwa" id="m-wa-new-send">💬 Kirim WA</button></div></div></div>
@@ -780,7 +780,7 @@ let orders=[];let orderCtr=1;let customers={};
 let waLog=[];
 let waTplSelesai=`Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`;
 let waTplNew={konfirmasi:`Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,tagih_dp:`Halo {nama} 👋\n\nPesanan Anda sudah dicatat!\n📋 No: *{id}*\n💰 Total: *{total}*\n\nMohon transfer DP 50% ke:\n🏦 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! 🙏`,tagih_lunas:`Halo {nama} 👋\n\nKonfirmasi pembayaran:\n📋 No: *{id}*\n💰 Total: *{total}*\n\nTransfer ke:\n🏦 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. 🙏`};
-let curWaNewType='konfirmasi';let curWaNewOrder=null;
+let curWaNewType='konfirmasi';let curWaNewOrder=null;let curRcptOrderId=null;
 let kasLog=[];let kasCtr=1;let kasType='setor';
 let expenses=[];let expCtr=1;
 let printers=[{id:'p1',name:'Epson TM-T82 Kasir',conn:'usb',ip:'',width:'80',role:'receipt',status:'online'},{id:'p2',name:'Zebra ZD220 Label',conn:'network',ip:'192.168.1.101',width:'58',role:'label',status:'online'}];
@@ -1109,6 +1109,7 @@ function updSt(id,st,role){const o=orders.find(x=>x.id===id);if(!o)return;o.stat
 // ===== RECEIPT / DETAIL =====
 function showRcpt(id){
   const o=orders.find(x=>x.id===id);if(!o)return;
+  curRcptOrderId=id;
   const base=(getP()[o.svcType]?.[o.svcCat]||0)*o.qty;
   let lines=`<div class="rrow"><span style="text-transform:capitalize">${o.svcType} ${o.svcCat} × ${o.qty}${getSvcUnit(o.svcType)}</span><span>${base.toLocaleString('id-ID')}</span></div>`;
   o.addOns.forEach(a=>{const ad=addons.find(x=>x.id===a.id);if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;lines+=`<div class="rrow"><span>${a.name}</span><span>${v.toLocaleString('id-ID')}</span></div>`;}});
@@ -1390,6 +1391,142 @@ function selectBtDevice(){if(!btDevice)return;if(g('mpr-n'))g('mpr-n').value=btD
 async function testBtPrinter(id){const p=printers.find(x=>x.id===id);if(!p)return;if(!navigator.bluetooth){toast('⚠️ Browser tidak mendukung Web Bluetooth');return;}toast('📶 Menghubungi printer '+p.name+'...');try{const device=await navigator.bluetooth.requestDevice({filters:[{name:p.name}],optionalServices:['000018f0-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb']});const server=await device.gatt.connect();p.status='online';renderPrinters();toast('✓ '+p.name+' terhubung!');server.disconnect();}catch(e){p.status='offline';renderPrinters();toast('❌ Gagal terhubung ke '+p.name);}}
 function savePrinter(){const name=g('mpr-n')?.value.trim();if(!name){toast('⚠️ Nama printer wajib diisi');return;}const conn=g('mpr-c').value;const role=g('mpr-r').value;if(role!=='none')printers.forEach(p=>{if(p.role===role)p.role='none';});printers.push({id:'p'+printerCtr++,name,conn,ip:g('mpr-ip')?.value||'',width:g('mpr-w').value,role,status:'online',btId:btDevice?.id||null});cm('m-printer');renderPrinters();toast('✓ Printer "'+name+'" ditambahkan!');btDevice=null;}
 function delPrinter(id){confirm_('Hapus Printer?','Printer ini akan dihapus dari daftar.',()=>{printers=printers.filter(x=>x.id!==id);renderPrinters();toast('Printer dihapus');});}
+
+// ===== BLUETOOTH PRINT ENGINE =====
+// ESC/POS command helpers
+function escCmd(...bytes){return new Uint8Array(bytes);}
+function escText(str){return new TextEncoder().encode(str);}
+function concat(...arrays){
+  const total=arrays.reduce((s,a)=>s+a.length,0);
+  const out=new Uint8Array(total);let offset=0;
+  arrays.forEach(a=>{out.set(a,offset);offset+=a.length;});
+  return out;
+}
+function buildEscReceipt(o){
+  const ESC=0x1B,GS=0x1D,LF=0x0A;
+  const INIT=escCmd(ESC,0x40);
+  const ALIGN_C=escCmd(ESC,0x61,0x01);
+  const ALIGN_L=escCmd(ESC,0x61,0x00);
+  const BOLD_ON=escCmd(ESC,0x45,0x01);
+  const BOLD_OFF=escCmd(ESC,0x45,0x00);
+  const FONT_LARGE=escCmd(GS,0x21,0x11);
+  const FONT_NORM=escCmd(GS,0x21,0x00);
+  const CUT=escCmd(GS,0x56,0x42,0x00);
+  const NL=escCmd(LF);
+  const dash=escText('--------------------------------\n');
+  const outlet=outlets.find(x=>x.id===o.outletId);
+  const base=(getP()[o.svcType]?.[o.svcCat]||0)*o.qty;
+  const pad=(l,r,w=32)=>{const gap=w-l.length-r.length;return l+(gap>0?' '.repeat(gap):' ')+r+'\n';};
+  let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText('CLEANPOS\n'),BOLD_OFF,FONT_NORM,
+    escText((outlet?.name||'Laundry')+'\n'),
+    escText((outlet?.addr||'')+'\n'),NL,
+    ALIGN_L,dash,
+    escText(pad('No Nota:',o.id)),
+    escText(pad('Pelanggan:',o.name)),
+    escText(pad('Kasir:',o.handledBy||'—')),
+    escText(pad('Tanggal:',o.date)),
+    dash,
+    escText(pad(o.svcType+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+base.toLocaleString('id-ID'))),
+  ];
+  o.addOns.forEach(a=>{const ad=addons.find(x=>x.id===a.id);if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}});
+  if(o.promoAmt>0)parts.push(escText(pad('Diskon Promo:','-Rp '+o.promoAmt.toLocaleString('id-ID'))));
+  if(o.discAmt>0)parts.push(escText(pad('Diskon Manual:','-Rp '+o.discAmt.toLocaleString('id-ID'))));
+  parts.push(dash,BOLD_ON,escText(pad('TOTAL:','Rp '+o.total.toLocaleString('id-ID'))),BOLD_OFF,
+    escText(pad('Metode:',o.payMethod)),
+    escText(pad('Status:',o.payStatus)),
+    dash,ALIGN_C,escText('Terima kasih telah mempercayakan\n'),
+    escText('cucian Anda kepada kami! 🙏\n'),
+    NL,NL,NL,CUT);
+  return concat(...parts);
+}
+function buildEscLabel(o){
+  const ESC=0x1B,GS=0x1D,LF=0x0A;
+  const INIT=escCmd(ESC,0x40);
+  const ALIGN_C=escCmd(ESC,0x61,0x01);
+  const ALIGN_L=escCmd(ESC,0x61,0x00);
+  const BOLD_ON=escCmd(ESC,0x45,0x01);
+  const BOLD_OFF=escCmd(ESC,0x45,0x00);
+  const FONT_LARGE=escCmd(GS,0x21,0x11);
+  const FONT_NORM=escCmd(GS,0x21,0x00);
+  const CUT=escCmd(GS,0x56,0x42,0x00);
+  const NL=escCmd(LF);
+  const dash=escText('--------------------------------\n');
+  const outlet=outlets.find(x=>x.id===o.outletId);
+  return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.id+'\n'),FONT_NORM,BOLD_OFF,
+    dash,ALIGN_L,BOLD_ON,
+    escText(o.name+'\n'),BOLD_OFF,
+    escText((outlet?.name||'')+'\n'),
+    escText(o.svcType.toUpperCase()+' '+o.svcCat+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),
+    escText('Masuk: '+o.date+'\n'),
+    dash,ALIGN_C,escText('CleanPOS Laundry\n'),
+    NL,NL,CUT);
+}
+
+// BT services untuk printer thermal ESC/POS
+const BT_SERVICES=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb'];
+const BT_CHARS=['00002af1-0000-1000-8000-00805f9b34fb','0000ff02-0000-1000-8000-00805f9b34fb','0000ffe1-0000-1000-8000-00805f9b34fb'];
+
+async function sendToBtPrinter(data,printerName){
+  if(!navigator.bluetooth){toast('⚠️ Browser tidak mendukung Web Bluetooth. Gunakan Chrome.');return false;}
+  toast('📶 Menghubungkan ke '+printerName+'...');
+  try{
+    const filter=printerName?[{name:printerName}]:undefined;
+    const device=await navigator.bluetooth.requestDevice(
+      filter?{filters:filter,optionalServices:BT_SERVICES}:{acceptAllDevices:true,optionalServices:BT_SERVICES}
+    );
+    const server=await device.gatt.connect();
+    let characteristic=null;
+    for(const svcUuid of BT_SERVICES){
+      try{
+        const svc=await server.getPrimaryService(svcUuid);
+        for(const charUuid of BT_CHARS){
+          try{characteristic=await svc.getCharacteristic(charUuid);break;}catch(e){}
+        }
+        if(!characteristic){
+          const chars=await svc.getCharacteristics();
+          if(chars.length)characteristic=chars[0];
+        }
+        if(characteristic)break;
+      }catch(e){}
+    }
+    if(!characteristic){server.disconnect();toast('❌ Karakteristik printer tidak ditemukan. Cek model printer.');return false;}
+    // Kirim data dalam chunk 512 byte
+    const CHUNK=512;
+    for(let i=0;i<data.length;i+=CHUNK){
+      const chunk=data.slice(i,i+CHUNK);
+      await characteristic.writeValueWithoutResponse(chunk);
+      await new Promise(r=>setTimeout(r,30));
+    }
+    toast('✅ Berhasil dicetak!');
+    server.disconnect();
+    return true;
+  }catch(e){
+    if(e.name==='NotFoundError')toast('⚠️ Tidak ada printer dipilih.');
+    else if(e.name==='NetworkError')toast('❌ Koneksi printer terputus. Coba lagi.');
+    else toast('❌ Gagal cetak: '+e.message);
+    return false;
+  }
+}
+
+async function printCurrentReceipt(){
+  const o=orders.find(x=>x.id===curRcptOrderId);
+  if(!o){toast('⚠️ Data pesanan tidak ditemukan.');return;}
+  const btPrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='receipt');
+  const anyBt=printers.find(p=>p.conn==='bluetooth');
+  const printerName=(btPrinter||anyBt)?.name||null;
+  const data=buildEscReceipt(o);
+  await sendToBtPrinter(data,printerName);
+}
+
+async function printCurrentLabel(){
+  const o=orders.find(x=>x.id===curRcptOrderId);
+  if(!o){toast('⚠️ Data pesanan tidak ditemukan.');return;}
+  const btPrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='label');
+  const anyBt=printers.find(p=>p.conn==='bluetooth');
+  const printerName=(btPrinter||anyBt)?.name||null;
+  const data=buildEscLabel(o);
+  await sendToBtPrinter(data,printerName);
+}
 
 // ===== SETTINGS =====
 function changePwd(){const cur=g('s-cur').value,nw=g('s-new').value,cfm=g('s-cfm').value;const msg=g('s-pwd-msg');if(cur!==ownerPwd){msg.style.color='var(--re)';msg.textContent='Password saat ini salah.';return;}if(nw.length<4){msg.style.color='var(--re)';msg.textContent='Password baru minimal 4 karakter.';return;}if(nw!==cfm){msg.style.color='var(--re)';msg.textContent='Konfirmasi password tidak cocok.';return;}ownerPwd=nw;['s-cur','s-new','s-cfm'].forEach(id=>{g(id).value='';});msg.style.color='var(--p)';msg.textContent='✓ Password berhasil diubah!';setTimeout(()=>{msg.textContent='';},3000);toast('✓ Password owner berhasil diubah!');}
