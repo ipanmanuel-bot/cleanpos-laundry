@@ -305,6 +305,7 @@ tr:hover td{background:#FAFAF7}
   <div class="g2 og">
     <div>
       <div class="card"><div class="ct">Data Pelanggan</div>
+        <div class="fg"><label>Outlet</label><select id="no-outlet"></select></div>
         <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan"></div>
         <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx"></div>
         <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="no-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
@@ -521,7 +522,7 @@ tr:hover td{background:#FAFAF7}
       <div class="fg"><label>Alamat</label><input id="s-addr" placeholder="Alamat lengkap..."></div>
       <div class="fg" style="margin-bottom:0"><label>WA Toko</label><input id="s-wa" placeholder="08xx-xxxx-xxxx"></div>
       <div class="div_"></div>
-      <button class="btn bp bfull bpill" onclick="toast('✓ Info toko tersimpan!')">Simpan Info</button>
+      <button class="btn bp bfull bpill" onclick="saveStoreInfo()">Simpan Info</button>
     </div>
   </div>
   <div class="card" id="printer-card">
@@ -583,6 +584,7 @@ tr:hover td{background:#FAFAF7}
     <div class="g2 og">
       <div>
         <div class="card"><div class="ct">Data Pelanggan</div>
+          <div class="fg"><label>Outlet</label><select id="sno-outlet"></select></div>
           <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan"></div>
           <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xx-xxxx-xxxx"></div>
           <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="sno-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
@@ -781,6 +783,7 @@ let waLog=[];
 let waTplSelesai=`Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`;
 let waTplNew={konfirmasi:`Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,tagih_dp:`Halo {nama} 👋\n\nPesanan Anda sudah dicatat!\n📋 No: *{id}*\n💰 Total: *{total}*\n\nMohon transfer DP 50% ke:\n🏦 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! 🙏`,tagih_lunas:`Halo {nama} 👋\n\nKonfirmasi pembayaran:\n📋 No: *{id}*\n💰 Total: *{total}*\n\nTransfer ke:\n🏦 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. 🙏`};
 let curWaNewType='konfirmasi';let curWaNewOrder=null;let curRcptOrderId=null;
+let storeName='CleanPOS Laundry';let storeAddr='';let storeWa='';
 let kasLog=[];let kasCtr=1;let kasType='setor';
 let expenses=[];let expCtr=1;
 let printers=[{id:'p1',name:'Epson TM-T82 Kasir',conn:'usb',ip:'',width:'80',role:'receipt',status:'online'},{id:'p2',name:'Zebra ZD220 Label',conn:'network',ip:'192.168.1.101',width:'58',role:'label',status:'online'}];
@@ -892,7 +895,20 @@ function seed(){
 // ===== INIT =====
 function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;g('wa-tpl').value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();}
 function initStaff(){g('staff-role-lbl').textContent='👤 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();}
-function renderSettings(){renderPrinters();const mki=g('min-kg-input');if(mki)mki.value=minKg;}
+function renderSettings(){
+  renderPrinters();
+  const mki=g('min-kg-input');if(mki)mki.value=minKg;
+  // Pre-fill info toko dari variabel
+  if(g('s-store'))g('s-store').value=storeName;
+  if(g('s-addr'))g('s-addr').value=storeAddr;
+  if(g('s-wa'))g('s-wa').value=storeWa;
+}
+function saveStoreInfo(){
+  storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
+  storeAddr=(g('s-addr')?.value||'').trim();
+  storeWa=(g('s-wa')?.value||'').trim();
+  toast('✓ Info toko tersimpan!');
+}
 
 // ===== DASHBOARDS =====
 function refreshODash(){
@@ -969,6 +985,14 @@ function renderOrders(){
 // ===== ORDER FORM =====
 function buildOrderForm(pre){
   buildOrderTypeDropdowns();
+  // Isi dropdown outlet
+  const oel=g(pre+'-outlet');
+  if(oel){
+    oel.innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');
+    // Default: staff → outlet mereka sendiri; owner → outlet pertama
+    if(pre==='sno'&&curStaff?.oid)oel.value=curStaff.oid;
+    else oel.value=outlets[0]?.id||'';
+  }
   const el=g(pre+'-addons');if(!el)return;
   const ch=pre==='no'?'calcO':'calcS';
   el.innerHTML=addons.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1)"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}()"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit==='per_qty'?'/qty':''})</span></label>`).join('');
@@ -1026,7 +1050,7 @@ function buildOrder(pre){
   const phone=g(pre+'-phone')?.value||'—';
   const res=doCalc(pre,pre==='no');
   const addOns=[];addons.forEach(a=>{const ck=g(pre+'-ck-'+a.id);if(ck&&ck.checked)addOns.push({id:a.id,name:a.name});});
-  const o={id:genId(),name,phone,svcType:res.type,svcCat:res.cat,qty:res.bq,rawQty:res.rawQty,addOns,addOnAmt:res.addTotal,base:res.base,discType:res.discType,discAmt:res.discAmt,promoAmt:res.promoAmt,total:res.total,payMethod:g(pre+'-pm')?.value||'Tunai',payStatus:g(pre+'-ps')?.value||'Belum Bayar',status:'Diterima',notes:g(pre+'-note')?.value||'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:false,handledBy:curStaff?curStaff.name:'Owner',outletId:curStaff?curStaff.oid:(curOutlet?.id||outlets[0]?.id||'o1')};
+  const o={id:genId(),name,phone,svcType:res.type,svcCat:res.cat,qty:res.bq,rawQty:res.rawQty,addOns,addOnAmt:res.addTotal,base:res.base,discType:res.discType,discAmt:res.discAmt,promoAmt:res.promoAmt,total:res.total,payMethod:g(pre+'-pm')?.value||'Tunai',payStatus:g(pre+'-ps')?.value||'Belum Bayar',status:'Diterima',notes:g(pre+'-note')?.value||'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:false,handledBy:curStaff?curStaff.name:'Owner',outletId:g(pre+'-outlet')?.value||(curStaff?curStaff.oid:(curOutlet?.id||outlets[0]?.id||'o1'))};
   orders.push(o);orderCtr++;
   if(phone!=='—')addCust(name,phone,o.total,TODAY_STR);
   if(o.payMethod==='Tunai'&&o.payStatus==='Lunas')kasLog.push({id:kasCtr++,type:'in',desc:'Penjualan Cash',note:name+' · '+o.id,amount:o.total,time:NOW(),outletId:o.outletId});
@@ -1413,13 +1437,16 @@ function buildEscReceipt(o){
   const FONT_NORM=escCmd(GS,0x21,0x00);
   const CUT=escCmd(GS,0x56,0x42,0x00);
   const NL=escCmd(LF);
-  const dash=escText('--------------------------------\n');
+  // Tentukan lebar kolom dari setting printer yang terdaftar (default 80mm = 48 char)
+  const activePrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='receipt')||printers.find(p=>p.conn==='bluetooth')||null;
+  const W=activePrinter?.width==='58'?32:48;
+  const dash=escText('-'.repeat(W)+'\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
-  // Gunakan nilai yang tersimpan di order — bukan hitung ulang dari harga saat ini
-  const pad=(l,r,w=32)=>{const gap=w-l.length-r.length;return l+(gap>0?' '.repeat(gap):' ')+r+'\n';};
-  let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText('CLEANPOS\n'),BOLD_OFF,FONT_NORM,
-    escText((outlet?.name||'Laundry')+'\n'),
-    escText((outlet?.addr||'')+'\n'),NL,
+  // pad: ratakan kiri dan kanan dalam lebar W, dengan wrap jika kanan terlalu panjang
+  const pad=(l,r)=>{const gap=W-l.length-r.length;return gap>0?l+' '.repeat(gap)+r+'\n':l+'\n'+' '.repeat(W-r.length)+r+'\n';};
+  let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(storeName+'\n'),BOLD_OFF,FONT_NORM,
+    escText((outlet?.name||'')+'\n'),
+    escText((outlet?.addr||storeAddr||'')+'\n'),NL,
     ALIGN_L,dash,
     escText(pad('No Nota:',o.id)),
     escText(pad('Pelanggan:',o.name)),
@@ -1428,7 +1455,6 @@ function buildEscReceipt(o){
     dash,
     escText(pad(o.svcType+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+o.base.toLocaleString('id-ID'))),
   ];
-  // Add-ons: pakai data yang tersimpan di order saat dibuat
   o.addOns.forEach(a=>{
     const ad=addons.find(x=>x.id===a.id);
     if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}
@@ -1454,7 +1480,9 @@ function buildEscLabel(o){
   const FONT_NORM=escCmd(GS,0x21,0x00);
   const CUT=escCmd(GS,0x56,0x42,0x00);
   const NL=escCmd(LF);
-  const dash=escText('--------------------------------\n');
+  const activePrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='label')||printers.find(p=>p.conn==='bluetooth')||null;
+  const W=activePrinter?.width==='58'?32:48;
+  const dash=escText('-'.repeat(W)+'\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
   return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.id+'\n'),FONT_NORM,BOLD_OFF,
     dash,ALIGN_L,BOLD_ON,
@@ -1462,7 +1490,7 @@ function buildEscLabel(o){
     escText((outlet?.name||'')+'\n'),
     escText(o.svcType.toUpperCase()+' '+o.svcCat+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),
     escText('Masuk: '+o.date+'\n'),
-    dash,ALIGN_C,escText('CleanPOS Laundry\n'),
+    dash,ALIGN_C,escText(storeName+'\n'),
     NL,NL,CUT);
 }
 
