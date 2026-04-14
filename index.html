@@ -1415,7 +1415,7 @@ function buildEscReceipt(o){
   const NL=escCmd(LF);
   const dash=escText('--------------------------------\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
-  const base=(getP()[o.svcType]?.[o.svcCat]||0)*o.qty;
+  // Gunakan nilai yang tersimpan di order — bukan hitung ulang dari harga saat ini
   const pad=(l,r,w=32)=>{const gap=w-l.length-r.length;return l+(gap>0?' '.repeat(gap):' ')+r+'\n';};
   let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText('CLEANPOS\n'),BOLD_OFF,FONT_NORM,
     escText((outlet?.name||'Laundry')+'\n'),
@@ -1426,16 +1426,20 @@ function buildEscReceipt(o){
     escText(pad('Kasir:',o.handledBy||'—')),
     escText(pad('Tanggal:',o.date)),
     dash,
-    escText(pad(o.svcType+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+base.toLocaleString('id-ID'))),
+    escText(pad(o.svcType+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+o.base.toLocaleString('id-ID'))),
   ];
-  o.addOns.forEach(a=>{const ad=addons.find(x=>x.id===a.id);if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}});
+  // Add-ons: pakai data yang tersimpan di order saat dibuat
+  o.addOns.forEach(a=>{
+    const ad=addons.find(x=>x.id===a.id);
+    if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}
+  });
   if(o.promoAmt>0)parts.push(escText(pad('Diskon Promo:','-Rp '+o.promoAmt.toLocaleString('id-ID'))));
   if(o.discAmt>0)parts.push(escText(pad('Diskon Manual:','-Rp '+o.discAmt.toLocaleString('id-ID'))));
   parts.push(dash,BOLD_ON,escText(pad('TOTAL:','Rp '+o.total.toLocaleString('id-ID'))),BOLD_OFF,
     escText(pad('Metode:',o.payMethod)),
     escText(pad('Status:',o.payStatus)),
     dash,ALIGN_C,escText('Terima kasih telah mempercayakan\n'),
-    escText('cucian Anda kepada kami! 🙏\n'),
+    escText('cucian Anda kepada kami!\n'),
     NL,NL,NL,CUT);
   return concat(...parts);
 }
@@ -1466,15 +1470,38 @@ function buildEscLabel(o){
 const BT_SERVICES=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb'];
 const BT_CHARS=['00002af1-0000-1000-8000-00805f9b34fb','0000ff02-0000-1000-8000-00805f9b34fb','0000ffe1-0000-1000-8000-00805f9b34fb'];
 
-async function sendToBtPrinter(data,printerName){
+// Simpan device BT yang sudah dipilih — tidak perlu pilih ulang selama sesi
+let _btConnectedDevice=null;
+
+async function getOrPickBtDevice(){
+  // Kalau device sudah ada dan masih terhubung, langsung pakai
+  if(_btConnectedDevice){
+    try{
+      if(!_btConnectedDevice.gatt.connected)await _btConnectedDevice.gatt.connect();
+      return _btConnectedDevice;
+    }catch(e){
+      // Koneksi gagal, reset dan minta pilih ulang
+      _btConnectedDevice=null;
+    }
+  }
+  // Belum ada device — buka dialog sekali
+  const device=await navigator.bluetooth.requestDevice({
+    acceptAllDevices:true,
+    optionalServices:BT_SERVICES
+  });
+  _btConnectedDevice=device;
+  // Kalau device disconnect (misal printer mati), reset supaya dialog muncul lagi
+  device.addEventListener('gattserverdisconnected',()=>{_btConnectedDevice=null;});
+  return device;
+}
+
+async function sendToBtPrinter(data){
   if(!navigator.bluetooth){toast('⚠️ Browser tidak mendukung Web Bluetooth. Gunakan Chrome.');return false;}
-  toast('📶 Menghubungkan ke '+printerName+'...');
+  toast('📶 Menghubungkan ke printer...');
   try{
-    const filter=printerName?[{name:printerName}]:undefined;
-    const device=await navigator.bluetooth.requestDevice(
-      filter?{filters:filter,optionalServices:BT_SERVICES}:{acceptAllDevices:true,optionalServices:BT_SERVICES}
-    );
+    const device=await getOrPickBtDevice();
     const server=await device.gatt.connect();
+    // Cari service & characteristic yang bisa ditulis
     let characteristic=null;
     for(const svcUuid of BT_SERVICES){
       try{
@@ -1484,26 +1511,28 @@ async function sendToBtPrinter(data,printerName){
         }
         if(!characteristic){
           const chars=await svc.getCharacteristics();
-          if(chars.length)characteristic=chars[0];
+          // Pilih characteristic yang punya property writeWithoutResponse atau write
+          characteristic=chars.find(c=>c.properties.writeWithoutResponse||c.properties.write)||chars[0]||null;
         }
         if(characteristic)break;
       }catch(e){}
     }
-    if(!characteristic){server.disconnect();toast('❌ Karakteristik printer tidak ditemukan. Cek model printer.');return false;}
-    // Kirim data dalam chunk 512 byte
+    if(!characteristic){toast('❌ Karakteristik printer tidak ditemukan. Cek model printer.');return false;}
+    // Kirim ESC/POS dalam chunk 512 byte dengan jeda kecil
     const CHUNK=512;
+    const useWithout=characteristic.properties.writeWithoutResponse;
     for(let i=0;i<data.length;i+=CHUNK){
       const chunk=data.slice(i,i+CHUNK);
-      await characteristic.writeValueWithoutResponse(chunk);
+      if(useWithout)await characteristic.writeValueWithoutResponse(chunk);
+      else await characteristic.writeValue(chunk);
       await new Promise(r=>setTimeout(r,30));
     }
     toast('✅ Berhasil dicetak!');
-    server.disconnect();
     return true;
   }catch(e){
-    if(e.name==='NotFoundError')toast('⚠️ Tidak ada printer dipilih.');
-    else if(e.name==='NetworkError')toast('❌ Koneksi printer terputus. Coba lagi.');
-    else toast('❌ Gagal cetak: '+e.message);
+    if(e.name==='NotFoundError'||e.name==='NotAllowedError'){toast('⚠️ Pemilihan printer dibatalkan.');_btConnectedDevice=null;}
+    else if(e.name==='NetworkError'){toast('❌ Printer terputus. Coba cetak lagi.');_btConnectedDevice=null;}
+    else{toast('❌ Gagal cetak: '+e.message);_btConnectedDevice=null;}
     return false;
   }
 }
@@ -1511,21 +1540,13 @@ async function sendToBtPrinter(data,printerName){
 async function printCurrentReceipt(){
   const o=orders.find(x=>x.id===curRcptOrderId);
   if(!o){toast('⚠️ Data pesanan tidak ditemukan.');return;}
-  const btPrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='receipt');
-  const anyBt=printers.find(p=>p.conn==='bluetooth');
-  const printerName=(btPrinter||anyBt)?.name||null;
-  const data=buildEscReceipt(o);
-  await sendToBtPrinter(data,printerName);
+  await sendToBtPrinter(buildEscReceipt(o));
 }
 
 async function printCurrentLabel(){
   const o=orders.find(x=>x.id===curRcptOrderId);
   if(!o){toast('⚠️ Data pesanan tidak ditemukan.');return;}
-  const btPrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='label');
-  const anyBt=printers.find(p=>p.conn==='bluetooth');
-  const printerName=(btPrinter||anyBt)?.name||null;
-  const data=buildEscLabel(o);
-  await sendToBtPrinter(data,printerName);
+  await sendToBtPrinter(buildEscLabel(o));
 }
 
 // ===== SETTINGS =====
