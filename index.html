@@ -368,13 +368,24 @@ tr:hover td{background:#FAFAF7}
 <!-- WA -->
 <div class="page" id="o-p-wa">
   <div class="pt">WA Notifikasi</div>
-  <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10">💬 Status → Selesai → Klik tombol WA → WhatsApp terbuka → Pesan terisi otomatis → Tekan Send</div></div>
-  <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Template Pesan Selesai</div><button class="btn bp bsm" onclick="saveTpl()">Simpan</button></div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Variabel: <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{nama}</code> <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{id}</code> <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{total}</code> <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{layanan}</code></div>
-    <textarea id="wa-tpl" rows="5" style="font-size:13px;line-height:1.6" oninput="prevTpl()"></textarea>
-    <div style="font-size:12px;color:var(--t2);margin-top:8px;margin-bottom:5px;font-weight:600">Preview:</div>
-    <div class="wa-bg"><div class="wa-bbl" id="wa-prev"></div></div>
+  <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10">💬 Variabel: <code style="background:#fff;padding:1px 5px;border-radius:4px">{nama}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{id}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{total}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{layanan}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{est}</code></div></div>
+
+  <div class="card">
+    <div class="chips" id="wa-tpl-tabs">
+      <span class="chip on" onclick="switchWaTplTab('selesai',this)">✅ Pesanan Selesai</span>
+      <span class="chip" onclick="switchWaTplTab('tagih_dp',this)">💰 Tagih DP</span>
+      <span class="chip" onclick="switchWaTplTab('tagih_lunas',this)">💳 Tagih Lunas</span>
+      <span class="chip" onclick="switchWaTplTab('konfirmasi',this)">📋 Konfirmasi Terima</span>
+    </div>
+    <div style="font-size:11px;color:var(--am);background:var(--amb);border-radius:8px;padding:8px 10px;margin-bottom:10px" id="wa-tpl-hint">Dikirim otomatis saat status pesanan berubah ke Selesai</div>
+    <textarea id="wa-tpl" rows="6" style="font-size:13px;line-height:1.6" oninput="prevTpl()"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <div style="font-size:12px;color:var(--t2);font-weight:600">Preview:</div>
+      <button class="btn bp bsm bpill" onclick="saveTpl()">💾 Simpan Template</button>
+    </div>
+    <div class="wa-bg" style="margin-top:8px"><div class="wa-bbl" id="wa-prev"></div></div>
   </div>
+
   <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="wa-pend-cnt" class="badge gam">0</span></div><div id="wa-pend-list"></div></div>
   <div class="card"><div class="ct">Riwayat Terkirim</div><div id="wa-log-list"></div></div>
 </div>
@@ -520,7 +531,9 @@ tr:hover td{background:#FAFAF7}
     <div class="card"><div class="ct">🏪 Info Toko</div>
       <div class="fg"><label>Nama Toko</label><input id="s-store" value="CleanPOS Laundry"></div>
       <div class="fg"><label>Alamat</label><input id="s-addr" placeholder="Alamat lengkap..."></div>
-      <div class="fg" style="margin-bottom:0"><label>WA Toko</label><input id="s-wa" placeholder="08xx-xxxx-xxxx"></div>
+      <div class="fg"><label>WA Toko</label><input id="s-wa" placeholder="08xx-xxxx-xxxx"></div>
+      <div class="fg" style="margin-bottom:0"><label>Footer Struk</label><textarea id="s-footer" rows="3" placeholder="Contoh: Terima kasih atas kepercayaan Anda!&#10;Promo bulan ini: diskon 10% untuk member."></textarea></div>
+      <div style="font-size:11px;color:var(--t2);margin-top:4px;margin-bottom:10px">Teks ini dicetak di bagian bawah setiap struk.</div>
       <div class="div_"></div>
       <button class="btn bp bfull bpill" onclick="saveStoreInfo()">Simpan Info</button>
     </div>
@@ -530,6 +543,7 @@ tr:hover td{background:#FAFAF7}
     <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
     <div id="printer-list"></div>
   </div>
+  <div class="card" id="supa-card"></div>
 </div>
 
 </div><!-- end o-mc -->
@@ -783,7 +797,8 @@ let waLog=[];
 let waTplSelesai=`Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`;
 let waTplNew={konfirmasi:`Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,tagih_dp:`Halo {nama} 👋\n\nPesanan Anda sudah dicatat!\n📋 No: *{id}*\n💰 Total: *{total}*\n\nMohon transfer DP 50% ke:\n🏦 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! 🙏`,tagih_lunas:`Halo {nama} 👋\n\nKonfirmasi pembayaran:\n📋 No: *{id}*\n💰 Total: *{total}*\n\nTransfer ke:\n🏦 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. 🙏`};
 let curWaNewType='konfirmasi';let curWaNewOrder=null;let curRcptOrderId=null;
-let storeName='CleanPOS Laundry';let storeAddr='';let storeWa='';
+let storeName='CleanPOS Laundry';let storeAddr='';let storeWa='';let storeFooter='Terima kasih atas kepercayaan Anda! 🙏';
+let curWaTplTab='selesai';
 let kasLog=[];let kasCtr=1;let kasType='setor';
 let expenses=[];let expCtr=1;
 let printers=[{id:'p1',name:'Epson TM-T82 Kasir',conn:'usb',ip:'',width:'80',role:'receipt',status:'online'},{id:'p2',name:'Zebra ZD220 Label',conn:'network',ip:'192.168.1.101',width:'58',role:'label',status:'online'}];
@@ -893,20 +908,21 @@ function seed(){
 </script>
 <script>
 // ===== INIT =====
-function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;g('wa-tpl').value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();}
+function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();}
 function initStaff(){g('staff-role-lbl').textContent='👤 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();}
 function renderSettings(){
   renderPrinters();
   const mki=g('min-kg-input');if(mki)mki.value=minKg;
-  // Pre-fill info toko dari variabel
   if(g('s-store'))g('s-store').value=storeName;
   if(g('s-addr'))g('s-addr').value=storeAddr;
   if(g('s-wa'))g('s-wa').value=storeWa;
+  if(g('s-footer'))g('s-footer').value=storeFooter;
 }
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
   storeAddr=(g('s-addr')?.value||'').trim();
   storeWa=(g('s-wa')?.value||'').trim();
+  storeFooter=(g('s-footer')?.value||'').trim();
   toast('✓ Info toko tersimpan!');
 }
 
@@ -995,7 +1011,13 @@ function buildOrderForm(pre){
   }
   const el=g(pre+'-addons');if(!el)return;
   const ch=pre==='no'?'calcO':'calcS';
-  el.innerHTML=addons.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1)"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}()"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit==='per_qty'?'/qty':''})</span></label>`).join('');
+  el.innerHTML=addons.map(a=>`<label id="${pre}-lbl-${a.id}" style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1);transition:all .15s"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}();toggleAddonLbl('${pre}','${a.id}',this.checked)"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit==='per_qty'?'/qty':''})</span></label>`).join('');
+}
+function toggleAddonLbl(pre,aid,checked){
+  const lbl=g(pre+'-lbl-'+aid);if(!lbl)return;
+  lbl.style.borderColor=checked?'var(--p)':'var(--b1)';
+  lbl.style.background=checked?'var(--pl)':'';
+  lbl.style.color=checked?'var(--pd)':'';
 }
 function bQty(type,cat,qty){return isKgType(type)&&(cat==='regular'||cat==='sameday')&&qty<minKg?minKg:qty;}
 function getActivePromo(type,cat){
@@ -1090,9 +1112,41 @@ function setWaNewType(type,el){
   const p=g('wa-new-preview');if(p)p.innerHTML=msg.replace(/\*(.*?)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
   const sb=g('m-wa-new-send');if(sb)sb.onclick=()=>{if(curWaNewOrder?.phone&&curWaNewOrder.phone!=='—')window.open('https://wa.me/'+fmtPh(curWaNewOrder.phone)+'?text='+encodeURIComponent(buildMsg(waTplNew[curWaNewType],curWaNewOrder)),'_blank');waLog.unshift({orderId:curWaNewOrder.id,name:curWaNewOrder.name,phone:curWaNewOrder.phone,time:NOW()+', '+TODAY_STR});cm('m-wa-new');toast('💬 WA konfirmasi terkirim!');};
 }
-function prevTpl(){const el=g('wa-tpl'),p=g('wa-prev');if(!el||!p)return;p.innerHTML=el.value.replace(/{nama}/g,'<strong>Budi Santoso</strong>').replace(/{id}/g,'<strong>LDRY-001</strong>').replace(/{total}/g,'<strong>Rp 21.000</strong>').replace(/{layanan}/g,'kiloan regular').replace(/{est}/g,'2-3 hari').replace(/\*(.*?)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
-function saveTpl(){waTplSelesai=g('wa-tpl').value;toast('✓ Template tersimpan!');}
+const WA_TPL_HINTS={
+  selesai:'Dikirim otomatis saat status pesanan berubah ke Selesai',
+  tagih_dp:'Digunakan saat pesanan baru masuk dan status bayar = DP',
+  tagih_lunas:'Digunakan saat menagih pelunasan pembayaran',
+  konfirmasi:'Dikirim otomatis saat pesanan baru dibuat'
+};
+function switchWaTplTab(type,el){
+  curWaTplTab=type;
+  document.querySelectorAll('#wa-tpl-tabs .chip').forEach(c=>c.classList.remove('on'));
+  if(el)el.classList.add('on');
+  const hint=g('wa-tpl-hint');if(hint)hint.textContent=WA_TPL_HINTS[type]||'';
+  const tpl=type==='selesai'?waTplSelesai:(waTplNew[type]||'');
+  const ta=g('wa-tpl');if(ta){ta.value=tpl;prevTpl();}
+}
+function prevTpl(){
+  const el=g('wa-tpl'),p=g('wa-prev');if(!el||!p)return;
+  p.innerHTML=el.value
+    .replace(/{nama}/g,'<strong>Budi Santoso</strong>')
+    .replace(/{id}/g,'<strong>LDRY-001</strong>')
+    .replace(/{total}/g,'<strong>Rp 21.000</strong>')
+    .replace(/{layanan}/g,'kiloan regular')
+    .replace(/{est}/g,'2-3 hari')
+    .replace(/\*(.*?)\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+function saveTpl(){
+  const val=g('wa-tpl')?.value||'';
+  if(curWaTplTab==='selesai'){waTplSelesai=val;}
+  else{waTplNew[curWaTplTab]=val;}
+  toast('✓ Template "'+{selesai:'Pesanan Selesai',tagih_dp:'Tagih DP',tagih_lunas:'Tagih Lunas',konfirmasi:'Konfirmasi Terima'}[curWaTplTab]+'" tersimpan!');
+}
 function renderWaCenter(){
+  // Isi textarea sesuai tab aktif
+  const tpl=curWaTplTab==='selesai'?waTplSelesai:(waTplNew[curWaTplTab]||'');
+  const ta=g('wa-tpl');if(ta)ta.value=tpl;
   prevTpl();
   const pend=orders.filter(o=>o.status==='Selesai'&&!o.waSent);
   const cnt=g('wa-pend-cnt');if(cnt){cnt.textContent=pend.length;cnt.className='badge '+(pend.length?'gam':'gg');}
@@ -1464,9 +1518,14 @@ function buildEscReceipt(o){
   parts.push(dash,BOLD_ON,escText(pad('TOTAL:','Rp '+o.total.toLocaleString('id-ID'))),BOLD_OFF,
     escText(pad('Metode:',o.payMethod)),
     escText(pad('Status:',o.payStatus)),
-    dash,ALIGN_C,escText('Terima kasih telah mempercayakan\n'),
-    escText('cucian Anda kepada kami!\n'),
-    NL,NL,NL,CUT);
+    dash,ALIGN_C);
+  // Footer kustom dari settings
+  if(storeFooter){
+    storeFooter.split('\n').forEach(line=>{if(line.trim())parts.push(escText(line+'\n'));});
+  }else{
+    parts.push(escText('Terima kasih telah mempercayakan\n'),escText('cucian Anda kepada kami!\n'));
+  }
+  parts.push(NL,NL,NL,CUT);
   return concat(...parts);
 }
 function buildEscLabel(o){
@@ -1484,11 +1543,11 @@ function buildEscLabel(o){
   const W=activePrinter?.width==='58'?32:48;
   const dash=escText('-'.repeat(W)+'\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
-  return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.id+'\n'),FONT_NORM,BOLD_OFF,
-    dash,ALIGN_L,BOLD_ON,
-    escText(o.name+'\n'),BOLD_OFF,
-    escText((outlet?.name||'')+'\n'),
-    escText(o.svcType.toUpperCase()+' '+o.svcCat+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),
+  return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.name+'\n'),FONT_NORM,BOLD_OFF,
+    dash,ALIGN_L,
+    escText('No: '+o.id+'\n'),
+    escText('Outlet: '+(outlet?.name||'')+'\n'),
+    escText('Layanan: '+o.svcType.toUpperCase()+' '+o.svcCat+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),
     escText('Masuk: '+o.date+'\n'),
     dash,ALIGN_C,escText(storeName+'\n'),
     NL,NL,CUT);
@@ -1676,5 +1735,284 @@ function exportReport(){
 g('ex-date').value=TODAY_ISO;
 seed();
 </script>
-</body>
-</html>
+
+<!-- SUPABASE CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ===== SUPABASE LAYER =====
+// Isi URL dan ANON KEY di bawah ini, atau lewat UI Settings
+let SUPA_URL = '';
+let SUPA_KEY = '';
+let supabase = null;
+let supaRealtimeCh = null;
+let supaEnabled = false;
+
+function initSupabase(url, key) {
+  if (!url || !key) return false;
+  try {
+    supabase = window.supabase.createClient(url, key);
+    SUPA_URL = url; SUPA_KEY = key; supaEnabled = true;
+    return true;
+  } catch(e) { console.error('Supabase init error:', e); return false; }
+}
+
+// --- UPSERT helpers ---
+async function sbUpsert(table, data) {
+  if (!supaEnabled || !supabase) return;
+  const { error } = await supabase.from(table).upsert(data, { onConflict: 'id' });
+  if (error) console.error(`[supa] upsert ${table}:`, error.message);
+}
+async function sbDelete(table, id) {
+  if (!supaEnabled || !supabase) return;
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) console.error(`[supa] delete ${table}:`, error.message);
+}
+async function sbFetch(table) {
+  if (!supaEnabled || !supabase) return null;
+  const { data, error } = await supabase.from(table).select('*');
+  if (error) { console.error(`[supa] fetch ${table}:`, error.message); return null; }
+  return data;
+}
+
+// --- SYNC: Orders ---
+function syncOrder(o) { sbUpsert('orders', orderToRow(o)); }
+function orderToRow(o) {
+  return { id: o.id, name: o.name, phone: o.phone, svc_type: o.svcType, svc_cat: o.svcCat,
+    qty: o.qty, raw_qty: o.rawQty, add_ons: JSON.stringify(o.addOns), add_on_amt: o.addOnAmt,
+    base: o.base, disc_type: o.discType, disc_amt: o.discAmt, promo_amt: o.promoAmt, total: o.total,
+    pay_method: o.payMethod, pay_status: o.payStatus, status: o.status, notes: o.notes,
+    date: o.date, iso_date: o.isoDate, wa_sent: o.waSent, handled_by: o.handledBy,
+    outlet_id: o.outletId };
+}
+function rowToOrder(r) {
+  return { id: r.id, name: r.name, phone: r.phone, svcType: r.svc_type, svcCat: r.svc_cat,
+    qty: r.qty, rawQty: r.raw_qty, addOns: JSON.parse(r.add_ons||'[]'), addOnAmt: r.add_on_amt,
+    base: r.base, discType: r.disc_type, discAmt: r.disc_amt, promoAmt: r.promo_amt, total: r.total,
+    payMethod: r.pay_method, payStatus: r.pay_status, status: r.status, notes: r.notes,
+    date: r.date, isoDate: r.iso_date, waSent: r.wa_sent, handledBy: r.handled_by,
+    outletId: r.outlet_id };
+}
+
+// --- SYNC: Customers ---
+function syncCustomer(c) {
+  sbUpsert('customers', { id: c.phone, name: c.name, phone: c.phone,
+    orders: c.orders, total: c.total, last_date: c.lastDate });
+}
+
+// --- SYNC: Outlets ---
+function syncOutlet(o) { sbUpsert('outlets', { id: o.id, name: o.name, addr: o.addr, color: o.color }); }
+function deleteOutlet(id) { sbDelete('outlets', id); }
+
+// --- SYNC: Employees ---
+function syncEmployee(e) {
+  sbUpsert('employees', { id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid,
+    pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut });
+}
+function deleteEmployee(id) { sbDelete('employees', String(id)); }
+
+// --- SYNC: Kas ---
+function syncKas(l) {
+  sbUpsert('kas_log', { id: String(l.id), type: l.type, desc: l.desc, note: l.note,
+    amount: l.amount, time: l.time, outlet_id: l.outletId });
+}
+
+// --- SYNC: Expenses ---
+function syncExpense(e) {
+  sbUpsert('expenses', { id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal,
+    date: e.date, note: e.note, src: e.src, outlet_id: e.outletId });
+}
+function deleteExpense(id) { sbDelete('expenses', String(id)); }
+
+// --- SYNC: Printers ---
+function syncPrinter(p) {
+  sbUpsert('printers', { id: p.id, name: p.name, conn: p.conn, ip: p.ip,
+    width: p.width, role: p.role, status: p.status });
+}
+function deletePrinter_sb(id) { sbDelete('printers', id); }
+
+// --- SYNC: Settings (single row id='main') ---
+function syncSettings() {
+  sbUpsert('settings', { id: 'main', store_name: storeName, store_addr: storeAddr,
+    store_wa: storeWa, store_footer: storeFooter, owner_pwd: ownerPwd, min_kg: minKg,
+    service_types: JSON.stringify(serviceTypes), addons: JSON.stringify(addons),
+    promos: JSON.stringify(promos), wa_tpl_selesai: waTplSelesai,
+    wa_tpl_new: JSON.stringify(waTplNew) });
+}
+
+// --- FETCH ALL & LOAD ---
+async function supaLoadAll() {
+  toast('☁️ Memuat data dari cloud...');
+  const [ordersData, custsData, outletsData, empsData, kasData, expData, printersData, settingsData] =
+    await Promise.all([sbFetch('orders'), sbFetch('customers'), sbFetch('outlets'),
+      sbFetch('employees'), sbFetch('kas_log'), sbFetch('expenses'), sbFetch('printers'), sbFetch('settings')]);
+
+  if (ordersData) { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
+  if (custsData) { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, lastDate: c.last_date }; }); }
+  if (outletsData) { outlets = outletsData; }
+  if (empsData) { employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out })); empCtr = employees.length + 1; }
+  if (kasData) { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, outletId: r.outlet_id })); kasCtr = kasLog.length + 1; }
+  if (expData) { expenses = expData.map(r => ({ id: Number(r.id), cat: r.cat, label: r.label, nominal: r.nominal, date: r.date, note: r.note, src: r.src, outletId: r.outlet_id })); expCtr = expenses.length + 1; }
+  if (printersData) { printers = printersData; printerCtr = printers.length + 1; }
+  if (settingsData && settingsData.length) {
+    const s = settingsData[0];
+    if (s.store_name) storeName = s.store_name;
+    if (s.store_addr) storeAddr = s.store_addr;
+    if (s.store_wa) storeWa = s.store_wa;
+    if (s.store_footer) storeFooter = s.store_footer;
+    if (s.owner_pwd) ownerPwd = s.owner_pwd;
+    if (s.min_kg) minKg = s.min_kg;
+    if (s.service_types) serviceTypes = JSON.parse(s.service_types);
+    if (s.addons) addons = JSON.parse(s.addons);
+    if (s.promos) promos = JSON.parse(s.promos);
+    if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
+    if (s.wa_tpl_new) waTplNew = JSON.parse(s.wa_tpl_new);
+  }
+  toast('✅ Data cloud berhasil dimuat!');
+  supaSubscribeOrders();
+}
+
+// --- REALTIME: subscribe orders table ---
+function supaSubscribeOrders() {
+  if (!supaEnabled || !supabase) return;
+  if (supaRealtimeCh) supabase.removeChannel(supaRealtimeCh);
+  supaRealtimeCh = supabase.channel('orders-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const incoming = rowToOrder(payload.new);
+        const idx = orders.findIndex(o => o.id === incoming.id);
+        if (idx >= 0) orders[idx] = incoming; else orders.push(incoming);
+      } else if (payload.eventType === 'DELETE') {
+        orders = orders.filter(o => o.id !== payload.old.id);
+      }
+      renderOrders();
+      if (curRole === 'owner') refreshODash(); else refreshSDash();
+    })
+    .subscribe();
+}
+
+// --- SETTINGS UI ---
+// Tambahkan card Supabase di halaman Settings saat render
+function renderSupaCard() {
+  const card = g('supa-card');
+  if (!card) return;
+  card.innerHTML = `
+    <div class="ct">☁️ Koneksi Supabase</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Hubungkan ke database cloud agar data tersimpan permanen dan sinkron antar perangkat.</div>
+    ${supaEnabled ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="width:10px;height:10px;border-radius:50%;background:var(--p);display:inline-block"></span><span style="font-size:13px;font-weight:600;color:var(--p)">Terhubung</span></div>` : `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="width:10px;height:10px;border-radius:50%;background:var(--re);display:inline-block"></span><span style="font-size:13px;color:var(--t2)">Belum terhubung</span></div>`}
+    <div class="fg"><label>Supabase URL</label><input id="supa-url" value="${SUPA_URL}" placeholder="https://xxx.supabase.co" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:0"><label>Anon Key</label><input id="supa-key" value="${SUPA_KEY}" placeholder="eyJ..." style="font-size:12px;font-family:monospace"></div>
+    <div class="div_"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bp bpill" style="flex:1" onclick="connectSupabase()">🔗 Hubungkan</button>
+      ${supaEnabled ? `<button class="btn bbl bpill" style="flex:1" onclick="supaLoadAll()">☁️ Muat dari Cloud</button>` : ''}
+      ${supaEnabled ? `<button class="btn bpill" style="flex:1;border-color:var(--p);color:var(--p)" onclick="supaPushAll()">⬆️ Push Semua</button>` : ''}
+    </div>`;
+}
+
+async function connectSupabase() {
+  const url = (g('supa-url')?.value || '').trim();
+  const key = (g('supa-key')?.value || '').trim();
+  if (!url || !key) { toast('⚠️ URL dan Key wajib diisi'); return; }
+  const ok = initSupabase(url, key);
+  if (ok) { toast('✅ Supabase terhubung! Memuat data...'); renderSupaCard(); await supaLoadAll(); }
+  else toast('❌ Gagal terhubung ke Supabase');
+}
+
+// Push semua data lokal ke Supabase (untuk migrasi awal)
+async function supaPushAll() {
+  if (!supaEnabled) { toast('⚠️ Hubungkan Supabase dulu'); return; }
+  toast('⬆️ Mendorong semua data...');
+  await Promise.all([
+    ...orders.map(o => sbUpsert('orders', orderToRow(o))),
+    ...Object.values(customers).map(c => sbUpsert('customers', { id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate })),
+    ...outlets.map(o => sbUpsert('outlets', { id: o.id, name: o.name, addr: o.addr, color: o.color })),
+    ...employees.map(e => sbUpsert('employees', { id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
+    ...kasLog.map(l => sbUpsert('kas_log', { id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, outlet_id: l.outletId })),
+    ...expenses.map(e => sbUpsert('expenses', { id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),
+    ...printers.map(p => sbUpsert('printers', { id: p.id, name: p.name, conn: p.conn, ip: p.ip, width: p.width, role: p.role, status: p.status })),
+    syncSettings()
+  ]);
+  toast('✅ Semua data berhasil dipush ke Supabase!');
+}
+</script>
+
+<script>
+// ===== PATCH: hook sync ke semua mutasi data =====
+// Orders
+const _origBuildOrder = buildOrder;
+// sync dipanggil di submitO setelah buildOrder
+const _origSubmitO = submitO;
+// Patch submitO
+submitO = function(role) {
+  const pre = role === 'o' ? 'no' : 'sno';
+  const o = buildOrder(pre); if (!o) return;
+  syncOrder(o);
+  syncCustomer(customers[o.phone] || { name: o.name, phone: o.phone, orders: 1, total: o.total, lastDate: o.date });
+  showRcpt(o.id); curWaNewOrder = o;
+  setTimeout(() => { setWaNewType('konfirmasi', g('wa-new-chips').querySelector('.chip')); g('m-wa-new').className = 'mbg on'; }, 600);
+  if (role === 'o') refreshODash(); else refreshSDash();
+};
+
+// Status & pay updates
+const _origSetStModal = setStModal;
+setStModal = function(id, st, btn) {
+  _origSetStModal(id, st, btn);
+  const o = orders.find(x => x.id === id); if (o) syncOrder(o);
+};
+const _origSetPayModal = setPayModal;
+setPayModal = function(id, ps, btn) {
+  _origSetPayModal(id, ps, btn);
+  const o = orders.find(x => x.id === id); if (o) syncOrder(o);
+};
+const _origUpdSt = updSt;
+updSt = function(id, st, role) {
+  _origUpdSt(id, st, role);
+  const o = orders.find(x => x.id === id); if (o) syncOrder(o);
+};
+
+// Outlets
+const _origSaveOutlet = saveOutlet;
+saveOutlet = function() { _origSaveOutlet(); outlets.forEach(o => syncOutlet(o)); };
+const _origDelOutlet = delOutlet;
+delOutlet = function(id) { deleteOutlet(id); _origDelOutlet(id); };
+
+// Employees
+const _origSaveEmp = saveEmp;
+saveEmp = function() { _origSaveEmp(); employees.forEach(e => syncEmployee(e)); };
+const _origDelEmp = delEmp;
+delEmp = function(id) { deleteEmployee(id); _origDelEmp(id); };
+const _origEmpAct = empAct;
+empAct = function(id, act) { _origEmpAct(id, act); const e = employees.find(x => x.id === id); if (e) syncEmployee(e); };
+
+// Kas
+const _origSubmitKas = submitKas;
+submitKas = function() { _origSubmitKas(); kasLog.slice(-1).forEach(l => syncKas(l)); };
+
+// Expenses
+const _origSubmitExpense = submitExpense;
+submitExpense = function() { _origSubmitExpense(); expenses.slice(-1).forEach(e => syncExpense(e)); };
+
+// Printers
+const _origSavePrinter = savePrinter;
+savePrinter = function() { _origSavePrinter(); printers.slice(-1).forEach(p => syncPrinter(p)); };
+const _origDelPrinter = delPrinter;
+delPrinter = function(id) { deletePrinter_sb(id); _origDelPrinter(id); };
+
+// Settings
+const _origSaveStoreInfo = saveStoreInfo;
+saveStoreInfo = function() { _origSaveStoreInfo(); syncSettings(); };
+const _origSaveTpl = saveTpl;
+saveTpl = function() { _origSaveTpl(); syncSettings(); };
+const _origSaveMinKg = saveMinKg;
+saveMinKg = function() { _origSaveMinKg(); syncSettings(); };
+const _origSaveSvc = saveSvc;
+saveSvc = function() { _origSaveSvc(); syncSettings(); };
+const _origSaveAddon = saveAddon;
+saveAddon = function() { _origSaveAddon(); syncSettings(); };
+const _origSavePromo = savePromo;
+savePromo = function() { _origSavePromo(); syncSettings(); };
+
+// Patch renderSettings untuk tambahkan card Supabase
+const _origRenderSettings = renderSettings;
+renderSettings = function() { _origRenderSettings(); renderSupaCard(); };
+</script>
