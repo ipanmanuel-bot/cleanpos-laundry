@@ -1,8 +1,8 @@
 // ===== SUPABASE CLIENT =====
-// Fill in your project credentials below.
-// Each user logs in with their own Google account — data is isolated per-user via RLS.
+// Credentials — get these from Supabase dashboard → Settings → API
+// SUPA_KEY must be the "anon / public" key (starts with eyJ...)
 const SUPA_URL = 'https://czwqaobdonovvdpfgkjd.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6d3Fhb2Jkb25vdnZkcGZna2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyOTUsImV4cCI6MjA5MTQyNTI5NX0.nUjLPi5BROgS-Y2beLPCZTjB2GgW6sBzWxlX3Qol6yM';
+const SUPA_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
 
 let supabase = null;
 let supaRealtimeCh = null;
@@ -11,23 +11,21 @@ let currentUserId = null;
 
 // Initialize Supabase client (called from main.js bootstrap after CDN loads)
 function initSupabase(url, key) {
- if (!url || !key) { _supaErr('URL atau Key kosong'); return false; }                         
-      15 +  if (!window.supabase) { _supaErr('CDN Supabase gagal dimuat'); return false; }   
+  if (!url || !key) { _supaErr('URL atau Key kosong'); return false; }
+  if (!window.supabase) { _supaErr('CDN Supabase gagal dimuat'); return false; }
   try {
     supabase = window.supabase.createClient(url, key);
     supaEnabled = true;
     return true;
- } catch(e) { _supaErr('createClient error: ' + e.message); return false; }  
+  } catch(e) { _supaErr('createClient error: ' + e.message); return false; }
+}
+function _supaErr(msg) {
+  console.error('[supa]', msg);
+  // Show on screen so we don't need DevTools
+  const el = document.getElementById('auth-err');
+  if (el) { el.style.color = 'var(--re)'; el.style.background = 'var(--reb)'; el.textContent = '❌ ' + msg; el.style.display = 'block'; }
 }
 
-function _supaErr(msg) {                                                                
-      23 +  console.error('[supa]', msg);                                                         
-      24 +  // Show on screen so we don't need DevTools                                           
-      25 +  const el = document.getElementById('auth-err');                                       
-      26 +  if (el) { el.style.color = 'var(--re)'; el.style.background = 'var(--reb)'; el.textCon
-         +tent = '❌ ' + msg; el.style.display = 'block'; }                                       
-      27 +}     
-        
 // --- Base CRUD helpers ---
 // All tables use composite unique key (user_id, id) — see SQL migration
 async function sbUpsert(table, data, onConflict = 'user_id,id') {

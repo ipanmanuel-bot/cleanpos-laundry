@@ -580,41 +580,44 @@ renderSettings = function() { _origRenderSettings(); renderSupaCard(); };
 
 // ===== BOOTSTRAP =====
 g('ex-date').value = TODAY_ISO;
-seed(); // load demo data first; supaLoadAll() will overwrite with real data after login
 
-// Auto-init Supabase and handle auth state
 (function() {
-  // Warn if opened as file:// — Supabase auth requires HTTP
-  if (window.location.protocol === 'file:') {
-    const err = g('auth-err');
-    if (err) {
-      err.style.color = 'var(--am)';
-      err.style.background = 'var(--amb)';
-      err.textContent = '⚠️ Buka via HTTP, bukan file://. Di Terminal: cd ~/Downloads && python3 -m http.server 8080 → lalu buka http://localhost:8080';
-      err.style.display = 'block';
+  const configured = typeof SUPA_URL !== 'undefined'
+    && SUPA_URL && !SUPA_URL.includes('YOUR_PROJECT')
+    && typeof SUPA_KEY !== 'undefined'
+    && SUPA_KEY && !SUPA_KEY.includes('PASTE_YOUR');
+
+  // --- Demo / offline mode (no Supabase credentials) ---
+  if (!configured || window.location.protocol === 'file:') {
+    if (window.location.protocol === 'file:') {
+      const err = g('auth-err');
+      if (err) {
+        err.style.color = 'var(--am)'; err.style.background = 'var(--amb)';
+        err.textContent = '⚠️ Buka via HTTP. Di Terminal: cd ~/Downloads && python3 -m http.server 8080 → buka http://localhost:8080';
+        err.style.display = 'block';
+      }
+      return;
     }
-    return; // stay on email screen, don't init Supabase
-  }
-  const configured = typeof SUPA_URL !== 'undefined' && SUPA_URL && !SUPA_URL.includes('YOUR_PROJECT');
-  if (!configured) {
-    // No credentials set — demo/dev mode, skip to PIN login
+    seed();
     showScr('scr-login');
     return;
   }
-  // scr-google is already shown via HTML (.on class); keep it visible on init failure
-  const ok = initSupabase(SUPA_URL, SUPA_KEY);
-  if (!ok) return; // email login screen stays visible; doEmailAuth will show error
+
+  // --- Supabase mode ---
+  if (!initSupabase(SUPA_URL, SUPA_KEY)) return; // error shown on email screen
+
   supabase.auth.onAuthStateChange(async (event, session) => {
+    const lb = g('drawer-logout-btn');
     if (session && session.user) {
       currentUserId = session.user.id;
-      const lb = g('drawer-logout-btn'); if (lb) lb.style.display = 'flex';
+      if (lb) lb.style.display = 'flex';
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         await supaLoadAll();
         showScr('scr-login');
       }
     } else {
       currentUserId = null;
-      const lb = g('drawer-logout-btn'); if (lb) lb.style.display = 'none'; 
+      if (lb) lb.style.display = 'none';
       showScr('scr-google');
     }
   });
