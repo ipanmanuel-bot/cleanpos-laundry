@@ -115,6 +115,6 @@ function renderSupaCard() {
         </div>
         <span style="width:9px;height:9px;border-radius:50%;background:var(--p);flex-shrink:0" title="Terhubung"></span>
       </div>
-      <button class="btn bre bpill bfull" onclick="authLogout()">Keluar dari Akun</button>`;
+      <button class="btn bre bpill bfull" onclick="authLogout()">Keluar</button>`;
   });
 }
