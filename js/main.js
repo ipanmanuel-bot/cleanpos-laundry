@@ -78,7 +78,7 @@ function ini(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase
 function go(id){return outlets.find(o=>o.id===id);}
 function toast(m){const t=g('toast');t.textContent=m;t.style.display='block';clearTimeout(t._x);t._x=setTimeout(()=>t.style.display='none',2700);}
 function cm(id){g(id).className='mbg';}
-function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));g(id).classList.add('on');window.scrollTo(0,0);if(id==='scr-login'){const el=g('login-scr-email');if(el)el.textContent=currentUserEmail?'☁️ '+currentUserEmail:'';}}
+function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));g(id).classList.add('on');window.scrollTo(0,0);if(id==='scr-login'){const el=g('login-scr-email');if(el)el.textContent=currentUserEmail?'☁️ '+currentUserEmail:'';const lb=g('login-scr-logout');if(lb)lb.style.display=currentUserEmail?'':'none';}}
 function showApp(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.app').forEach(a=>a.classList.remove('on'));g(id).classList.add('on');window.scrollTo(0,0);}
 function togglePwd(id,btn){const el=g(id);el.type=el.type==='password'?'text':'password';btn.textContent=el.type==='password'?'\uD83D\uDC41':'\uD83D\uDE48';}
 function confirm_(title,msg,onOk){g('mc-title').textContent=title;g('mc-msg').textContent=msg;g('mc-ok').onclick=()=>{cm('m-confirm');onOk();};g('m-confirm').className='mbg on';}
@@ -598,9 +598,6 @@ saveAddon = function() { _origSaveAddon(); syncSettings(); };
 const _origSavePromo = savePromo;
 savePromo = function() { _origSavePromo(); syncSettings(); };
 
-// Patch renderSettings to also show the Google account card
-const _origRenderSettings = renderSettings;
-renderSettings = function() { _origRenderSettings(); renderSupaCard(); };
 
 // ===== BOOTSTRAP =====
 g('ex-date').value = TODAY_ISO;
@@ -639,14 +636,12 @@ function _showNewPasswordModal() {
     if (!initSupabase(createClient)) return;
 
     supabase.auth.onAuthStateChange((event, session) => {
-      const lb = g('drawer-logout-btn');
       // Only treat as logged-in if there is a real (non-anonymous) user
       const user = session?.user;
       const isRealUser = user && !user.is_anonymous;
       if (isRealUser) {
         currentUserId = user.id;
         currentUserEmail = user.email;
-        if (lb) lb.style.display = 'flex';
         if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && _isRecovery)) {
           _showNewPasswordModal();
         } else if (event === 'SIGNED_IN') {
@@ -663,7 +658,6 @@ function _showNewPasswordModal() {
       } else {
         currentUserId = null;
         currentUserEmail = null;
-        if (lb) lb.style.display = 'none';
         resetAuthForm();
         showScr('scr-google');
       }

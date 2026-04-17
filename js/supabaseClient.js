@@ -233,25 +233,3 @@ async function doSetNewAccountPwd() {
   }
 }
 
-// --- Account card (shown in Settings) ---
-function renderSupaCard() {
-  const card = g('supa-card');
-  if (!card) return;
-  if (!supaEnabled || !supabase) { card.innerHTML = ''; return; }
-  supabase.auth.getUser().then(({ data: { user } }) => {
-    if (!user) { card.innerHTML = ''; return; }
-    const email = user.email || '';
-    const initial = email[0]?.toUpperCase() || '?';
-    card.innerHTML = `
-      <div class="ct">☁️ Akun</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px;background:var(--pl);border-radius:10px">
-        <div style="width:42px;height:42px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;flex-shrink:0">${initial}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;color:var(--t2)">Login sebagai</div>
-          <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${email}</div>
-        </div>
-        <span style="width:9px;height:9px;border-radius:50%;background:var(--p);flex-shrink:0" title="Terhubung"></span>
-      </div>
-      <button class="btn bre bpill bfull" onclick="authLogout()">Keluar</button>`;
-  });
-}

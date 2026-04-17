@@ -27,9 +27,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text'
 .lbox{background:var(--ca);border-radius:24px;padding:32px 24px;width:100%;max-width:400px;box-shadow:var(--sh2)}
 .logo-wrap{text-align:center;margin-bottom:28px}
 .logo-ic{width:72px;height:72px;background:var(--p);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 12px;box-shadow:0 6px 20px rgba(141,196,64,.35)}
-#scr-google{background:#1E2917}
-#scr-google .lbox{box-shadow:0 8px 40px rgba(0,0,0,.5)}
-#scr-google .logo-ic{box-shadow:none;background:#1E2917}
+.scr{background:#1E2917}
+.scr .lbox{box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.scr .logo-ic{box-shadow:none;background:#1E2917}
 .logo-name{font-size:22px;font-weight:800;letter-spacing:-.5px}
 .logo-sub{font-size:13px;color:var(--t2);margin-top:3px}
 .role-btn{display:flex;align-items:center;gap:14px;padding:18px 16px;border-radius:var(--r);border:2px solid var(--b1);background:var(--ca);cursor:pointer;margin-bottom:12px;width:100%;text-align:left;transition:all .2s;font-family:inherit;min-height:76px}
@@ -226,7 +226,7 @@ tr:hover td{background:#FAFAF7}
 <div id="scr-setup" class="scr">
   <div class="lbox" style="max-width:440px">
     <div class="logo-wrap">
-      <div class="logo-ic" style="background:#1E2917;box-shadow:none"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
+      <div class="logo-ic"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
       <div class="logo-name">Selamat Datang! 👋</div>
       <div class="logo-sub">Lengkapi info toko kamu sebelum mulai</div>
     </div>
@@ -254,10 +254,13 @@ tr:hover td{background:#FAFAF7}
 <div id="scr-login" class="scr">
   <div class="lbox">
     <div class="logo-wrap">
-      <div class="logo-ic" style="background:#1E2917;box-shadow:none"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
+      <div class="logo-ic"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
       <div class="logo-name">CleanPOS</div>
       <div class="logo-sub">Laundry Management System</div>
-      <div id="login-scr-email" style="margin-top:6px;font-size:12px;color:var(--t2);background:var(--bg);padding:5px 12px;border-radius:20px;display:inline-block"></div>
+      <div style="display:inline-flex;align-items:center;gap:8px;margin-top:6px">
+        <div id="login-scr-email" style="font-size:12px;color:var(--t2);background:var(--bg);padding:5px 12px;border-radius:20px"></div>
+        <button id="login-scr-logout" onclick="authLogout()" style="display:none;font-size:11px;background:rgba(255,80,80,.15);color:rgba(255,100,100,.9);border:1px solid rgba(255,80,80,.3);border-radius:20px;padding:5px 12px;cursor:pointer;font-family:inherit;font-weight:600">Keluar</button>
+      </div>
     </div>
     <button class="role-btn" onclick="goOwnerPwd()">
       <div class="role-ic" style="background:#1A1A1A">👑</div>
@@ -281,9 +284,6 @@ tr:hover td{background:#FAFAF7}
     </div>
     <div id="opwd-err" style="font-size:12px;color:var(--re);display:none;margin-bottom:10px;text-align:center">⚠️ Password salah. Coba lagi.</div>
     <button class="btn bp bfull bpill" onclick="doOwnerLogin()">Masuk sebagai Owner</button>
-    <div style="margin-top:14px;padding:10px;background:var(--pl);border-radius:10px;font-size:12px;color:#3d6b10;text-align:center">
-      Demo: Password Owner = <strong>owner123</strong>
-    </div>
     <a class="lnk" onclick="showScr('scr-login')">← Kembali ke pilihan login</a>
     <div style="text-align:center;margin-top:8px">
       <a class="lnk" style="font-size:12px;color:var(--t2)" onclick="showResetOwnerPwdModal()">Lupa password owner?</a>
@@ -616,7 +616,6 @@ tr:hover td{background:#FAFAF7}
     <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
     <div id="printer-list"></div>
   </div>
-  <div class="card" id="supa-card"></div>
 </div>
 
 </div><!-- end o-mc -->
@@ -757,7 +756,6 @@ tr:hover td{background:#FAFAF7}
     </div>
     <div style="padding:12px 8px;border-top:1px solid rgba(255,255,255,.2)">
       <button class="mi" style="color:rgba(255,255,255,.55)" onclick="confirmBack()"><span class="mic">←</span>Menu Awal</button>
-      <button class="mi" id="drawer-logout-btn" style="color:rgba(255,100,100,.85);display:none" onclick="authLogout()"><span class="mic">🚪</span>Keluar Akun</button>
     </div>
   </div>
 </div>
