@@ -607,12 +607,14 @@ seed(); // load demo data first; supaLoadAll() will overwrite with real data aft
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (session && session.user) {
       currentUserId = session.user.id;
+      const lb = g('drawer-logout-btn'); if (lb) lb.style.display = 'flex';
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         await supaLoadAll();
         showScr('scr-login');
       }
     } else {
       currentUserId = null;
+      const lb = g('drawer-logout-btn'); if (lb) lb.style.display = 'none'; 
       showScr('scr-google');
     }
   });
