@@ -11,16 +11,23 @@ let currentUserId = null;
 
 // Initialize Supabase client (called from main.js bootstrap after CDN loads)
 function initSupabase(url, key) {
-  if (!url || !key) return false;
-  if (!window.supabase) { console.error('Supabase CDN not loaded'); return false; }
+ if (!url || !key) { _supaErr('URL atau Key kosong'); return false; }                         
+      15 +  if (!window.supabase) { _supaErr('CDN Supabase gagal dimuat'); return false; }   
   try {
     supabase = window.supabase.createClient(url, key);
     supaEnabled = true;
-    console.log('[supa] client initialized');
     return true;
-  } catch(e) { console.error('Supabase init error:', e); return false; }
+ } catch(e) { _supaErr('createClient error: ' + e.message); return false; }  
 }
 
+function _supaErr(msg) {                                                                
+      23 +  console.error('[supa]', msg);                                                         
+      24 +  // Show on screen so we don't need DevTools                                           
+      25 +  const el = document.getElementById('auth-err');                                       
+      26 +  if (el) { el.style.color = 'var(--re)'; el.style.background = 'var(--reb)'; el.textCon
+         +tent = '❌ ' + msg; el.style.display = 'block'; }                                       
+      27 +}     
+        
 // --- Base CRUD helpers ---
 // All tables use composite unique key (user_id, id) — see SQL migration
 async function sbUpsert(table, data, onConflict = 'user_id,id') {
