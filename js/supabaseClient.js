@@ -1,8 +1,7 @@
 // ===== SUPABASE CLIENT =====
-// Credentials — get these from Supabase dashboard → Settings → API
-// SUPA_KEY must be the "anon / public" key (starts with eyJ...)
+// Credentials — from Supabase dashboard → Settings → API
 const SUPA_URL = 'https://czwqaobdonovvdpfgkjd.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6d3Fhb2Jkb25vdnZkcGZna2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyOTUsImV4cCI6MjA5MTQyNTI5NX0.nUjLPi5BROgS-Y2beLPCZTjB2GgW6sBzWxlX3Qol6yM';
+const SUPA_KEY = 'sb_publishable_1mG5_Wo2FmOBFiIM7kKJCw_S1RQl6xO';
 
 let supabase = null;
 let supaRealtimeCh = null;
