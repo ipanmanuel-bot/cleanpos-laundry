@@ -28,7 +28,10 @@ function _supaErr(msg) {
 async function sbUpsert(table, data, onConflict = 'user_id,id') {
   if (!supaEnabled || !supabase) return;
   const { error } = await supabase.from(table).upsert(data, { onConflict });
-  if (error) console.error(`[supa] upsert ${table}:`, error.message);
+  if (error) {
+    console.error(`[supa] upsert ${table}:`, error.message);
+    toast(`⚠️ Gagal simpan ke cloud (${table}): ${error.message}`);
+  }
 }
 async function sbDelete(table, id) {
   if (!supaEnabled || !supabase) return;
@@ -37,9 +40,12 @@ async function sbDelete(table, id) {
 }
 async function sbFetch(table) {
   if (!supaEnabled || !supabase) return null;
-  // RLS automatically filters rows to only the current user's data
   const { data, error } = await supabase.from(table).select('*');
-  if (error) { console.error(`[supa] fetch ${table}:`, error.message); return null; }
+  if (error) {
+    console.error(`[supa] fetch ${table}:`, error.message);
+    toast(`⚠️ Gagal muat tabel "${table}": ${error.message}`);
+    return null;
+  }
   return data;
 }
 

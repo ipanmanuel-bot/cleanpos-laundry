@@ -170,7 +170,7 @@ function supaSubscribeOrders() {
 // --- Push all local data to Supabase (initial migration) ---
 async function supaPushAll() {
   if (!supaEnabled) { toast('⚠️ Hubungkan Supabase dulu'); return; }
-  if (!currentUserId) { toast('⚠️ Login Google diperlukan'); return; }
+  if (!currentUserId) { toast('⚠️ Login diperlukan'); return; }
   toast('⬆️ Mendorong semua data...');
   await Promise.all([
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
