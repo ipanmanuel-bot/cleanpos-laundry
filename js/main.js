@@ -598,17 +598,17 @@ g('ex-date').value = TODAY_ISO;
   if (!configured) { seed(); showScr('scr-login'); return; }
 
   try {
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
     if (!initSupabase(createClient)) return;
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       const lb = g('drawer-logout-btn');
       if (session && session.user) {
         currentUserId = session.user.id;
         if (lb) lb.style.display = 'flex';
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          await supaLoadAll();
           showScr('scr-login');
+          supaLoadAll(); // load in background — toast will notify when done
         }
       } else {
         currentUserId = null;
