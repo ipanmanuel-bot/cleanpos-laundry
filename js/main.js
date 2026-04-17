@@ -582,10 +582,8 @@ renderSettings = function() { _origRenderSettings(); renderSupaCard(); };
 g('ex-date').value = TODAY_ISO;
 
 (function() {
-  const configured = typeof SUPA_URL !== 'undefined'
-    && SUPA_URL && !SUPA_URL.includes('YOUR_PROJECT')
-    && typeof SUPA_KEY !== 'undefined'
-    && SUPA_KEY && !SUPA_KEY.includes('PASTE_YOUR');
+  const configured = typeof SUPA_URL !== 'undefined' && !!SUPA_URL                                                                                                                                        
+  && typeof SUPA_KEY !== 'undefined' && !!SUPA_KEY;
 
   // --- Demo / offline mode (no Supabase credentials) ---
   if (!configured || window.location.protocol === 'file:') {
