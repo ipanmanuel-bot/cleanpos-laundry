@@ -115,6 +115,7 @@ function doFirstTimeSetup() {
   showScr('scr-login');
   toast('✅ Setup selesai! Selamat menggunakan CleanPOS.');
 }
+function confirmLogout(){confirm_('Keluar dari Akun?','Kamu akan keluar dan perlu login kembali untuk mengakses data.',()=>authLogout());}
 function goOwnerPwd(){showScr('scr-opwd');g('opwd-in').focus();}
 function doOwnerLogin(){if(g('opwd-in').value===ownerPwd){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');initOwner();}else g('opwd-err').style.display='block';}
 function goOutletSelect(){

@@ -110,7 +110,7 @@ function showReturningUser(email) {
   if (pwdRow) pwdRow.style.display = 'none';
   if (errEl) {
     errEl.style.color = 'var(--p)'; errEl.style.background = 'var(--pl)';
-    errEl.innerHTML = '✅ Masuk sebagai <strong>' + email + '</strong><br><a style="color:var(--t2);font-size:12px;cursor:pointer" onclick="authLogout()">Bukan kamu? Ganti akun</a>';
+    errEl.innerHTML = '✅ Masuk sebagai <strong>' + email + '</strong><br><a style="color:var(--t2);font-size:12px;cursor:pointer" onclick="confirmLogout()">Bukan kamu? Ganti akun</a>';
     errEl.style.display = 'block';
   }
   if (btn) { btn.textContent = 'Lanjutkan →'; btn.onclick = () => showScr('scr-login'); }
