@@ -612,13 +612,19 @@ g('ex-date').value = TODAY_ISO;
       if (isRealUser) {
         currentUserId = user.id;
         if (lb) lb.style.display = 'flex';
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        if (event === 'SIGNED_IN') {
+          // User just logged in via the form — go straight to app
           showScr('scr-login');
-          supaLoadAll(); // load in background — toast will notify when done
+          supaLoadAll();
+        } else if (event === 'INITIAL_SESSION') {
+          // Session restored from storage — show "continue as" prompt, don't skip login page
+          supaLoadAll();
+          showReturningUser(user.email);
         }
       } else {
         currentUserId = null;
         if (lb) lb.style.display = 'none';
+        resetAuthForm();
         showScr('scr-google');
       }
     });

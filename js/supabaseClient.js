@@ -90,11 +90,41 @@ async function authLogout() {
   await supabase.auth.signOut();
   currentUserId = null;
   orders = []; customers = {}; kasLog = []; expenses = [];
-  if (g('auth-email')) g('auth-email').value = '';
-  if (g('auth-pwd')) g('auth-pwd').value = '';
+  resetAuthForm();
   authTab('signin');
   showScr('scr-google');
   toast('👋 Berhasil keluar');
+}
+
+// --- Returning user UI (shown when session is restored on page load) ---
+function showReturningUser(email) {
+  // Hide the normal sign-in/sign-up form, show a "continue as" prompt
+  const tabs = g('tab-signin')?.parentElement;
+  const emailRow = g('auth-email')?.parentElement;
+  const pwdRow = g('auth-pwd')?.parentElement;
+  const errEl = g('auth-err');
+  const btn = g('auth-btn');
+  if (tabs) tabs.style.display = 'none';
+  if (emailRow) emailRow.style.display = 'none';
+  if (pwdRow) pwdRow.style.display = 'none';
+  if (errEl) {
+    errEl.style.color = 'var(--p)'; errEl.style.background = 'var(--pl)';
+    errEl.innerHTML = '✅ Masuk sebagai <strong>' + email + '</strong><br><a style="color:var(--t2);font-size:12px;cursor:pointer" onclick="authLogout()">Bukan kamu? Ganti akun</a>';
+    errEl.style.display = 'block';
+  }
+  if (btn) { btn.textContent = 'Lanjutkan →'; btn.onclick = () => showScr('scr-login'); }
+}
+function resetAuthForm() {
+  const tabs = g('tab-signin')?.parentElement;
+  const emailRow = g('auth-email')?.parentElement;
+  const pwdRow = g('auth-pwd')?.parentElement;
+  const errEl = g('auth-err');
+  const btn = g('auth-btn');
+  if (tabs) tabs.style.display = '';
+  if (emailRow) emailRow.style.display = '';
+  if (pwdRow) pwdRow.style.display = '';
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.textContent = 'Masuk'; btn.onclick = doEmailAuth; }
 }
 
 // --- Account card (shown in Settings) ---
