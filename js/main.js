@@ -611,18 +611,23 @@ g('ex-date').value = TODAY_ISO;
       const isRealUser = user && !user.is_anonymous;
       if (isRealUser) {
         currentUserId = user.id;
+        currentUserEmail = user.email;
         if (lb) lb.style.display = 'flex';
         if (event === 'SIGNED_IN') {
-          // User just logged in via the form — go straight to app
           showScr('scr-login');
           supaLoadAll();
         } else if (event === 'INITIAL_SESSION') {
-          // Session restored from storage — show "continue as" prompt, don't skip login page
           supaLoadAll();
           showReturningUser(user.email);
+        } else if (event === 'PASSWORD_RECOVERY') {
+          // User arrived via password reset link in email
+          showScr('scr-google');
+          g('m-new-account-pwd').className = 'mbg on';
+          setTimeout(() => g('nap-pwd')?.focus(), 100);
         }
       } else {
         currentUserId = null;
+        currentUserEmail = null;
         if (lb) lb.style.display = 'none';
         resetAuthForm();
         showScr('scr-google');
