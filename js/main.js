@@ -78,7 +78,7 @@ function ini(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase
 function go(id){return outlets.find(o=>o.id===id);}
 function toast(m){const t=g('toast');t.textContent=m;t.style.display='block';clearTimeout(t._x);t._x=setTimeout(()=>t.style.display='none',2700);}
 function cm(id){g(id).className='mbg';}
-function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));g(id).classList.add('on');window.scrollTo(0,0);}
+function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));g(id).classList.add('on');window.scrollTo(0,0);if(id==='scr-login'){const el=g('login-scr-email');if(el)el.textContent=currentUserEmail?'☁️ '+currentUserEmail:'';}}
 function showApp(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.app').forEach(a=>a.classList.remove('on'));g(id).classList.add('on');window.scrollTo(0,0);}
 function togglePwd(id,btn){const el=g(id);el.type=el.type==='password'?'text':'password';btn.textContent=el.type==='password'?'\uD83D\uDC41':'\uD83D\uDE48';}
 function confirm_(title,msg,onOk){g('mc-title').textContent=title;g('mc-msg').textContent=msg;g('mc-ok').onclick=()=>{cm('m-confirm');onOk();};g('m-confirm').className='mbg on';}
@@ -232,7 +232,7 @@ function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act
 function resetEmpPin(id){const e=employees.find(x=>x.id===id);if(!e)return;const p=prompt('PIN baru (4 digit) untuk '+e.name+':');if(p===null)return;if(!/^\d{4}$/.test(p)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}e.pin=p;renderEmployees();toast('\u2713 PIN '+e.name+' diubah');}
 function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();toast('Karyawan dihapus');});}
 function openAddEmp(){g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');g('m-emp-title').textContent='Tambah Karyawan';g('m-emp').className='mbg on';}
-function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(pin&&!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit');return;}employees.push({id:empCtr++,name,role:g('me-r').value,oid:g('me-o').value,pin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
+function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}employees.push({id:empCtr++,name,role:g('me-r').value,oid:g('me-o').value,pin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
 function updStaffClk(){if(!curStaff)return;const e=employees.find(x=>x.id===curStaff.id);if(!e)return;const stM={in:'Sedang bekerja \u00B7 Masuk: '+e.clockIn,off:'Belum clock in hari ini',cuti:'Cuti hari ini',sakit:'Sakit hari ini'};const cs=g('s-clk-st');if(cs)cs.textContent=stM[e.status]||'';const cb=g('s-clk-btns');if(!cb)return;cb.innerHTML=e.status==='in'?`<button class="btn bre bsm bpill" onclick="staffClk('clkout')">Clock Out</button>`:e.status==='off'?`<button class="btn bp bsm bpill" onclick="staffClk('clkin')">Clock In</button>`:`<span class="badge ${e.status==='cuti'?'gpu':'gam'}">${e.status==='cuti'?'Cuti':'Sakit'}</span>`;}
 function staffClk(act){if(!curStaff)return;empAct(curStaff.id,act);}
 
@@ -581,6 +581,16 @@ renderSettings = function() { _origRenderSettings(); renderSupaCard(); };
 // ===== BOOTSTRAP =====
 g('ex-date').value = TODAY_ISO;
 
+// Capture recovery flag from URL immediately — before Supabase clears the hash
+const _isRecovery = window.location.hash.includes('type=recovery')
+  || window.location.search.includes('type=recovery');
+
+function _showNewPasswordModal() {
+  showScr('scr-google');
+  g('m-new-account-pwd').className = 'mbg on';
+  setTimeout(() => g('nap-pwd')?.focus(), 100);
+}
+
 (async function() {
   if (window.location.protocol === 'file:') {
     const err = g('auth-err');
@@ -613,17 +623,15 @@ g('ex-date').value = TODAY_ISO;
         currentUserId = user.id;
         currentUserEmail = user.email;
         if (lb) lb.style.display = 'flex';
-        if (event === 'SIGNED_IN') {
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && _isRecovery)) {
+          // User arrived via password reset link — must set new password before entering app
+          _showNewPasswordModal();
+        } else if (event === 'SIGNED_IN') {
           showScr('scr-login');
           supaLoadAll();
         } else if (event === 'INITIAL_SESSION') {
           supaLoadAll();
           showReturningUser(user.email);
-        } else if (event === 'PASSWORD_RECOVERY') {
-          // User arrived via password reset link in email
-          showScr('scr-google');
-          g('m-new-account-pwd').className = 'mbg on';
-          setTimeout(() => g('nap-pwd')?.focus(), 100);
         }
       } else {
         currentUserId = null;

@@ -227,8 +227,9 @@ async function doSetNewAccountPwd() {
     if (errEl) { errEl.textContent = error.message; errEl.style.display='block'; }
   } else {
     cm('m-new-account-pwd');
-    toast('✅ Password akun berhasil diubah!');
-    showScr('scr-login');
+    await supabase.auth.signOut();
+    // onAuthStateChange will redirect to scr-google
+    toast('✅ Password berhasil diubah! Silakan masuk dengan password baru.')
   }
 }
 

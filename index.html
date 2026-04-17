@@ -223,6 +223,7 @@ tr:hover td{background:#FAFAF7}
       <div class="logo-ic">🧺</div>
       <div class="logo-name">CleanPOS</div>
       <div class="logo-sub">Laundry Management System</div>
+      <div id="login-scr-email" style="margin-top:6px;font-size:12px;color:var(--t2);background:var(--bg);padding:5px 12px;border-radius:20px;display:inline-block"></div>
     </div>
     <button class="role-btn" onclick="goOwnerPwd()">
       <div class="role-ic" style="background:#1A1A1A">👑</div>
@@ -234,9 +235,6 @@ tr:hover td{background:#FAFAF7}
       <div style="flex:1"><div style="font-weight:700;font-size:16px">Karyawan</div><div style="font-size:12px;color:var(--t2);margin-top:3px">Akses operasional harian</div></div>
       <span style="color:var(--t3);font-size:22px">›</span>
     </button>
-    <div style="text-align:center;margin-top:16px;padding:10px;background:var(--pl);border-radius:10px;font-size:12px;color:#3d6b10">
-      Demo: Password Owner = <strong>owner123</strong><br>PIN Ayu: <strong>1234</strong> · Doni: <strong>5678</strong> · Rina: <strong>9999</strong>
-    </div>
   </div>
 </div>
 <div id="scr-opwd" class="scr">
@@ -249,6 +247,9 @@ tr:hover td{background:#FAFAF7}
     </div>
     <div id="opwd-err" style="font-size:12px;color:var(--re);display:none;margin-bottom:10px;text-align:center">⚠️ Password salah. Coba lagi.</div>
     <button class="btn bp bfull bpill" onclick="doOwnerLogin()">Masuk sebagai Owner</button>
+    <div style="margin-top:14px;padding:10px;background:var(--pl);border-radius:10px;font-size:12px;color:#3d6b10;text-align:center">
+      Demo: Password Owner = <strong>owner123</strong>
+    </div>
     <a class="lnk" onclick="showScr('scr-login')">← Kembali ke pilihan login</a>
     <div style="text-align:center;margin-top:8px">
       <a class="lnk" style="font-size:12px;color:var(--t2)" onclick="showResetOwnerPwdModal()">Lupa password owner?</a>
