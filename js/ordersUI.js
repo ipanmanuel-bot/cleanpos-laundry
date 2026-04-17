@@ -188,7 +188,7 @@ function renderOrders() {
       <td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td>
       <td><span class="badge ${SL_PAY[o.payStatus]}">${o.payStatus}</span></td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
     </tr>`).join('');
   } else {
     tb.innerHTML = list.map(o => `<tr>
@@ -249,6 +249,19 @@ function showRcpt(id) {
   if (o.discAmt > 0)  lines += `<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ${o.discAmt.toLocaleString('id-ID')}</span></div>`;
   g('m-rcpt-body').innerHTML = `<div class="rcpt"><div class="rc rb">CLEANPOS LAUNDRY</div><div class="rc" style="font-size:10px">${go(o.outletId)?.addr || ''}</div><hr class="rdash"><div class="rrow"><span>No Nota</span><span>${o.id}</span></div><div class="rrow"><span>Pelanggan</span><span>${o.name}</span></div><div class="rrow"><span>Kasir</span><span>${o.handledBy || '—'}</span></div><div class="rrow"><span>Tgl Masuk</span><span>${o.date}</span></div><hr class="rdash">${lines}<hr class="rdash"><div class="rrow"><span>Status</span><span>${o.payStatus}</span></div><div class="rrow rb"><span>Total</span><span>${o.total.toLocaleString('id-ID')}</span></div><div class="rrow"><span>Metode</span><span>${o.payMethod}</span></div><hr class="rdash"><div class="rc">Terima kasih! 🙏</div></div>`;
   g('m-rcpt').className = 'mbg on';
+}
+
+function deleteOrder(id) {
+  const o = orders.find(x => x.id === id); if (!o) return;
+  confirm_('Hapus Pesanan?', `Pesanan ${o.id} atas nama ${o.name} akan dihapus.`, () => {
+    confirm_('Yakin Hapus?', 'Tindakan ini permanen dan tidak dapat dibatalkan.', () => {
+      orders = orders.filter(x => x.id !== id);
+      sbDelete('orders', id);
+      renderOrders();
+      if (curRole === 'owner') refreshODash(); else refreshSDash();
+      toast('🗑️ Pesanan ' + id + ' dihapus.');
+    });
+  });
 }
 
 function showDetail(id) {
