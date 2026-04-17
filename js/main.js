@@ -595,7 +595,10 @@ g('ex-date').value = TODAY_ISO;
   const configured = typeof SUPA_URL !== 'undefined' && !!SUPA_URL
     && typeof SUPA_KEY !== 'undefined' && !!SUPA_KEY;
 
-  if (!configured) { seed(); showScr('scr-login'); return; }
+  if (!configured) {
+    // Supabase not configured — run in offline/demo mode
+    seed(); showScr('scr-login'); return;
+  }
 
   try {
     const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
@@ -603,8 +606,11 @@ g('ex-date').value = TODAY_ISO;
 
     supabase.auth.onAuthStateChange((event, session) => {
       const lb = g('drawer-logout-btn');
-      if (session && session.user) {
-        currentUserId = session.user.id;
+      // Only treat as logged-in if there is a real (non-anonymous) user
+      const user = session?.user;
+      const isRealUser = user && !user.is_anonymous;
+      if (isRealUser) {
+        currentUserId = user.id;
         if (lb) lb.style.display = 'flex';
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           showScr('scr-login');
