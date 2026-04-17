@@ -8,15 +8,13 @@ let supaRealtimeCh = null;
 let supaEnabled = false;
 let currentUserId = null;
 
-// Initialize Supabase client (called from main.js bootstrap after CDN loads)
-function initSupabase(url, key) {
-  if (!url || !key) { _supaErr('URL atau Key kosong'); return false; }
-  if (!window.supabase) { _supaErr('CDN Supabase gagal dimuat'); return false; }
+// Initialize Supabase client — createClient is passed in from dynamic import in main.js
+function initSupabase(createClientFn) {
   try {
-    supabase = window.supabase.createClient(url, key);
+    supabase = createClientFn(SUPA_URL, SUPA_KEY);
     supaEnabled = true;
     return true;
-  } catch(e) { _supaErr('createClient error: ' + e.message); return false; }
+  } catch(e) { _supaErr('Error inisialisasi: ' + e.message); return false; }
 }
 function _supaErr(msg) {
   console.error('[supa]', msg);

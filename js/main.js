@@ -581,42 +581,42 @@ renderSettings = function() { _origRenderSettings(); renderSupaCard(); };
 // ===== BOOTSTRAP =====
 g('ex-date').value = TODAY_ISO;
 
-(function() {
-  const configured = typeof SUPA_URL !== 'undefined' && !!SUPA_URL                                                                                                                                        
-  && typeof SUPA_KEY !== 'undefined' && !!SUPA_KEY;
-
-  // --- Demo / offline mode (no Supabase credentials) ---
-  if (!configured || window.location.protocol === 'file:') {
-    if (window.location.protocol === 'file:') {
-      const err = g('auth-err');
-      if (err) {
-        err.style.color = 'var(--am)'; err.style.background = 'var(--amb)';
-        err.textContent = '⚠️ Buka via HTTP. Di Terminal: cd ~/Downloads && python3 -m http.server 8080 → buka http://localhost:8080';
-        err.style.display = 'block';
-      }
-      return;
+(async function() {
+  if (window.location.protocol === 'file:') {
+    const err = g('auth-err');
+    if (err) {
+      err.style.color='var(--am)'; err.style.background='var(--amb)';
+      err.textContent='⚠️ Buka via HTTP, bukan file://. Gunakan Live Server atau upload ke Vercel.';
+      err.style.display='block';
     }
-    seed();
-    showScr('scr-login');
     return;
   }
 
-  // --- Supabase mode ---
-  if (!initSupabase(SUPA_URL, SUPA_KEY)) return; // error shown on email screen
+  const configured = typeof SUPA_URL !== 'undefined' && !!SUPA_URL
+    && typeof SUPA_KEY !== 'undefined' && !!SUPA_KEY;
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    const lb = g('drawer-logout-btn');
-    if (session && session.user) {
-      currentUserId = session.user.id;
-      if (lb) lb.style.display = 'flex';
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        await supaLoadAll();
-        showScr('scr-login');
+  if (!configured) { seed(); showScr('scr-login'); return; }
+
+  try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    if (!initSupabase(createClient)) return;
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      const lb = g('drawer-logout-btn');
+      if (session && session.user) {
+        currentUserId = session.user.id;
+        if (lb) lb.style.display = 'flex';
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          await supaLoadAll();
+          showScr('scr-login');
+        }
+      } else {
+        currentUserId = null;
+        if (lb) lb.style.display = 'none';
+        showScr('scr-google');
       }
-    } else {
-      currentUserId = null;
-      if (lb) lb.style.display = 'none';
-      showScr('scr-google');
-    }
-  });
+    });
+  } catch(e) {
+    _supaErr('Gagal memuat Supabase: ' + e.message);
+  }
 })();
