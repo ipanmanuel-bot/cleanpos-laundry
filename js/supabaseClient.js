@@ -2,7 +2,7 @@
 // Credentials — get these from Supabase dashboard → Settings → API
 // SUPA_KEY must be the "anon / public" key (starts with eyJ...)
 const SUPA_URL = 'https://czwqaobdonovvdpfgkjd.supabase.co';
-const SUPA_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6d3Fhb2Jkb25vdnZkcGZna2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyOTUsImV4cCI6MjA5MTQyNTI5NX0.nUjLPi5BROgS-Y2beLPCZTjB2GgW6sBzWxlX3Qol6yM';
 
 let supabase = null;
 let supaRealtimeCh = null;
