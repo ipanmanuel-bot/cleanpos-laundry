@@ -271,7 +271,7 @@ function showDetail(id) {
   <div style="display:flex;flex-wrap:wrap;gap:5px">${STATUS_LIST.map(s => `<button class="btn bsm${s === o.status ? ' bp' : ''}" onclick="setStModal('${id}','${s}',this)">${s}</button>`).join('')}</div></div>
   <div><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Update Status Bayar</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">${['Belum Bayar', 'DP', 'Lunas'].map(ps => `<button class="btn bsm${ps === o.payStatus ? ' bp' : ''}" onclick="setPayModal('${id}','${ps}',this)">${ps}</button>`).join('')}</div></div>`;
-  g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button><button class="btn bp" onclick="showRcpt('${id}')">Struk</button>`;
+  g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button><button class="btn bp" onclick="cm('m-detail');showRcpt('${id}')">Struk</button>`;
   g('m-detail').className = 'mbg on';
 }
 

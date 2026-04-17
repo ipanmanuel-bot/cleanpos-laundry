@@ -93,6 +93,28 @@ function buildOutletFilterChips(selId,fnName){
 }
 
 // ===== LOGIN =====
+function doFirstTimeSetup() {
+  const name = (g('setup-store-name')?.value || '').trim();
+  const addr = (g('setup-store-addr')?.value || '').trim();
+  const wa   = (g('setup-store-wa')?.value || '').trim();
+  const pwd  = g('setup-pwd')?.value || '';
+  const conf = g('setup-pwd-confirm')?.value || '';
+  const errEl = g('setup-err'), btn = g('setup-btn');
+  const showErr = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } };
+  if (!name)            { showErr('⚠️ Nama toko wajib diisi.'); return; }
+  if (!pwd)             { showErr('⚠️ Password owner wajib diisi.'); return; }
+  if (pwd === 'owner123') { showErr('⚠️ Gunakan password selain "owner123".'); return; }
+  if (pwd.length < 4)   { showErr('⚠️ Password minimal 4 karakter.'); return; }
+  if (pwd !== conf)     { showErr('⚠️ Konfirmasi password tidak cocok.'); return; }
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+  storeName = name; storeAddr = addr; storeWa = wa; ownerPwd = pwd;
+  syncSettings();
+  if (btn) { btn.disabled = false; btn.textContent = 'Mulai Gunakan CleanPOS →'; }
+  ['setup-store-name','setup-store-addr','setup-store-wa','setup-pwd','setup-pwd-confirm'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  showScr('scr-login');
+  toast('✅ Setup selesai! Selamat menggunakan CleanPOS.');
+}
 function goOwnerPwd(){showScr('scr-opwd');g('opwd-in').focus();}
 function doOwnerLogin(){if(g('opwd-in').value===ownerPwd){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');initOwner();}else g('opwd-err').style.display='block';}
 function goOutletSelect(){
@@ -196,8 +218,10 @@ function refreshODash(){
   const wa=g('o-wa-alert');if(wa)wa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:#3d6b10">\uD83C\uDFDF\uFE0F ${wp.length} cucian selesai belum dinotif WA</div><button class="btn bp bsm bpill" onclick="oGo('wa',null)">Kirim</button></div>`:'';
   const last=orders.slice(-5).reverse();
   const rEl=g('o-recent');if(rEl)rEl.innerHTML=last.length?'<table><tbody>'+last.map(o=>`<tr><td style="font-size:11px;font-family:monospace;color:var(--t2)">${o.id}</td><td style="font-weight:600">${o.name}</td><td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td><td style="font-weight:600">${fmt(o.total)}</td></tr>`).join('')+'</tbody></table>':'<div style="text-align:center;padding:20px;color:var(--t2)">Belum ada pesanan</div>';
-  const days=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];const vals=[3,5,2,7,4,6,orders.length];const mx=Math.max(...vals)||1;
-  const ch=g('o-chart');if(ch)ch.innerHTML=days.map((d,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:9px;color:var(--t2)">${vals[i]}</div><div style="width:100%;background:var(--pl);border-radius:3px 3px 0 0;min-height:2px;height:${Math.max(4,vals[i]/mx*70)}px"></div><div style="font-size:9px;color:var(--t2)">${d}</div></div>`).join('');
+  const kasIn=kasLog.filter(l=>l.type==='modal'||l.type==='in').reduce((s,l)=>s+l.amount,0);
+  const kasOut=kasLog.filter(l=>l.type==='out').reduce((s,l)=>s+l.amount,0);
+  const kasSaldo=kasIn-kasOut;
+  const ks=g('o-kas-saldo');if(ks)ks.innerHTML=`<div style="font-size:26px;font-weight:800;color:${kasSaldo>=0?'var(--p)':'var(--re)'};margin-bottom:8px">${fmt(kasSaldo)}</div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2)"><span>↑ Masuk&nbsp;&nbsp;${fmt(kasIn)}</span><span>↓ Keluar&nbsp;&nbsp;${fmt(kasOut)}</span></div>`;
   const sg=g('o-status-grid');if(sg)sg.innerHTML=STATUS_LIST.map(s=>`<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800">${orders.filter(o=>o.status===s).length}</div><div style="font-size:10px;color:var(--t2);margin-top:3px">${s}</div></div>`).join('');
 }
 function refreshSDash(){
@@ -274,8 +298,8 @@ function isPromoToday(p){if(!p.active)return false;const dm=p.days.length===0||p
 function promoDiscLbl(p){if(p.discType==='persen')return `-${p.discVal}%`;if(p.discType==='flat')return `-${fmt(p.discVal)}`;return `-${fmt(p.discVal)}/qty`;}
 function renderPromo(){const el=g('promo-list');if(!el)return;if(!promos.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Belum ada promo.</div>';return;}const today=promos.filter(p=>isPromoToday(p));const rest=promos.filter(p=>!isPromoToday(p));let html='';if(today.length){html+=`<div style="font-size:11px;font-weight:700;color:var(--am);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">\uD83D\uDD25 Berlaku Hari Ini</div>`;today.forEach(p=>{html+=promoCard(p,true);});}if(rest.length){if(today.length)html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px">Promo Lainnya</div>';rest.forEach(p=>{html+=promoCard(p,false);});}el.innerHTML=html;}
 function promoCard(p,today){const dn=p.days.length?p.days.map(d=>DAYS_ID[parseInt(d)]).join(', '):'Setiap hari';return `<div class="pcrd${today?' pact':!p.active?' poff':''}"><div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">${p.name}</span>${today?'<span class="ptd">\uD83D\uDD25 Hari ini</span>':''}${!p.active?'<span class="badge gy">Nonaktif</span>':''}</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px"><span class="badge gbl">${SVC_LBL[p.svc]||p.svc}</span><span class="badge gr_" style="font-weight:700">${promoDiscLbl(p)}</span><span class="badge gp">\uD83D\uDCC5 ${dn}</span>${p.from||p.to?`<span class="badge gy">${p.from||'\u2014'} s/d ${p.to||'\u2014'}</span>`:''} ${p.outlets&&p.outlets.length?p.outlets.map(oid=>{const out=go(oid);return out?`<span class="badge" style="background:${out.color}18;color:${out.color}">${out.name}</span>`:''}).join(''):'<span class="badge gy">Semua Outlet</span>'}</div>${p.note?`<div style="font-size:12px;color:var(--t2)">${p.note}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px"><button class="toggle ${p.active?'on':'off'}" onclick="togglePromo('${p.id}')"></button><div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditPromo('${p.id}')">Edit</button><button class="btn bre bsm" onclick="delPromo('${p.id}')">Hapus</button></div></div></div></div>`;}
-function togglePromo(id){const p=promos.find(x=>x.id===id);if(!p)return;p.active=!p.active;renderPromo();toast((p.active?'\u2713 Promo aktif':'Promo nonaktif')+': '+p.name);}
-function delPromo(id){confirm_('Hapus Promo?','Promo ini akan dihapus.',()=>{promos=promos.filter(x=>x.id!==id);renderPromo();toast('Promo dihapus');});}
+function togglePromo(id){const p=promos.find(x=>x.id===id);if(!p)return;p.active=!p.active;renderPromo();syncSettings();toast((p.active?'\u2713 Promo aktif':'Promo nonaktif')+': '+p.name);}
+function delPromo(id){confirm_('Hapus Promo?','Promo ini akan dihapus.',()=>{promos=promos.filter(x=>x.id!==id);renderPromo();syncSettings();toast('Promo dihapus');});}
 function promoDiscChange(){const dl=g('mp-dv-lbl');if(dl)dl.textContent={persen:'Nilai (%)',flat:'Nominal (Rp)',per_qty:'Per Kg/Pcs (Rp)'}[g('mp-dt').value]||'Nilai';}
 function tDay(el,day){el.classList.toggle('sel');if(el.classList.contains('sel')){if(!selDays.includes(day))selDays.push(day);}else selDays=selDays.filter(d=>d!==day);}
 function buildPromoOutletChips(sel){const el=g('mp-outlet-chips');if(!el)return;el.innerHTML=outlets.map(o=>{const s=sel.includes(o.id);return `<span class="chip${s?' on':''}" onclick="togglePromoOutlet('${o.id}',this)" style="${s?`background:${o.color}18;border-color:${o.color};color:${o.color}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${o.color};margin-right:5px;vertical-align:middle"></span>${o.name}</span>`;}).join('');}
@@ -624,14 +648,17 @@ function _showNewPasswordModal() {
         currentUserEmail = user.email;
         if (lb) lb.style.display = 'flex';
         if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && _isRecovery)) {
-          // User arrived via password reset link — must set new password before entering app
           _showNewPasswordModal();
         } else if (event === 'SIGNED_IN') {
-          showScr('scr-login');
-          supaLoadAll();
+          supaLoadAll().then(() => {
+            if (ownerPwd === 'owner123') showScr('scr-setup');
+            else showScr('scr-login');
+          });
         } else if (event === 'INITIAL_SESSION') {
-          supaLoadAll();
           showReturningUser(user.email);
+          supaLoadAll().then(() => {
+            if (ownerPwd === 'owner123') showScr('scr-setup');
+          });
         }
       } else {
         currentUserId = null;

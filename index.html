@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#8DC440">
-<title>CleanPOS Laundry</title>
+<meta name="theme-color" content="#1E2917">
+<meta name="description" content="CleanPOS adalah sistem POS modern yang dirancang khusus untuk bisnis laundry. Membantu Anda mengelola pesanan, data pelanggan, dan transaksi dengan mudah dalam satu platform yang sederhana dan intuitif.">
+<title>CleanPOS - Laundry Management System</title>
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/favicon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -24,6 +27,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text'
 .lbox{background:var(--ca);border-radius:24px;padding:32px 24px;width:100%;max-width:400px;box-shadow:var(--sh2)}
 .logo-wrap{text-align:center;margin-bottom:28px}
 .logo-ic{width:72px;height:72px;background:var(--p);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 12px;box-shadow:0 6px 20px rgba(141,196,64,.35)}
+#scr-google{background:#1E2917}
+#scr-google .lbox{box-shadow:0 8px 40px rgba(0,0,0,.5)}
+#scr-google .logo-ic{box-shadow:none;background:#1E2917}
 .logo-name{font-size:22px;font-weight:800;letter-spacing:-.5px}
 .logo-sub{font-size:13px;color:var(--t2);margin-top:3px}
 .role-btn{display:flex;align-items:center;gap:14px;padding:18px 16px;border-radius:var(--r);border:2px solid var(--b1);background:var(--ca);cursor:pointer;margin-bottom:12px;width:100%;text-align:left;transition:all .2s;font-family:inherit;min-height:76px}
@@ -77,7 +83,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* RIGHT DRAWER */
 .more-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:150;justify-content:flex-end}
 .more-bg.on{display:flex}
-.more-sheet{background:var(--p);width:78%;max-width:300px;height:100%;overflow-y:auto;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+.more-sheet{background:var(--dk2);width:78%;max-width:300px;height:100%;overflow-y:auto;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);padding-bottom:env(safe-area-inset-bottom,0px)}
 .more-bg.on .more-sheet{transform:translateX(0)}
 .mi{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;color:rgba(255,255,255,.9);font-size:14px;font-weight:500;width:100%;border:none;background:none;font-family:inherit;text-align:left;min-height:52px;transition:background .12s}
 .mi:hover,.mi:active{background:rgba(255,255,255,.15)}
@@ -87,7 +93,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ct{font-weight:700;font-size:14px;margin-bottom:12px}
 .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .pt{font-size:20px;font-weight:800;margin-bottom:16px;letter-spacing:-.3px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}.g2>*{min-width:0;overflow:hidden}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .fg{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
@@ -185,7 +191,7 @@ tr:hover td{background:#FAFAF7}
 <div id="scr-google" class="scr on">
   <div class="lbox">
     <div class="logo-wrap">
-      <div class="logo-ic">🧺</div>
+      <div class="logo-ic"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
       <div class="logo-name">CleanPOS</div>
       <div class="logo-sub">Laundry Management System</div>
     </div>
@@ -216,11 +222,39 @@ tr:hover td{background:#FAFAF7}
     </div>
   </div>
 </div>
+<!-- FIRST-TIME SETUP SCREEN -->
+<div id="scr-setup" class="scr">
+  <div class="lbox" style="max-width:440px">
+    <div class="logo-wrap">
+      <div class="logo-ic" style="background:#1E2917;box-shadow:none"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
+      <div class="logo-name">Selamat Datang! 👋</div>
+      <div class="logo-sub">Lengkapi info toko kamu sebelum mulai</div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Info Toko</div>
+    <div class="fg"><label>Nama Toko *</label><input type="text" id="setup-store-name" placeholder="Contoh: Laundry Bersih Jaya"></div>
+    <div class="fg"><label>Alamat Toko</label><input type="text" id="setup-store-addr" placeholder="Jl. Contoh No. 1"></div>
+    <div class="fg"><label>Nomor WhatsApp Toko</label><input type="tel" id="setup-store-wa" placeholder="628xxxxxxxxxx"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 10px">Password Owner</div>
+    <div class="fg">
+      <label>Password Baru *</label>
+      <div style="position:relative">
+        <input type="password" id="setup-pwd" placeholder="Min. 4 karakter" onkeydown="if(event.key==='Enter')g('setup-pwd-confirm').focus()">
+        <button onclick="togglePwd('setup-pwd',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--t2);padding:4px">👁</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Konfirmasi Password *</label>
+      <input type="password" id="setup-pwd-confirm" placeholder="Ulangi password" onkeydown="if(event.key==='Enter')doFirstTimeSetup()">
+    </div>
+    <div id="setup-err" style="display:none;font-size:13px;color:var(--re);background:var(--reb);padding:10px;border-radius:8px;margin-bottom:12px"></div>
+    <button class="btn bp bfull bpill" onclick="doFirstTimeSetup()" id="setup-btn">Mulai Gunakan CleanPOS →</button>
+  </div>
+</div>
 <!-- LOGIN SCREENS -->
 <div id="scr-login" class="scr">
   <div class="lbox">
     <div class="logo-wrap">
-      <div class="logo-ic">🧺</div>
+      <div class="logo-ic" style="background:#1E2917;box-shadow:none"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
       <div class="logo-name">CleanPOS</div>
       <div class="logo-sub">Laundry Management System</div>
       <div id="login-scr-email" style="margin-top:6px;font-size:12px;color:var(--t2);background:var(--bg);padding:5px 12px;border-radius:20px;display:inline-block"></div>
@@ -319,7 +353,7 @@ tr:hover td{background:#FAFAF7}
   <div id="o-wa-alert"></div>
   <div class="g2">
     <div class="card"><div class="sh"><span class="ct" style="margin-bottom:0">Pesanan Terbaru</span><button class="btn bsm" onclick="oGo('orders',null)">Lihat semua</button></div><div id="o-recent"></div></div>
-    <div class="card"><div class="ct">Aktivitas Minggu Ini</div><div id="o-chart" style="display:flex;align-items:flex-end;gap:4px;height:80px"></div></div>
+    <div class="card"><div class="ct">Saldo Kas Saat Ini</div><div id="o-kas-saldo"></div></div>
   </div>
   <div class="card"><div class="ct">Status Pesanan</div><div id="o-status-grid" class="g4" style="margin-bottom:0"></div></div>
 </div>
