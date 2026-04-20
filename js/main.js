@@ -19,15 +19,20 @@ let employees = [
 ];
 let empCtr = 5;
 let serviceTypes = [
-  {id:'kiloan',name:'Kiloan',unit:'kg',prices:{regular:7000,express:10000,sameday:12000}},
-  {id:'satuan',name:'Satuan',unit:'pcs',prices:{regular:5000,express:8000,sameday:10000}}
+  {id:'kiloan',name:'Kiloan',unit:'kg',prices:{regular:7000,sameday:12000,express:10000},minKg:3,minKgApply:{regular:true,sameday:true,express:false}}
 ];
 let svcCtr = 3;
+let satuanItems = [
+  {id:'sat1',name:'Bed Cover',prices:{regular:15000,sameday:20000,express:25000}},
+  {id:'sat2',name:'Jaket',prices:{regular:8000,sameday:12000,express:15000}},
+  {id:'sat3',name:'Selimut',prices:{regular:10000,sameday:15000,express:18000}},
+  {id:'sat4',name:'Kemeja',prices:{regular:5000,sameday:8000,express:10000}},
+];
+let satItemCtr = 10;
 function getP(){const p={};serviceTypes.forEach(s=>{p[s.id]=s.prices;});return p;}
 function getSvcById(id){return serviceTypes.find(s=>s.id===id);}
 function getSvcUnit(type){return getSvcById(type)?.unit||'pcs';}
 function isKgType(type){return getSvcById(type)?.unit==='kg';}
-let minKg = 3;
 let addons = [
   {id:'a1',name:'Parfum',price:3000,unit:'flat'},
   {id:'a2',name:'Setrika saja',price:4000,unit:'per_qty'},
@@ -66,7 +71,7 @@ let editSvcId = null;
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
 const STATUS_LIST = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
-function getSvcLbl(key){if(key==='all')return 'Semua Layanan';const parts=key.split('-');const svc=getSvcById(parts[0]);const cat=parts[1];return svc?(svc.name+' '+(cat||'')).trim():key;}
+function getSvcLbl(key){if(key==='all')return 'Semua Layanan';const parts=key.split('-');if(parts[0]==='satuan'){const cl={regular:'Regular',sameday:'Same-day',express:'Express'};return 'Satuan '+(cl[parts[1]]||parts[1]||'');}const svc=getSvcById(parts[0]);const cat=parts[1];return svc?(svc.name+' '+(cat||'')).trim():key;}
 const SVC_LBL = new Proxy({},{get:(t,k)=>getSvcLbl(k)});
 const CAT_ICONS = {gaji:'\uD83D\uDC64',bonus:'\uD83C\uDF81',listrik:'\u26A1',air:'\uD83D\uDCA7',deterjen:'\uD83E\uDDF4',transport:'\uD83D\uDE97',makan:'\uD83C\uDF71',lain:'\uD83D\uDCE6'};
 const CAT_LBL = {gaji:'Gaji Karyawan',bonus:'Bonus',listrik:'Listrik',air:'Air',deterjen:'Deterjen/Sabun',transport:'Transport',makan:'Uang Makan',lain:'Lain-Lain'};
@@ -163,18 +168,28 @@ function sGoB(pg,el){document.querySelectorAll('#staff-app .bnav .bni').forEach(
 function genId(){const d=new Date();return `LDRY-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}-${String(orderCtr).padStart(3,'0')}`;}
 function addCust(name,phone,total,date){if(!customers[phone])customers[phone]={name,phone,orders:0,total:0,lastDate:date};customers[phone].orders++;customers[phone].total+=total;customers[phone].lastDate=date;}
 function seed(){
-  const items=[
+  const kiloanSeeds=[
     {name:'Budi Santoso',phone:'081234567890',svc:'kiloan',cat:'regular',qty:3,st:'Selesai',pay:'Lunas',waSent:true,oid:'o1'},
     {name:'Siti Rahayu',phone:'082345678901',svc:'kiloan',cat:'express',qty:2,st:'Mencuci',pay:'Belum Bayar',waSent:false,oid:'o1'},
-    {name:'Andi Kurniawan',phone:'083456789012',svc:'satuan',cat:'sameday',qty:4,st:'Selesai',pay:'Lunas',waSent:false,oid:'o2'},
     {name:'Dewi Lestari',phone:'084567890123',svc:'kiloan',cat:'regular',qty:3,st:'Mengeringkan',pay:'DP',waSent:false,oid:'o1'},
-    {name:'Reza Firmansyah',phone:'085678901234',svc:'satuan',cat:'express',qty:3,st:'Diterima',pay:'Lunas',waSent:false,oid:'o2'}
   ];
-  items.forEach((d,i)=>{
+  kiloanSeeds.forEach((d,i)=>{
     orderCtr=i+1;
     const bq=bQty(d.svc,d.cat,d.qty);
-    const base=(getP()[d.svc]?.[d.cat]||0)*bq;
-    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:d.svc,svcCat:d.cat,qty:bq,rawQty:d.qty,addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
+    const base=(getSvcById(d.svc)?.prices[d.cat]||0)*bq;
+    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:d.svc,svcCat:d.cat,qty:bq,rawQty:d.qty,satuanLines:[],addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
+    addCust(d.name,d.phone,base,TODAY_STR);
+  });
+  const satSeeds=[
+    {name:'Andi Kurniawan',phone:'083456789012',cat:'sameday',st:'Selesai',pay:'Lunas',waSent:false,oid:'o2',lines:[{id:'sat1',qty:1},{id:'sat3',qty:2}]},
+    {name:'Reza Firmansyah',phone:'085678901234',cat:'express',st:'Diterima',pay:'Lunas',waSent:false,oid:'o2',lines:[{id:'sat2',qty:1},{id:'sat4',qty:2}]},
+  ];
+  satSeeds.forEach((d,i)=>{
+    orderCtr=kiloanSeeds.length+i+1;
+    const satuanLines=d.lines.map(l=>{const item=satuanItems.find(s=>s.id===l.id);return{id:l.id,name:item?.name||l.id,qty:l.qty,unitPrice:item?.prices[d.cat]||0,lineTotal:(item?.prices[d.cat]||0)*l.qty};});
+    const base=satuanLines.reduce((s,l)=>s+l.lineTotal,0);
+    const qty=satuanLines.reduce((s,l)=>s+l.qty,0);
+    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:'satuan',svcCat:d.cat,qty,rawQty:qty,satuanLines,addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
     addCust(d.name,d.phone,base,TODAY_STR);
   });
   if(orders[0].waSent)waLog.push({orderId:orders[0].id,name:orders[0].name,phone:orders[0].phone,time:NOW()+', '+TODAY_STR});
@@ -186,11 +201,10 @@ function seed(){
 }
 
 // ===== INIT =====
-function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();}
-function initStaff(){g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();}
+function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();_resetIdleTimer();}
+function initStaff(){g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
 function renderSettings(){
   renderPrinters();
-  const mki=g('min-kg-input');if(mki)mki.value=minKg;
   if(g('s-store'))g('s-store').value=storeName;
   if(g('s-addr'))g('s-addr').value=storeAddr;
   if(g('s-wa'))g('s-wa').value=storeWa;
@@ -210,19 +224,30 @@ function refreshODash(){
   const expToday=expenses.filter(e=>e.date===TODAY_ISO).reduce((s,e)=>s+e.nominal,0);
   const profit=rev-expToday;
   const wp=orders.filter(o=>o.status==='Selesai'&&!o.waSent);
+  const unpaid=orders.filter(o=>o.payStatus!=='Lunas').length;
   const m=g('o-metrics');if(!m)return;
   m.innerHTML=`
     <div class="mc2 ${profit>=0?'cp':'cr'}"><div class="ml">\uD83D\uDCB0 Profit Hari Ini</div><div class="mv">${profit>=0?'+':''}${fmt(profit)}</div><div class="ms">Pend. - Pengeluaran</div></div>
     <div class="mc2 cg"><div class="ml">\uD83D\uDCC8 Pendapatan</div><div class="mv">${fmt(rev)}</div><div class="ms">${orders.length} pesanan</div></div>
     <div class="mc2"><div class="ml">\uD83D\uDD04 Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div>
-    <div class="mc2 cam"><div class="ml">\u26A0\uFE0F Belum Dibayar</div><div class="mv">${orders.filter(o=>o.payStatus!=='Lunas').length}</div></div>`;
+    <div class="mc2 ${unpaid>0?'cr':'cam'}"><div class="ml">\u26A0\uFE0F Belum Dibayar</div><div class="mv">${unpaid}</div></div>`;
   const wa=g('o-wa-alert');if(wa)wa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:#3d6b10">\uD83C\uDFDF\uFE0F ${wp.length} cucian selesai belum dinotif WA</div><button class="btn bp bsm bpill" onclick="oGo('wa',null)">Kirim</button></div>`:'';
   const last=orders.slice(-5).reverse();
   const rEl=g('o-recent');if(rEl)rEl.innerHTML=last.length?'<table><tbody>'+last.map(o=>`<tr><td style="font-size:11px;font-family:monospace;color:var(--t2)">${o.id}</td><td style="font-weight:600">${o.name}</td><td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td><td style="font-weight:600">${fmt(o.total)}</td></tr>`).join('')+'</tbody></table>':'<div style="text-align:center;padding:20px;color:var(--t2)">Belum ada pesanan</div>';
-  const kasIn=kasLog.filter(l=>l.type==='modal'||l.type==='in').reduce((s,l)=>s+l.amount,0);
-  const kasOut=kasLog.filter(l=>l.type==='out').reduce((s,l)=>s+l.amount,0);
-  const kasSaldo=kasIn-kasOut;
-  const ks=g('o-kas-saldo');if(ks)ks.innerHTML=`<div style="font-size:26px;font-weight:800;color:${kasSaldo>=0?'var(--p)':'var(--re)'};margin-bottom:8px">${fmt(kasSaldo)}</div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2)"><span>↑ Masuk&nbsp;&nbsp;${fmt(kasIn)}</span><span>↓ Keluar&nbsp;&nbsp;${fmt(kasOut)}</span></div>`;
+  const thisMonth=TODAY_ISO.slice(0,7);
+  const daysInMonth=new Date(TODAY_ISO).getDate();
+  const monthOrders=orders.filter(o=>o.payStatus==='Lunas'&&o.isoDate&&o.isoDate.startsWith(thisMonth));
+  const omsetBulanIni=monthOrders.reduce((s,o)=>s+o.total,0);
+  const dailyRev=[];
+  for(let d=1;d<=daysInMonth;d++){const ds=thisMonth+'-'+(d<10?'0'+d:String(d));dailyRev.push(monthOrders.filter(o=>o.isoDate===ds).reduce((s,o)=>s+o.total,0));}
+  (()=>{const W=300,H=60,pad=6,n=dailyRev.length,maxVal=Math.max(...dailyRev,1);
+    const xOf=i=>pad+(n<=1?(W-2*pad)/2:i/(n-1)*(W-2*pad));
+    const yOf=v=>H-pad-(v/maxVal)*(H-2*pad);
+    const pts=dailyRev.map((v,i)=>`${xOf(i)},${yOf(v)}`).join(' ');
+    const area=`${xOf(0)},${H-pad} ${pts} ${xOf(n-1)},${H-pad}`;
+    const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:60px;display:block" preserveAspectRatio="none"><defs><linearGradient id="omg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8DC440" stop-opacity=".3"/><stop offset="100%" stop-color="#8DC440" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#omg)"/><polyline points="${pts}" fill="none" stroke="#8DC440" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${dailyRev.map((v,i)=>v>0?`<circle cx="${xOf(i)}" cy="${yOf(v)}" r="2.5" fill="#8DC440"/>`:'').join('')}</svg>`;
+    const ks=g('o-kas-saldo');if(ks)ks.innerHTML=`<div style="font-size:24px;font-weight:800;color:var(--p);letter-spacing:-.3px;margin-bottom:6px">${fmt(omsetBulanIni)}</div>${svg}<div style="font-size:11px;color:var(--t2);margin-top:5px">${monthOrders.length} pesanan lunas · hari ke-${daysInMonth}</div>`;
+  })();
   const sg=g('o-status-grid');if(sg)sg.innerHTML=STATUS_LIST.map(s=>`<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800">${orders.filter(o=>o.status===s).length}</div><div style="font-size:10px;color:var(--t2);margin-top:3px">${s}</div></div>`).join('');
 }
 function refreshSDash(){
@@ -271,23 +296,65 @@ function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus.',()=>{
 function renderCusts(){const q=(g('cust-srch')?.value||'').toLowerCase();const list=Object.values(customers).filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q));const tb=g('cust-tb');if(!tb)return;tb.innerHTML=list.length?list.map(c=>`<tr><td style="font-weight:600">${c.name}</td><td style="color:var(--p)">${c.phone}</td><td>${c.orders}x</td><td style="font-weight:700">${fmt(c.total)}</td><td style="font-size:12px;color:var(--t2)">${c.lastDate}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pelanggan</td></tr>';}
 
 // ===== PRICING & ADDONS =====
-function renderPricing(){const mki=g('min-kg-input');if(mki)mki.value=minKg;renderSvcTypeList();renderAddonList();buildOrderTypeDropdowns();rebuildPromoSvcSelect();}
+function renderPricing(){renderSvcTypeList();renderSatuanItemsList();renderAddonList();buildOrderTypeDropdowns();rebuildPromoSvcSelect();}
 function renderSvcTypeList(){
   const el=g('svc-type-list');if(!el)return;
-  if(!serviceTypes.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada layanan. Klik + Tambah Layanan.</div>';return;}
-  let html=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Layanan</span><span>Regular</span><span>Express</span><span>Same-day</span><span></span></div>`;
-  serviceTypes.forEach(s=>{html+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--b1)"><div><div style="font-weight:600;font-size:13px">${s.name}</div><div style="font-size:10px;color:var(--t2)">per ${s.unit} \u00B7 ${s.unit==='kg'?'min berat berlaku':'tidak ada minimum'}</div></div><input type="number" value="${s.prices.regular}" min="0" onchange="updSvcPrice('${s.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px"><input type="number" value="${s.prices.express}" min="0" onchange="updSvcPrice('${s.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px"><input type="number" value="${s.prices.sameday}" min="0" onchange="updSvcPrice('${s.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px"><div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSvc('${s.id}')">Edit</button>${serviceTypes.length>1?`<button class="btn bre bsm" onclick="delSvc('${s.id}')">\u2715</button>`:''}</div></div>`;});
-  el.innerHTML=html;
+  if(!serviceTypes.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada layanan.</div>';return;}
+  const hdr=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Layanan</span><span>Regular</span><span>Same-day</span><span>Express</span><span></span></div>`;
+  let rows='';
+  serviceTypes.forEach(s=>{
+    const isKg=s.unit==='kg';const ma=s.minKgApply||{regular:false,sameday:false,express:false};const mk=s.minKg||0;
+    rows+=`<div style="border:1px solid var(--b1);border-radius:10px;padding:10px;margin-bottom:8px">`;
+    rows+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;${isKg?'margin-bottom:10px':''}">`;
+    rows+=`<div><div style="font-weight:600;font-size:13px">${s.name}</div><div style="font-size:10px;color:var(--t2)">per ${s.unit}</div></div>`;
+    rows+=`<input type="number" value="${s.prices.regular}" min="0" onchange="updSvcPrice('${s.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
+    rows+=`<input type="number" value="${s.prices.sameday}" min="0" onchange="updSvcPrice('${s.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
+    rows+=`<input type="number" value="${s.prices.express}" min="0" onchange="updSvcPrice('${s.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
+    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSvc('${s.id}')">Edit</button>${serviceTypes.length>1?`<button class="btn bre bsm" onclick="delSvc('${s.id}')">\u2715</button>`:''}</div>`;
+    rows+=`</div>`;
+    if(isKg){
+      rows+=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg);border-radius:8px">`;
+      rows+=`<span style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em">Min. Berat:</span>`;
+      rows+=`<input type="number" id="mkg-${s.id}" value="${mk}" min="0" max="20" step="0.5" style="width:64px;font-size:14px;font-weight:700;text-align:center">`;
+      rows+=`<span style="font-size:13px;font-weight:600">kg &nbsp; Berlaku:</span>`;
+      ['regular','sameday','express'].forEach(c=>{const lbl={regular:'Regular',sameday:'Same-day',express:'Express'}[c];rows+=`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="mka-${s.id}-${c}" ${ma[c]?'checked':''} onchange="saveSvcMinKg('${s.id}')">&nbsp;${lbl}</label>`;});
+      rows+=`<button class="btn bp bsm bpill" onclick="saveSvcMinKg('${s.id}')">Simpan</button>`;
+      rows+=`</div>`;
+    }
+    rows+=`</div>`;
+  });
+  el.innerHTML=hdr+rows;
 }
-function updSvcPrice(id,cat,val){const s=getSvcById(id);if(!s)return;s.prices[cat]=parseInt(val)||0;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('\u2713 Harga '+id+' '+cat+' disimpan');}
-function buildOrderTypeDropdowns(){['no-type','sno-type'].forEach(selId=>{const el=g(selId);if(!el)return;const curVal=el.value;el.innerHTML=serviceTypes.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');if(serviceTypes.find(s=>s.id===curVal))el.value=curVal;});}
-function rebuildPromoSvcSelect(){const el=g('mp-svc');if(!el)return;el.innerHTML='<option value="all">Semua Layanan</option>'+serviceTypes.map(s=>`<option value="${s.id}-regular">${s.name} Regular</option><option value="${s.id}-express">${s.name} Express</option><option value="${s.id}-sameday">${s.name} Same-day</option>`).join('');}
-function openAddSvc(){editSvcId=null;g('m-svc-title').textContent='Tambah Jenis Layanan';['msvc-name','msvc-r','msvc-e','msvc-s'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('msvc-unit'))g('msvc-unit').value='pcs';g('m-svc').className='mbg on';}
-function openEditSvc(id){editSvcId=id;const s=getSvcById(id);if(!s)return;g('m-svc-title').textContent='Edit Layanan: '+s.name;if(g('msvc-name'))g('msvc-name').value=s.name;if(g('msvc-unit'))g('msvc-unit').value=s.unit;if(g('msvc-r'))g('msvc-r').value=s.prices.regular;if(g('msvc-e'))g('msvc-e').value=s.prices.express;if(g('msvc-s'))g('msvc-s').value=s.prices.sameday;g('m-svc').className='mbg on';}
-function saveSvc(){const name=(g('msvc-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama layanan wajib diisi');return;}const unit=g('msvc-unit')?.value||'pcs';const prices={regular:parseInt(g('msvc-r')?.value)||0,express:parseInt(g('msvc-e')?.value)||0,sameday:parseInt(g('msvc-s')?.value)||0};if(editSvcId){const s=getSvcById(editSvcId);if(s){s.name=name;s.unit=unit;s.prices=prices;}}else{const id='svc'+svcCtr++;serviceTypes.push({id,name,unit,prices});}cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast(editSvcId?'\u2713 Layanan diperbarui: '+name:'\u2713 Layanan ditambahkan: '+name);editSvcId=null;}
+function saveSvcMinKg(id){const s=getSvcById(id);if(!s)return;const val=parseFloat(g('mkg-'+id)?.value)||0;s.minKg=val;s.minKgApply={regular:!!(g('mka-'+id+'-regular')?.checked),sameday:!!(g('mka-'+id+'-sameday')?.checked),express:!!(g('mka-'+id+'-express')?.checked)};calcO();calcS();syncSettings();toast('\u2713 Min. berat '+s.name+' diperbarui');}
+function renderSatuanItemsList(){
+  const el=g('satuan-items-list');if(!el)return;
+  const hdr=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Item</span><span>Regular</span><span>Same-day</span><span>Express</span><span></span></div>`;
+  if(!satuanItems.length){el.innerHTML=hdr+'<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada item. Klik + Tambah Item.</div>';return;}
+  let rows='';
+  satuanItems.forEach(item=>{
+    rows+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--b1)">`;
+    rows+=`<div style="font-weight:600;font-size:13px">${item.name}</div>`;
+    rows+=`<input type="number" value="${item.prices.regular}" min="0" onchange="updSatuanItemPrice('${item.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
+    rows+=`<input type="number" value="${item.prices.sameday}" min="0" onchange="updSatuanItemPrice('${item.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
+    rows+=`<input type="number" value="${item.prices.express}" min="0" onchange="updSatuanItemPrice('${item.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
+    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSatuanItem('${item.id}')">Edit</button><button class="btn bre bsm" onclick="delSatuanItem('${item.id}')">\u2715</button></div>`;
+    rows+=`</div>`;
+  });
+  el.innerHTML=hdr+rows;
+}
+function updSatuanItemPrice(id,cat,val){const item=satuanItems.find(x=>x.id===id);if(!item)return;item.prices[cat]=parseInt(val)||0;buildSatuanOrderItems('no');calcO();buildSatuanOrderItems('sno');calcS();syncSettings();}
+function updSvcPrice(id,cat,val){const s=getSvcById(id);if(!s)return;s.prices[cat]=parseInt(val)||0;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();}
+function buildOrderTypeDropdowns(){['no-type','sno-type'].forEach(selId=>{const el=g(selId);if(!el)return;const curVal=el.value;el.innerHTML=serviceTypes.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+`<option value="satuan">Satuan</option>`;if(serviceTypes.find(s=>s.id===curVal)||curVal==='satuan')el.value=curVal;});}
+function rebuildPromoSvcSelect(){const el=g('mp-svc');if(!el)return;el.innerHTML='<option value="all">Semua Layanan</option>'+serviceTypes.map(s=>`<option value="${s.id}-regular">${s.name} Regular</option><option value="${s.id}-sameday">${s.name} Same-day</option><option value="${s.id}-express">${s.name} Express</option>`).join('')+'<option value="satuan-regular">Satuan Regular</option><option value="satuan-sameday">Satuan Same-day</option><option value="satuan-express">Satuan Express</option>';}
+function openAddSvc(){editSvcId=null;g('m-svc-title').textContent='Tambah Jenis Layanan';['msvc-name','msvc-r','msvc-sd','msvc-e'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('msvc-unit'))g('msvc-unit').value='pcs';g('m-svc').className='mbg on';}
+function openEditSvc(id){editSvcId=id;const s=getSvcById(id);if(!s)return;g('m-svc-title').textContent='Edit Layanan: '+s.name;if(g('msvc-name'))g('msvc-name').value=s.name;if(g('msvc-unit'))g('msvc-unit').value=s.unit;if(g('msvc-r'))g('msvc-r').value=s.prices.regular;if(g('msvc-sd'))g('msvc-sd').value=s.prices.sameday;if(g('msvc-e'))g('msvc-e').value=s.prices.express;g('m-svc').className='mbg on';}
+function saveSvc(){const name=(g('msvc-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama layanan wajib diisi');return;}const unit=g('msvc-unit')?.value||'pcs';const prices={regular:parseInt(g('msvc-r')?.value)||0,sameday:parseInt(g('msvc-sd')?.value)||0,express:parseInt(g('msvc-e')?.value)||0};if(editSvcId){const s=getSvcById(editSvcId);if(s){s.name=name;s.unit=unit;s.prices=prices;}}else{const id='svc'+svcCtr++;serviceTypes.push({id,name,unit,prices,minKg:0,minKgApply:{regular:false,sameday:false,express:false}});}cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast(editSvcId?'\u2713 Layanan diperbarui: '+name:'\u2713 Layanan ditambahkan: '+name);editSvcId=null;}
 function delSvc(id){if(serviceTypes.length<=1){toast('\u26A0\uFE0F Minimal harus ada 1 jenis layanan');return;}confirm_('Hapus Layanan?','Jenis layanan ini akan dihapus. Pesanan yang sudah ada tidak terpengaruh.',()=>{serviceTypes=serviceTypes.filter(s=>s.id!==id);renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('Layanan dihapus');});}
-function saveMinKg(){const val=parseFloat(g('min-kg-input')?.value)||3;if(val<0.5||val>20){toast('\u26A0\uFE0F Berat minimum harus antara 0.5 \u2013 20 kg');return;}minKg=val;const prev=g('min-kg-preview');const ex=Math.max(0.5,parseFloat((val-1.5).toFixed(1)));if(prev)prev.innerHTML='Contoh: pelanggan bawa <strong>'+ex+' kg</strong> \u2192 dihitung <strong>'+val+' kg</strong>';const st=g('min-kg-saved');if(st){st.style.display='inline';setTimeout(()=>st.style.display='none',2000);}calcO();calcS();toast('\u2713 Berat minimum diubah ke '+val+' kg');}
-function savePricing(){renderPricing();toast('\u2713 Harga tersimpan!');}
+let editSatItemId=null;
+function openAddSatuanItem(){editSatItemId=null;g('m-sat-title').textContent='Tambah Item Satuan';['msat-name','msat-r','msat-sd','msat-e'].forEach(id=>{const el=g(id);if(el)el.value='';});g('m-satuan-item').className='mbg on';}
+function openEditSatuanItem(id){editSatItemId=id;const item=satuanItems.find(x=>x.id===id);if(!item)return;g('m-sat-title').textContent='Edit Item: '+item.name;if(g('msat-name'))g('msat-name').value=item.name;if(g('msat-r'))g('msat-r').value=item.prices.regular;if(g('msat-sd'))g('msat-sd').value=item.prices.sameday;if(g('msat-e'))g('msat-e').value=item.prices.express;g('m-satuan-item').className='mbg on';}
+function saveSatuanItem(){const name=(g('msat-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama item wajib diisi');return;}const prices={regular:parseInt(g('msat-r')?.value)||0,sameday:parseInt(g('msat-sd')?.value)||0,express:parseInt(g('msat-e')?.value)||0};if(editSatItemId){const item=satuanItems.find(x=>x.id===editSatItemId);if(item){item.name=name;item.prices=prices;}}else{satuanItems.push({id:'sat'+satItemCtr++,name,prices});}cm('m-satuan-item');renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast(editSatItemId?'\u2713 Item diperbarui: '+name:'\u2713 Item ditambahkan: '+name);editSatItemId=null;}
+function delSatuanItem(id){confirm_('Hapus Item?','Item ini akan dihapus dari daftar Satuan.',()=>{satuanItems=satuanItems.filter(x=>x.id!==id);renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast('Item dihapus');});}
 function renderAddonList(){const el=g('addon-list');if(!el)return;el.innerHTML=addons.length?addons.map(a=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--b1);font-size:13px"><input value="${a.name}" onchange="updAddon('${a.id}','name',this.value)" style="flex:1;width:auto"><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px"><select onchange="updAddon('${a.id}','unit',this.value)" style="width:110px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select><button class="btn bre bsm" onclick="delAddon('${a.id}')">\u2715</button></div>`).join(''):'<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';}
 function updAddon(id,key,val){const a=addons.find(x=>x.id===id);if(!a)return;a[key]=key==='price'?parseInt(val)||0:val;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
 function delAddon(id){addons=addons.filter(x=>x.id!==id);renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
@@ -396,7 +463,7 @@ function renderReports(){
   if(rm)rm.innerHTML=`<div class="mc2 cp" style="grid-column:span 2"><div class="ml">\uD83D\uDCC8 Pendapatan${outLbl?' \u00B7 '+outLbl:''}</div><div class="mv">${fmt(rev)}</div><div class="ms">${filtered.length} pesanan</div></div><div class="mc2 cr"><div class="ml">\uD83D\uDCC9 Pengeluaran</div><div class="mv">${fmt(totalExp)}</div></div><div class="mc2 ${profit>=0?'cg':'cr'}"><div class="ml">\uD83D\uDCB0 Profit Bersih</div><div class="mv">${profit>=0?'+':'-'}${fmt(Math.abs(profit))}</div></div>`;
   const pm={Tunai:0,QRIS:0,Transfer:0};filtered.filter(o=>o.payStatus==='Lunas').forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=o.total;});
   const rp=g('rpt-pay');if(rp)rp.innerHTML=Object.entries(pm).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b1);font-size:13px"><span>${k}</span><span style="font-weight:700;color:var(--p)">${fmt(v)}</span></div>`).join('');
-  const sv={};serviceTypes.forEach(s=>{sv[s.id]=0;});filtered.forEach(o=>{if(sv[o.svcType]!==undefined)sv[o.svcType]++;});
+  const sv={...Object.fromEntries(serviceTypes.map(s=>[s.id,0])),satuan:0};filtered.forEach(o=>{if(sv[o.svcType]!==undefined)sv[o.svcType]++;});
   const rs=g('rpt-svc');if(rs)rs.innerHTML=Object.entries(sv).map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--b1);font-size:13px"><span style="text-transform:capitalize">${k}</span><div style="display:flex;align-items:center;gap:8px"><div style="width:${filtered.length?Math.max(4,v/filtered.length*80):0}px;height:8px;background:var(--pl);border-radius:4px"></div><span style="font-weight:700">${v}</span></div></div>`).join('');
   const rexp=g('rpt-exp');if(rexp)rexp.innerHTML=`<div style="background:var(--bg);border-radius:var(--r);padding:14px;margin-bottom:10px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px"><div class="mc2 cg"><div class="ml">Pemasukan</div><div class="mv" style="font-size:16px">${fmt(rev)}</div></div><div class="mc2 cr"><div class="ml">Pengeluaran</div><div class="mv" style="font-size:16px">${fmt(totalExp)}</div></div><div class="mc2 ${profit>=0?'cp':'cr'}"><div class="ml">Profit Bersih</div><div class="mv" style="font-size:16px">${profit>=0?'+':''}${fmt(profit)}</div></div></div><div style="display:flex;height:10px;border-radius:20px;overflow:hidden;gap:2px"><div style="background:var(--p);flex:${rev||1}"></div><div style="background:var(--re);flex:${totalExp||0}"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-top:5px"><span>\uD83D\uDFE2 Pemasukan ${rev?Math.round(rev/(rev+totalExp||1)*100):0}%</span><span>\uD83D\uDD34 Pengeluaran ${totalExp?Math.round(totalExp/(rev+totalExp||1)*100):0}%</span></div></div>${filtExp.length?'<div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Detail Pengeluaran</div>'+filtExp.map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:12px"><span>${CAT_ICONS[e.cat]||'\uD83D\uDCE6'}</span><div style="flex:1"><span style="font-weight:600">${e.label}</span><span style="color:var(--t2);margin-left:6px">${e.note?'\u00B7 '+e.note:''}</span></div><span style="font-weight:700;color:var(--re)">-${fmt(e.nominal)}</span><span style="font-size:10px;color:var(--t2);margin-left:4px">${e.date.slice(5)}</span></div>`).join(''):'<div style="text-align:center;padding:16px;color:var(--t2);font-size:13px">Tidak ada pengeluaran</div>'}`;
   const rt=g('rpt-tb');if(!rt)return;
@@ -435,7 +502,8 @@ function buildEscReceipt(o){
   const dash=escText('-'.repeat(W)+'\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
   const pad=(l,r)=>{const gap=W-l.length-r.length;return gap>0?l+' '.repeat(gap)+r+'\n':l+'\n'+' '.repeat(W-r.length)+r+'\n';};
-  let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(storeName+'\n'),BOLD_OFF,FONT_NORM,escText((outlet?.name||'')+'\n'),escText((outlet?.addr||storeAddr||'')+'\n'),NL,ALIGN_L,dash,escText(pad('No Nota:',o.id)),escText(pad('Pelanggan:',o.name)),escText(pad('Kasir:',o.handledBy||'\u2014')),escText(pad('Tanggal:',o.date)),dash,escText(pad(o.svcType+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+o.base.toLocaleString('id-ID')))];
+  const svcLines=(o.svcType==='satuan'&&o.satuanLines?.length)?o.satuanLines.map(l=>escText(pad(l.name+' x'+l.qty,'Rp '+l.lineTotal.toLocaleString('id-ID')))):[escText(pad((getSvcById(o.svcType)?.name||o.svcType)+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+o.base.toLocaleString('id-ID')))];
+  let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(storeName+'\n'),BOLD_OFF,FONT_NORM,escText((outlet?.name||'')+'\n'),escText((outlet?.addr||storeAddr||'')+'\n'),NL,ALIGN_L,dash,escText(pad('No Nota:',o.id)),escText(pad('Pelanggan:',o.name)),escText(pad('Kasir:',o.handledBy||'\u2014')),escText(pad('Tanggal:',o.date)),dash,...svcLines];
   o.addOns.forEach(a=>{const ad=addons.find(x=>x.id===a.id);if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}});
   if(o.promoAmt>0)parts.push(escText(pad('Diskon Promo:','-Rp '+o.promoAmt.toLocaleString('id-ID'))));
   if(o.discAmt>0)parts.push(escText(pad('Diskon Manual:','-Rp '+o.discAmt.toLocaleString('id-ID'))));
@@ -590,8 +658,6 @@ const _origSaveStoreInfo = saveStoreInfo;
 saveStoreInfo = function() { _origSaveStoreInfo(); syncSettings(); };
 const _origSaveTpl = saveTpl;
 saveTpl = function() { _origSaveTpl(); syncSettings(); };
-const _origSaveMinKg = saveMinKg;
-saveMinKg = function() { _origSaveMinKg(); syncSettings(); };
 const _origSaveSvc = saveSvc;
 saveSvc = function() { _origSaveSvc(); syncSettings(); };
 const _origSaveAddon = saveAddon;
@@ -599,6 +665,24 @@ saveAddon = function() { _origSaveAddon(); syncSettings(); };
 const _origSavePromo = savePromo;
 savePromo = function() { _origSavePromo(); syncSettings(); };
 
+
+// ===== INACTIVITY AUTO-LOGOUT (30 min) =====
+const _IDLE_MS = 30 * 60 * 1000;
+let _idleTimer = null;
+function _resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  if (!curRole) return;
+  _idleTimer = setTimeout(() => {
+    if (!curRole) return;
+    curRole = null; curStaff = null;
+    document.querySelectorAll('.app').forEach(a => a.classList.remove('on'));
+    showScr('scr-login');
+    toast('⏱️ Sesi berakhir — tidak aktif selama 30 menit');
+  }, _IDLE_MS);
+}
+['click', 'keydown', 'touchstart', 'scroll'].forEach(ev =>
+  document.addEventListener(ev, _resetIdleTimer, { passive: true })
+);
 
 // ===== BOOTSTRAP =====
 g('ex-date').value = TODAY_ISO;
@@ -646,6 +730,7 @@ function _showNewPasswordModal() {
         if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && _isRecovery)) {
           _showNewPasswordModal();
         } else if (event === 'SIGNED_IN') {
+          if (curRole) return; // token refresh while already in a session — ignore
           supaLoadAll().then(() => {
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
