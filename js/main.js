@@ -229,8 +229,8 @@ function refreshODash(){
   m.innerHTML=`
     <div class="mc2 ${profit>=0?'cp':'cr'}"><div class="ml">\uD83D\uDCB0 Profit Hari Ini</div><div class="mv">${profit>=0?'+':''}${fmt(profit)}</div><div class="ms">Pend. - Pengeluaran</div></div>
     <div class="mc2 cg"><div class="ml">\uD83D\uDCC8 Pendapatan</div><div class="mv">${fmt(rev)}</div><div class="ms">${orders.length} pesanan</div></div>
-    <div class="mc2"><div class="ml">\uD83D\uDD04 Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div>
-    <div class="mc2 ${unpaid>0?'cr':'cam'}"><div class="ml">\u26A0\uFE0F Belum Dibayar</div><div class="mv">${unpaid}</div></div>`;
+    <div class="mc2 cam"><div class="ml">\uD83D\uDD04 Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div>
+    <div class="mc2 ${unpaid>0?'cr':'cg'}"><div class="ml">\u26A0\uFE0F Belum Dibayar</div><div class="mv">${unpaid}</div></div>`;
   const wa=g('o-wa-alert');if(wa)wa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:#3d6b10">\uD83C\uDFDF\uFE0F ${wp.length} cucian selesai belum dinotif WA</div><button class="btn bp bsm bpill" onclick="oGo('wa',null)">Kirim</button></div>`:'';
   const last=orders.slice(-5).reverse();
   const rEl=g('o-recent');if(rEl)rEl.innerHTML=last.length?'<table><tbody>'+last.map(o=>`<tr><td style="font-size:11px;font-family:monospace;color:var(--t2)">${o.id}</td><td style="font-weight:600">${o.name}</td><td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td><td style="font-weight:600">${fmt(o.total)}</td></tr>`).join('')+'</tbody></table>':'<div style="text-align:center;padding:20px;color:var(--t2)">Belum ada pesanan</div>';
@@ -240,19 +240,19 @@ function refreshODash(){
   const omsetBulanIni=monthOrders.reduce((s,o)=>s+o.total,0);
   const dailyRev=[];
   for(let d=1;d<=daysInMonth;d++){const ds=thisMonth+'-'+(d<10?'0'+d:String(d));dailyRev.push(monthOrders.filter(o=>o.isoDate===ds).reduce((s,o)=>s+o.total,0));}
-  (()=>{const W=300,H=60,pad=6,n=dailyRev.length,maxVal=Math.max(...dailyRev,1);
-    const xOf=i=>pad+(n<=1?(W-2*pad)/2:i/(n-1)*(W-2*pad));
-    const yOf=v=>H-pad-(v/maxVal)*(H-2*pad);
-    const pts=dailyRev.map((v,i)=>`${xOf(i)},${yOf(v)}`).join(' ');
-    const area=`${xOf(0)},${H-pad} ${pts} ${xOf(n-1)},${H-pad}`;
-    const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:60px;display:block" preserveAspectRatio="none"><defs><linearGradient id="omg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8DC440" stop-opacity=".3"/><stop offset="100%" stop-color="#8DC440" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#omg)"/><polyline points="${pts}" fill="none" stroke="#8DC440" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${dailyRev.map((v,i)=>v>0?`<circle cx="${xOf(i)}" cy="${yOf(v)}" r="2.5" fill="#8DC440"/>`:'').join('')}</svg>`;
+  (()=>{const N=daysInMonth,H=50,padT=7,padB=3,n=dailyRev.length,maxVal=Math.max(...dailyRev,1);
+    const xOf=i=>n<=1?N/2:(i/(n-1))*N;
+    const yOf=v=>padT+(1-v/maxVal)*(H-padT-padB);
+    const pts=dailyRev.map((v,i)=>`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+    const area=`0,${H} ${pts} ${N},${H}`;
+    const svg=`<svg viewBox="0 0 ${N} ${H}" style="width:100%;height:50px;display:block" preserveAspectRatio="none"><defs><linearGradient id="omg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8DC440" stop-opacity=".25"/><stop offset="100%" stop-color="#8DC440" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#omg)"/><polyline points="${pts}" fill="none" stroke="#8DC440" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
     const ks=g('o-kas-saldo');if(ks)ks.innerHTML=`<div style="font-size:24px;font-weight:800;color:var(--p);letter-spacing:-.3px;margin-bottom:6px">${fmt(omsetBulanIni)}</div>${svg}<div style="font-size:11px;color:var(--t2);margin-top:5px">${monthOrders.length} pesanan lunas · hari ke-${daysInMonth}</div>`;
   })();
   const sg=g('o-status-grid');if(sg)sg.innerHTML=STATUS_LIST.map(s=>`<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800">${orders.filter(o=>o.status===s).length}</div><div style="font-size:10px;color:var(--t2);margin-top:3px">${s}</div></div>`).join('');
 }
 function refreshSDash(){
   const wp=orders.filter(o=>o.status==='Selesai'&&!o.waSent);
-  const sm=g('s-metrics');if(sm)sm.innerHTML=`<div class="mc2"><div class="ml">Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div><div class="mc2 cg"><div class="ml">Selesai</div><div class="mv">${orders.filter(o=>o.status==='Selesai').length}</div></div><div class="mc2 cam"><div class="ml">Belum WA</div><div class="mv">${wp.length}</div></div>`;
+  const sm=g('s-metrics');if(sm)sm.innerHTML=`<div class="mc2 cam"><div class="ml">Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div><div class="mc2 cg"><div class="ml">Selesai</div><div class="mv">${orders.filter(o=>o.status==='Selesai').length}</div></div><div class="mc2 cr"><div class="ml">Belum WA</div><div class="mv">${wp.length}</div></div>`;
   const sa=g('s-wa-alert');if(sa)sa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:12px 15px;display:flex;align-items:center;justify-content:space-between"><div style="font-size:13px;color:#3d6b10">\uD83D\uDCAC ${wp.length} cucian belum dinotif</div><button class="btn bp bsm bpill" onclick="sGo('wa',null)">Kirim</button></div>`:'';
   const last=orders.slice(-5).reverse();
   const sr=g('s-recent');if(sr)sr.innerHTML=last.length?'<table><tbody>'+last.map(o=>`<tr><td style="font-size:11px;font-family:monospace;color:var(--t2)">${o.id}</td><td style="font-weight:600">${o.name}</td><td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td><td><span class="badge ${SL_PAY[o.payStatus]}">${o.payStatus}</span></td></tr>`).join('')+'</tbody></table>':'<div style="text-align:center;padding:20px;color:var(--t2)">Belum ada pesanan</div>';
@@ -386,7 +386,7 @@ function renderKas(){
   const cashIn=fl.filter(x=>x.type==='in').reduce((s,x)=>s+x.amount,0);
   const cashOut=fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);
   const saldo=modal+cashIn-cashOut;
-  const km=g('kas-metrics');if(km)km.innerHTML=`<div class="mc2 cp" style="grid-column:span 2"><div class="ml">\uD83D\uDCB0 Saldo Kas Saat Ini</div><div class="mv" style="font-size:28px">${fmt(saldo)}</div></div><div class="mc2"><div class="ml">Modal Awal</div><div class="mv" style="font-size:16px">${fmt(modal)}</div></div><div class="mc2 cg"><div class="ml">Penjualan Cash</div><div class="mv" style="font-size:16px">${fmt(cashIn)}</div></div>`;
+  const km=g('kas-metrics');if(km)km.innerHTML=`<div class="mc2 cp" style="grid-column:span 2"><div class="ml">\uD83D\uDCB0 Saldo Kas Saat Ini</div><div class="mv" style="font-size:28px">${fmt(saldo)}</div></div><div class="mc2 cam"><div class="ml">Modal Awal</div><div class="mv" style="font-size:16px">${fmt(modal)}</div></div><div class="mc2 cg"><div class="ml">Penjualan Cash</div><div class="mv" style="font-size:16px">${fmt(cashIn)}</div></div>`;
   const filter=g('kas-filter')?.value||'all';
   const list=[...fl].reverse().filter(x=>filter==='all'||x.type===filter);
   const kl=g('kas-log');if(!kl)return;
