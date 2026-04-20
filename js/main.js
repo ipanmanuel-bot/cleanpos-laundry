@@ -240,13 +240,41 @@ function refreshODash(){
   const omsetBulanIni=monthOrders.reduce((s,o)=>s+o.total,0);
   const dailyRev=[];
   for(let d=1;d<=daysInMonth;d++){const ds=thisMonth+'-'+(d<10?'0'+d:String(d));dailyRev.push(monthOrders.filter(o=>o.isoDate===ds).reduce((s,o)=>s+o.total,0));}
-  (()=>{const N=daysInMonth,H=50,padT=7,padB=3,n=dailyRev.length,maxVal=Math.max(...dailyRev,1);
+  (()=>{
+    const MN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+    const mi=parseInt(thisMonth.slice(5,7))-1;
+    const N=daysInMonth,H=72,padT=12,n=dailyRev.length,maxVal=Math.max(...dailyRev,1);
     const xOf=i=>n<=1?N/2:(i/(n-1))*N;
-    const yOf=v=>padT+(1-v/maxVal)*(H-padT-padB);
+    const yOf=v=>padT+(1-v/maxVal)*(H-padT);
     const pts=dailyRev.map((v,i)=>`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
     const area=`0,${H} ${pts} ${N},${H}`;
-    const svg=`<svg viewBox="0 0 ${N} ${H}" style="width:100%;height:50px;display:block" preserveAspectRatio="none"><defs><linearGradient id="omg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8DC440" stop-opacity=".25"/><stop offset="100%" stop-color="#8DC440" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#omg)"/><polyline points="${pts}" fill="none" stroke="#8DC440" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
-    const ks=g('o-kas-saldo');if(ks)ks.innerHTML=`<div style="font-size:24px;font-weight:800;color:var(--p);letter-spacing:-.3px;margin-bottom:6px">${fmt(omsetBulanIni)}</div>${svg}<div style="font-size:11px;color:var(--t2);margin-top:5px">${monthOrders.length} pesanan lunas · hari ke-${daysInMonth}</div>`;
+    const origTotal=fmt(omsetBulanIni);
+    const origStat=`${monthOrders.length} pesanan lunas \u00B7 hari ke-${daysInMonth}`;
+    const ks=g('o-kas-saldo');if(!ks)return;
+    ks.innerHTML=`<div id="omset-total" style="font-size:24px;font-weight:800;color:var(--p);letter-spacing:-.3px;margin-bottom:2px">${origTotal}</div><div id="omset-stat" style="font-size:11px;color:var(--t2);margin-bottom:6px">${origStat}</div><div style="margin:auto -16px 0;overflow:hidden;border-radius:0 0 var(--r) var(--r)"><svg id="omset-svg" viewBox="0 0 ${N} ${H}" style="width:100%;height:${H}px;display:block;cursor:crosshair" preserveAspectRatio="none"><defs><linearGradient id="omg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8DC440" stop-opacity=".3"/><stop offset="100%" stop-color="#8DC440" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#omg)"/><polyline points="${pts}" fill="none" stroke="#8DC440" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><line id="omset-vl" x1="-99" y1="0" x2="-99" y2="${H}" stroke="#8DC440" stroke-width="1" stroke-dasharray="3,2" opacity=".7" vector-effect="non-scaling-stroke"/></svg></div>`;
+    const svgEl=g('omset-svg'),totEl=g('omset-total'),statEl=g('omset-stat'),vl=document.getElementById('omset-vl');
+    if(!svgEl)return;
+    const onHover=cx=>{
+      const r=svgEl.getBoundingClientRect();
+      const frac=Math.max(0,Math.min(1,(cx-r.left)/r.width));
+      const di=Math.round(frac*(n-1));
+      const rev=dailyRev[di];const day=di+1;
+      const ds=thisMonth+'-'+(day<10?'0'+day:String(day));
+      const cnt=monthOrders.filter(o=>o.isoDate===ds).length;
+      if(totEl){totEl.textContent=fmt(rev);totEl.style.color=rev>0?'var(--p)':'var(--t3)';}
+      if(statEl)statEl.textContent=`${day} ${MN[mi]} \u00B7 ${cnt} pesanan \u00B7 ${rev>0?fmt(rev):'Rp 0'}`;
+      const vx=(n<=1?N/2:(di/(n-1))*N).toFixed(1);
+      if(vl){vl.setAttribute('x1',vx);vl.setAttribute('x2',vx);}
+    };
+    const onLeave=()=>{
+      if(totEl){totEl.textContent=origTotal;totEl.style.color='var(--p)';}
+      if(statEl)statEl.textContent=origStat;
+      if(vl){vl.setAttribute('x1','-99');vl.setAttribute('x2','-99');}
+    };
+    svgEl.onmousemove=e=>onHover(e.clientX);
+    svgEl.onmouseleave=onLeave;
+    svgEl.addEventListener('touchmove',e=>{e.preventDefault();onHover(e.touches[0].clientX);},{passive:false});
+    svgEl.addEventListener('touchend',onLeave,{passive:true});
   })();
   const sg=g('o-status-grid');if(sg)sg.innerHTML=STATUS_LIST.map(s=>`<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800">${orders.filter(o=>o.status===s).length}</div><div style="font-size:10px;color:var(--t2);margin-top:3px">${s}</div></div>`).join('');
 }
