@@ -72,7 +72,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ni:hover{background:var(--dk3);color:#ccc}
 .ni.on{background:var(--p20);color:var(--p);font-weight:600}
 .plan-locked .ni:not([onclick*="settings"]){opacity:.35;pointer-events:none}
-.ni .nic{font-size:16px;width:22px;flex-shrink:0}
+.ni .nic{width:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.nic svg{width:17px;height:17px;stroke-width:1.75;display:block}
 .sb-bot{padding:8px;border-top:1px solid var(--dk3)}
 .back-sb{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:12px;color:#555;border:none;background:none;width:100%;font-family:inherit;min-height:40px}
 .back-sb:hover{color:#999}
@@ -83,7 +84,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dk);z-index:50;padding-bottom:env(safe-area-inset-bottom,4px)}
 .bnav-inner{display:flex;align-items:flex-end;justify-content:space-around;padding:6px 8px 2px}
 .bni{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 8px;font-size:10px;color:#555;min-width:52px;border:none;background:none;font-family:inherit;transition:color .15s}
-.bni.on{color:var(--p)}.bni .bn-ic{font-size:22px;line-height:1}
+.bni.on{color:var(--p)}.bni .bn-ic{display:flex;align-items:center;justify-content:center;height:26px}
+.bn-ic svg{width:22px;height:22px;stroke-width:1.75;display:block}
 .bfab{width:56px;height:56px;border-radius:50%;background:var(--p);border:3px solid var(--dk);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;transform:translateY(-12px);box-shadow:0 4px 20px rgba(141,196,64,.5);flex-shrink:0;color:#fff;transition:all .2s}
 .bfab:hover{background:var(--pd)}.bfab:active{transform:translateY(-12px) scale(.92)}
 .hbg{display:none;position:fixed;top:12px;right:14px;z-index:40;width:44px;height:44px;border-radius:12px;background:var(--dk);border:none;cursor:pointer;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:var(--sh2)}
@@ -94,7 +96,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .more-bg.on .more-sheet{transform:translateX(0)}
 .mi{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;color:rgba(255,255,255,.9);font-size:14px;font-weight:500;width:100%;border:none;background:none;font-family:inherit;text-align:left;min-height:52px;transition:background .12s}
 .mi:hover,.mi:active{background:rgba(255,255,255,.15)}
-.mic{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+.mic{flex-shrink:0;width:24px;display:flex;align-items:center;justify-content:center}
+.mic svg{width:18px;height:18px;stroke-width:1.75;display:block}
 .page{display:none}.page.on{display:block}
 .card{background:var(--ca);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
 .ct{font-weight:700;font-size:14px;margin-bottom:12px}
@@ -327,27 +330,27 @@ tr:hover td{background:#FAFAF7}
 </div>
 <!-- OWNER APP -->
 <div id="owner-app" class="app">
-<button class="hbg" onclick="showMore()" title="Menu Lainnya">☰</button>
+<button class="hbg" onclick="showMore()" title="Menu Lainnya"><i data-lucide="menu" style="width:22px;height:22px;stroke-width:2"></i></button>
 <nav class="sbnav">
   <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr">👑 Owner Dashboard</div></div>
   <div class="fab-sb"><button class="fab" onclick="oGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="o-nav">
     <div class="sb-sec">Utama</div>
-    <button class="ni on" onclick="oGo('dashboard',this)"><span class="nic">🏠</span>Dashboard</button>
-    <button class="ni" onclick="oGo('orders',this)"><span class="nic">📋</span>Pesanan</button>
-    <button class="ni" onclick="oGo('tracking',this)"><span class="nic">🔄</span>Tracking</button>
-    <button class="ni" onclick="oGo('wa',this)"><span class="nic">💬</span>WA Notifikasi</button>
+    <button class="ni on" onclick="oGo('dashboard',this)"><span class="nic"><i data-lucide="home"></i></span>Dashboard</button>
+    <button class="ni" onclick="oGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
+    <button class="ni" onclick="oGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="ni" onclick="oGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
     <div class="sb-sec">Keuangan</div>
-    <button class="ni" onclick="oGo('kas',this)"><span class="nic">💵</span>Kas Kasir</button>
-    <button class="ni" onclick="oGo('expenses',this)"><span class="nic">📌</span>Pengeluaran</button>
-    <button class="ni" onclick="oGo('reports',this)"><span class="nic">📊</span>Laporan</button>
+    <button class="ni" onclick="oGo('kas',this)"><span class="nic"><i data-lucide="wallet"></i></span>Kas Kasir</button>
+    <button class="ni" onclick="oGo('expenses',this)"><span class="nic"><i data-lucide="receipt"></i></span>Pengeluaran</button>
+    <button class="ni" onclick="oGo('reports',this)"><span class="nic"><i data-lucide="bar-chart-2"></i></span>Laporan</button>
     <div class="sb-sec">Manajemen</div>
-    <button class="ni" onclick="oGo('employees',this)"><span class="nic">👥</span>Karyawan</button>
-    <button class="ni" onclick="oGo('outlets',this)"><span class="nic">🏪</span>Outlet</button>
-    <button class="ni" onclick="oGo('customers',this)"><span class="nic">🙍</span>Pelanggan</button>
-    <button class="ni" onclick="oGo('pricing',this)"><span class="nic">💰</span>Harga</button>
-    <button class="ni" onclick="oGo('promo',this)"><span class="nic">🎟️</span>Promo</button>
-    <button class="ni" onclick="oGo('settings',this)"><span class="nic">⚙️</span>Pengaturan</button>
+    <button class="ni" onclick="oGo('employees',this)"><span class="nic"><i data-lucide="users"></i></span>Karyawan</button>
+    <button class="ni" onclick="oGo('outlets',this)"><span class="nic"><i data-lucide="store"></i></span>Outlet</button>
+    <button class="ni" onclick="oGo('customers',this)"><span class="nic"><i data-lucide="user"></i></span>Pelanggan</button>
+    <button class="ni" onclick="oGo('pricing',this)"><span class="nic"><i data-lucide="tag"></i></span>Harga</button>
+    <button class="ni" onclick="oGo('promo',this)"><span class="nic"><i data-lucide="percent"></i></span>Promo</button>
+    <button class="ni" onclick="oGo('settings',this)"><span class="nic"><i data-lucide="settings"></i></span>Pengaturan</button>
   </div>
   <div class="sb-bot">
     <div id="plan-badge" onclick="showUpgradeModal()" style="margin:0 8px 6px;background:rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
@@ -641,11 +644,11 @@ tr:hover td{background:#FAFAF7}
 </div><!-- end o-mc -->
 <nav class="bnav">
   <div class="bnav-inner">
-    <button class="bni on" onclick="oGoB('dashboard',this)"><span class="bn-ic">🏠</span>Beranda</button>
-    <button class="bni" onclick="oGoB('orders',this)"><span class="bn-ic">📋</span>Pesanan</button>
+    <button class="bni on" onclick="oGoB('dashboard',this)"><span class="bn-ic"><i data-lucide="home"></i></span>Beranda</button>
+    <button class="bni" onclick="oGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="oGo('new-order',null)">+</div>
-    <button class="bni" onclick="oGoB('tracking',this)"><span class="bn-ic">🔄</span>Tracking</button>
-    <button class="bni" onclick="oGoB('reports',this)"><span class="bn-ic">📊</span>Laporan</button>
+    <button class="bni" onclick="oGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="bni" onclick="oGoB('reports',this)"><span class="bn-ic"><i data-lucide="bar-chart-2"></i></span>Laporan</button>
   </div>
 </nav>
 </div><!-- end owner-app -->
@@ -656,10 +659,10 @@ tr:hover td{background:#FAFAF7}
   <div class="fab-sb"><button class="fab" onclick="sGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="s-nav">
     <div class="sb-sec">Operasional</div>
-    <button class="ni on" onclick="sGo('dashboard',this)"><span class="nic">🏠</span>Beranda</button>
-    <button class="ni" onclick="sGo('orders',this)"><span class="nic">📋</span>Pesanan</button>
-    <button class="ni" onclick="sGo('tracking',this)"><span class="nic">🔄</span>Tracking</button>
-    <button class="ni" onclick="sGo('wa',this)"><span class="nic">💬</span>WA Notifikasi</button>
+    <button class="ni on" onclick="sGo('dashboard',this)"><span class="nic"><i data-lucide="home"></i></span>Beranda</button>
+    <button class="ni" onclick="sGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
+    <button class="ni" onclick="sGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="ni" onclick="sGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
 </nav>
@@ -750,11 +753,11 @@ tr:hover td{background:#FAFAF7}
 </div>
 <nav class="bnav">
   <div class="bnav-inner">
-    <button class="bni on" onclick="sGoB('dashboard',this)"><span class="bn-ic">🏠</span>Beranda</button>
-    <button class="bni" onclick="sGoB('orders',this)"><span class="bn-ic">📋</span>Pesanan</button>
+    <button class="bni on" onclick="sGoB('dashboard',this)"><span class="bn-ic"><i data-lucide="home"></i></span>Beranda</button>
+    <button class="bni" onclick="sGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="sGo('new-order',null)">+</div>
-    <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic">🔄</span>Tracking</button>
-    <button class="bni" onclick="sGoB('wa',this)"><span class="bn-ic">💬</span>WA</button>
+    <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="bni" onclick="sGoB('wa',this)"><span class="bn-ic"><i data-lucide="message-circle"></i></span>WA</button>
   </div>
 </nav>
 </div><!-- end staff-app -->
@@ -768,17 +771,17 @@ tr:hover td{background:#FAFAF7}
     </div>
     <div style="flex:1;padding:8px 0;overflow-y:auto">
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;padding:10px 18px 4px">Utama</div>
-      <button class="mi" onclick="mMore('wa')"><span class="mic">💬</span>WA Notifikasi</button>
+      <button class="mi" onclick="mMore('wa')"><span class="mic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;padding:14px 18px 4px">Keuangan</div>
-      <button class="mi" onclick="mMore('kas')"><span class="mic">💵</span>Kas Kasir</button>
-      <button class="mi" onclick="mMore('expenses')"><span class="mic">📌</span>Pengeluaran</button>
+      <button class="mi" onclick="mMore('kas')"><span class="mic"><i data-lucide="wallet"></i></span>Kas Kasir</button>
+      <button class="mi" onclick="mMore('expenses')"><span class="mic"><i data-lucide="receipt"></i></span>Pengeluaran</button>
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;padding:14px 18px 4px">Manajemen</div>
-      <button class="mi" onclick="mMore('employees')"><span class="mic">👥</span>Karyawan</button>
-      <button class="mi" onclick="mMore('outlets')"><span class="mic">🏪</span>Outlet</button>
-      <button class="mi" onclick="mMore('customers')"><span class="mic">🙍</span>Pelanggan</button>
-      <button class="mi" onclick="mMore('pricing')"><span class="mic">💰</span>Harga</button>
-      <button class="mi" onclick="mMore('promo')"><span class="mic">🎟️</span>Promo</button>
-      <button class="mi" onclick="mMore('settings')"><span class="mic">⚙️</span>Pengaturan</button>
+      <button class="mi" onclick="mMore('employees')"><span class="mic"><i data-lucide="users"></i></span>Karyawan</button>
+      <button class="mi" onclick="mMore('outlets')"><span class="mic"><i data-lucide="store"></i></span>Outlet</button>
+      <button class="mi" onclick="mMore('customers')"><span class="mic"><i data-lucide="user"></i></span>Pelanggan</button>
+      <button class="mi" onclick="mMore('pricing')"><span class="mic"><i data-lucide="tag"></i></span>Harga</button>
+      <button class="mi" onclick="mMore('promo')"><span class="mic"><i data-lucide="percent"></i></span>Promo</button>
+      <button class="mi" onclick="mMore('settings')"><span class="mic"><i data-lucide="settings"></i></span>Pengaturan</button>
     </div>
     <div style="padding:12px 8px;border-top:1px solid rgba(255,255,255,.2)">
       <button class="mi" style="color:rgba(255,255,255,.55)" onclick="confirmBack()"><span class="mic">←</span>Menu Awal</button>
@@ -948,9 +951,11 @@ tr:hover td{background:#FAFAF7}
 
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="js/supabaseClient.js"></script>
 <script src="js/ordersApi.js"></script>
 <script src="js/ordersUI.js"></script>
 <script src="js/main.js"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
