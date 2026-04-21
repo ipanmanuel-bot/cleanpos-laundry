@@ -199,7 +199,7 @@ tr:hover td{background:#FAFAF7}
 @media(max-width:400px){.g2{grid-template-columns:1fr}.g3{grid-template-columns:1fr 1fr}}
 /* ===== DASHBOARD ===== */
 .dash-box{background:var(--ca);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:var(--sh)}
-.dash-stats{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;grid-template-rows:auto auto;gap:1px;background:var(--b1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:var(--sh)}
+.dash-stats{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;grid-template-rows:auto auto;gap:1px;background:var(--b1)}
 .dsc{background:var(--ca);padding:14px 16px}
 .dsc-lbl{font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap}
 .dsc-val{font-size:18px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
@@ -399,40 +399,43 @@ tr:hover td{background:#FAFAF7}
 
 <!-- DASHBOARD -->
 <div class="page on" id="o-p-dashboard">
-  <!-- Header -->
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px">
+  <!-- Header (outside card) -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
     <div>
       <div style="font-size:18px;font-weight:800;letter-spacing:-.3px">Dashboard Penjualan</div>
       <div id="dash-updated" style="font-size:12px;color:var(--t2);margin-top:2px"></div>
     </div>
   </div>
-  <!-- Period tabs + date nav -->
-  <div class="dash-box" style="padding:12px 14px;margin-bottom:12px">
-    <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="dtab-btn on" id="dtab-harian" onclick="setDashPeriod('harian')">Harian</button>
-      <button class="dtab-btn" id="dtab-mingguan" onclick="setDashPeriod('mingguan')">Mingguan</button>
-      <button class="dtab-btn" id="dtab-bulanan" onclick="setDashPeriod('bulanan')">Bulan</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <button class="dnav-btn" onclick="navDash(-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-      <div id="dash-range" style="flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--t1)"></div>
-      <button class="dnav-btn" id="dash-nav-next" onclick="navDash(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
-    </div>
-  </div>
-  <!-- WA alert -->
+  <!-- WA alert (outside card) -->
   <div id="o-wa-alert"></div>
-  <!-- Stats grid -->
-  <div id="dash-stats" class="dash-stats"></div>
-  <!-- Chart -->
-  <div class="card" style="padding:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-      <div style="font-weight:700;font-size:14px">Penjualan <span id="dash-chart-lbl" style="font-weight:400;font-size:13px;color:var(--t2)"></span></div>
-      <div style="display:flex;gap:14px;font-size:11px;color:var(--t2)">
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:22px;height:3px;background:#C8C8C8;border-radius:2px;display:inline-block"></span>Periode Sebelumnya</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:22px;height:3px;background:var(--p);border-radius:2px;display:inline-block"></span>Total Penjualan</span>
+  <!-- ONE unified card -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <!-- Period tabs + date nav -->
+    <div style="padding:12px 16px;border-bottom:1px solid var(--b1)">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="dtab-btn on" id="dtab-harian" onclick="setDashPeriod('harian')">Harian</button>
+        <button class="dtab-btn" id="dtab-mingguan" onclick="setDashPeriod('mingguan')">Mingguan</button>
+        <button class="dtab-btn" id="dtab-bulanan" onclick="setDashPeriod('bulanan')">Bulan</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="dnav-btn" onclick="navDash(-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <div id="dash-range" style="flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--t1)"></div>
+        <button class="dnav-btn" id="dash-nav-next" onclick="navDash(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
       </div>
     </div>
-    <div id="dash-chart-wrap"><canvas id="dash-chart"></canvas></div>
+    <!-- Stats grid (no own border — uses card's) -->
+    <div id="dash-stats" class="dash-stats"></div>
+    <!-- Chart -->
+    <div style="padding:16px;border-top:1px solid var(--b1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:14px">Penjualan <span id="dash-chart-lbl" style="font-weight:400;font-size:13px;color:var(--t2)"></span></div>
+        <div style="display:flex;gap:14px;font-size:11px;color:var(--t2)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:22px;height:3px;background:#C8C8C8;border-radius:2px;display:inline-block"></span>Periode Sebelumnya</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:22px;height:3px;background:var(--p);border-radius:2px;display:inline-block"></span>Total Penjualan</span>
+        </div>
+      </div>
+      <div id="dash-chart-wrap"><canvas id="dash-chart"></canvas></div>
+    </div>
   </div>
   <div id="dash-tooltip"></div>
 </div>

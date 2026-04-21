@@ -362,21 +362,27 @@ function _ordersInRange(curISO, curEndISO){
   return orders.filter(o=>{const d=_orderDateISO(o);return d>=curISO&&d<=curEndISO;});
 }
 
-function _calcDashStats(cur, prev){
+function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
   const sum=arr=>arr.reduce((s,o)=>s+o.total,0);
   const total=sum(cur), prevTotal=sum(prev);
   const belum=cur.filter(o=>o.payStatus!=='Lunas').reduce((s,o)=>s+o.total,0);
   const bayar=cur.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
   const trx=cur.length, prevTrx=prev.length;
-  const trxAmt=trx?total/trx:0, prevTrxAmt=prevTrx?prevTotal/prevTrx:0;
-  const produk=cur.reduce((s,o)=>s+(o.qty||0),0), prevProduk=prev.reduce((s,o)=>s+(o.qty||0),0);
-  const prodPerTrx=trx?produk/trx:0, prevProdPerTrx=prevTrx?prevProduk/prevTrx:0;
+  // Pesanan Diterima (status = Diterima)
+  const diterima=cur.filter(o=>o.status==='Diterima').length;
+  const prevDiterima=prev.filter(o=>o.status==='Diterima').length;
+  // Pesanan Selesai (status = Selesai or Diambil)
+  const selesai=cur.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
+  const prevSelesai=prev.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
+  // Pengeluaran
+  const pengeluaran=expenses.filter(e=>e.date>=curISO&&e.date<=curEndISO).reduce((s,e)=>s+e.nominal,0);
+  const prevPengeluaran=expenses.filter(e=>e.date>=prevISO&&e.date<=prevEndISO).reduce((s,e)=>s+e.nominal,0);
   return { total, prevTotal, belum, bayar,
-    trx, prevTrx, trxAmt, prevTrxAmt,
-    produk, prevProduk, prodPerTrx, prevProdPerTrx,
+    trx, prevTrx, diterima, prevDiterima, selesai, prevSelesai,
+    pengeluaran, prevPengeluaran,
     pctTotal:_pct(total,prevTotal), pctTrx:_pct(trx,prevTrx),
-    pctTrxAmt:_pct(trxAmt,prevTrxAmt), pctProduk:_pct(produk,prevProduk),
-    pctProdPerTrx:_pct(prodPerTrx,prevProdPerTrx)
+    pctPengeluaran:_pct(pengeluaran,prevPengeluaran),
+    pctDiterima:_pct(diterima,prevDiterima), pctSelesai:_pct(selesai,prevSelesai)
   };
 }
 
@@ -412,22 +418,22 @@ function _renderDashStats(s, range){
     <div class="dsc-val">${s.trx}</div>
   </div>`;
 
-  const scTrxAmt=`<div class="dsc">
-    <div class="dsc-lbl">Penjualan per Transaksi ${_fmtPct(s.pctTrxAmt)}</div>
-    <div class="dsc-val">${fmt(Math.round(s.trxAmt))}</div>
+  const scPengeluaran=`<div class="dsc">
+    <div class="dsc-lbl">Pengeluaran ${_fmtPct(s.pctPengeluaran)}</div>
+    <div class="dsc-val">${fmt(s.pengeluaran)}</div>
   </div>`;
 
-  const scProduk=`<div class="dsc">
-    <div class="dsc-lbl">Produk Terjual ${_fmtPct(s.pctProduk)}</div>
-    <div class="dsc-val">${Math.round(s.produk*10)/10}</div>
+  const scDiterima=`<div class="dsc">
+    <div class="dsc-lbl">Pesanan Diterima ${_fmtPct(s.pctDiterima)}</div>
+    <div class="dsc-val">${s.diterima}</div>
   </div>`;
 
-  const scProdPerTrx=`<div class="dsc">
-    <div class="dsc-lbl">Produk per Transaksi ${_fmtPct(s.pctProdPerTrx)}</div>
-    <div class="dsc-val">${Math.round(s.prodPerTrx*10)/10}</div>
+  const scSelesai=`<div class="dsc">
+    <div class="dsc-lbl">Pesanan Selesai ${_fmtPct(s.pctSelesai)}</div>
+    <div class="dsc-val">${s.selesai}</div>
   </div>`;
 
-  el.innerHTML = scTotal + scBelum + scTrx + scTrxAmt + scBayar + scProduk + scProdPerTrx;
+  el.innerHTML = scTotal + scBelum + scTrx + scPengeluaran + scBayar + scDiterima + scSelesai;
 }
 
 function _renderDashChart(curOrders, prevOrders, range){
@@ -470,8 +476,9 @@ function _renderDashChart(curOrders, prevOrders, range){
         tooltip:{enabled:false,external(context){
           if(!tooltipEl)return;
           const {tooltip}=context;
-          if(tooltip.opacity===0){tooltipEl.style.display='none';return;}
+          if(tooltip.opacity===0||tooltip.dataIndex==null){tooltipEl.style.display='none';return;}
           const idx=tooltip.dataIndex;
+          if(idx<0||idx>=N){tooltipEl.style.display='none';return;}
           const curV=curData[idx]||0, prevV=prevData[idx]||0;
           const pct=prevV===0?null:((curV-prevV)/prevV*100);
           const pctHtml=pct===null?'':`<div style="display:inline-block;background:${pct>=0?'#2E7D32':'#E53935'};color:#fff;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-bottom:6px">${pct>=0?'↑':'↓'} ${Math.abs(pct).toFixed(2)}%</div>`;
@@ -539,7 +546,7 @@ function refreshODash(){
   const prevOrders=_ordersInRange(range.prevISO,range.prevEndISO);
 
   // Stats
-  const stats=_calcDashStats(curOrders,prevOrders);
+  const stats=_calcDashStats(curOrders,prevOrders,range.curISO,range.curEndISO,range.prevISO,range.prevEndISO);
   _renderDashStats(stats,range);
 
   // Chart
