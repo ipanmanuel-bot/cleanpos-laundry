@@ -151,7 +151,32 @@ function resetPinDots(){pinEntry='';for(let i=0;i<4;i++){const d=g('pd'+i);if(d)
 function chkPin(){if(pinEntry===curStaff.pin){curRole='staff';showApp('staff-app');initStaff();}else{g('pin-err').textContent='PIN salah. Coba lagi.';for(let i=0;i<4;i++){const d=g('pd'+i);if(d)d.className='pd er';}setTimeout(()=>{pinEntry='';updPinDots();g('pin-err').textContent='';},900);}}
 
 // ===== NAV =====
+function isPlanExpired(){
+  const d = _daysLeft();
+  return d !== null && d <= 0;
+}
+
+function _planExpiredGate(){
+  // Show settings and toast, return true if blocked
+  if(!isPlanExpired()) return false;
+  oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
+  toast('⚠️ Langganan berakhir — selesaikan pembayaran di Pengaturan untuk melanjutkan.');
+  return true;
+}
+
 function oGo(pg,el){
+  // Block all pages except settings when plan/trial has expired
+  if(pg !== 'settings' && isPlanExpired()){
+    // Force to settings
+    document.querySelectorAll('#o-mc .page').forEach(p=>p.classList.remove('on'));
+    document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
+    const sp = g('o-p-settings'); if(sp) sp.classList.add('on');
+    const sEl = document.querySelector('#o-nav .ni[onclick*="settings"]'); if(sEl) sEl.classList.add('on');
+    g('o-mc').scrollTop = 0;
+    renderSettings();
+    toast('⚠️ Langganan berakhir — selesaikan pembayaran untuk melanjutkan.');
+    return;
+  }
   document.querySelectorAll('#o-mc .page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('o-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
@@ -209,7 +234,19 @@ function seed(){
 }
 
 // ===== INIT =====
-function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();renderPlanBadge();renderSubCard();checkPlanExpiry();_resetIdleTimer();}
+function initOwner(){
+  g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
+  const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
+  prevTpl();renderPricing();renderPromo();renderSettings();
+  renderPlanBadge();renderSubCard();checkPlanExpiry();
+  if(isPlanExpired()){
+    // Land directly on settings so user can pay
+    oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
+  } else {
+    buildOrderForm('no');calcO();refreshODash();
+  }
+  _resetIdleTimer();
+}
 function initStaff(){g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
 function renderSettings(){
   renderSubCard();
@@ -358,6 +395,13 @@ function renderPlanBadge(){
 }
 
 function checkPlanExpiry(){
+  // Lock/unlock the nav
+  const nav = g('o-nav');
+  if(nav){ if(isPlanExpired()) nav.classList.add('plan-locked'); else nav.classList.remove('plan-locked'); }
+  // Also lock the Buat Pesanan button
+  const fabBtn = document.querySelector('.fab-sb .fab');
+  if(fabBtn){ fabBtn.disabled = isPlanExpired(); fabBtn.style.opacity = isPlanExpired() ? '.35' : ''; }
+
   const el = g('plan-expiry-banner');
   if(!el) return;
   const d = _daysLeft();
@@ -481,8 +525,10 @@ async function processSuccessfulPayment(plan, cycle){
   }, 'user_id');
   renderPlanBadge();
   renderSubCard();
-  checkPlanExpiry();
+  checkPlanExpiry(); // also unlocks nav
   cm('m-renew'); cm('m-upgrade');
+  // Return to dashboard now that plan is active
+  oGo('dashboard', document.querySelector('#o-nav .ni[onclick*="dashboard"]'));
   toast(`✅ Plan ${PLANS[plan]?.name} aktif ${days} hari! Berakhir ${new Date(newExpiry).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}`);
 }
 
