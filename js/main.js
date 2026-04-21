@@ -1,6 +1,14 @@
 // ===== GLOBAL STATE =====
 let ownerPwd = 'owner123';
 const DAYS_ID = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+// ===== SUBSCRIPTION PLANS =====
+const PLAN_LIMITS = { basic: 1, elite: 5, enterprise: 20 };
+const PLANS = {
+  basic:      { name:'Basic',      emoji:'🌱', outlets:1,  price:30000,  annual:270000,   blurb:'Rp 30.000/bln',    color:'#6B6B65' },
+  elite:      { name:'Elite',      emoji:'⭐', outlets:5,  price:50000,  annual:450000,   blurb:'Rp 50.000/bln',    color:'#1976D2' },
+  enterprise: { name:'Enterprise', emoji:'👑', outlets:20, price:90000,  annual:810000,   blurb:'Rp 90.000/bln',    color:'#7B1FA2' }
+};
 const TODAY = new Date(), TODAY_DAY = TODAY.getDay();
 const TODAY_ISO = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
 const TODAY_STR = TODAY.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
@@ -143,7 +151,32 @@ function resetPinDots(){pinEntry='';for(let i=0;i<4;i++){const d=g('pd'+i);if(d)
 function chkPin(){if(pinEntry===curStaff.pin){curRole='staff';showApp('staff-app');initStaff();}else{g('pin-err').textContent='PIN salah. Coba lagi.';for(let i=0;i<4;i++){const d=g('pd'+i);if(d)d.className='pd er';}setTimeout(()=>{pinEntry='';updPinDots();g('pin-err').textContent='';},900);}}
 
 // ===== NAV =====
+function isPlanExpired(){
+  const d = _daysLeft();
+  return d !== null && d <= 0;
+}
+
+function _planExpiredGate(){
+  // Show settings and toast, return true if blocked
+  if(!isPlanExpired()) return false;
+  oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
+  toast('⚠️ Langganan berakhir — selesaikan pembayaran di Pengaturan untuk melanjutkan.');
+  return true;
+}
+
 function oGo(pg,el){
+  // Block all pages except settings when plan/trial has expired
+  if(pg !== 'settings' && isPlanExpired()){
+    // Force to settings
+    document.querySelectorAll('#o-mc .page').forEach(p=>p.classList.remove('on'));
+    document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
+    const sp = g('o-p-settings'); if(sp) sp.classList.add('on');
+    const sEl = document.querySelector('#o-nav .ni[onclick*="settings"]'); if(sEl) sEl.classList.add('on');
+    g('o-mc').scrollTop = 0;
+    renderSettings();
+    toast('⚠️ Langganan berakhir — selesaikan pembayaran untuk melanjutkan.');
+    return;
+  }
   document.querySelectorAll('#o-mc .page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('o-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
@@ -201,9 +234,22 @@ function seed(){
 }
 
 // ===== INIT =====
-function initOwner(){g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;prevTpl();buildOrderForm('no');calcO();renderPricing();renderPromo();renderSettings();refreshODash();_resetIdleTimer();}
+function initOwner(){
+  g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
+  const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
+  prevTpl();renderPricing();renderPromo();renderSettings();
+  renderPlanBadge();renderSubCard();checkPlanExpiry();
+  if(isPlanExpired()){
+    // Land directly on settings so user can pay
+    oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
+  } else {
+    buildOrderForm('no');calcO();refreshODash();
+  }
+  _resetIdleTimer();
+}
 function initStaff(){g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
 function renderSettings(){
+  renderSubCard();
   renderPrinters();
   if(g('s-store'))g('s-store').value=storeName;
   if(g('s-addr'))g('s-addr').value=storeAddr;
@@ -314,10 +360,314 @@ function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE
 function updStaffClk(){if(!curStaff)return;const e=employees.find(x=>x.id===curStaff.id);if(!e)return;const stM={in:'Sedang bekerja \u00B7 Masuk: '+e.clockIn,off:'Belum clock in hari ini',cuti:'Cuti hari ini',sakit:'Sakit hari ini'};const cs=g('s-clk-st');if(cs)cs.textContent=stM[e.status]||'';const cb=g('s-clk-btns');if(!cb)return;cb.innerHTML=e.status==='in'?`<button class="btn bre bsm bpill" onclick="staffClk('clkout')">Clock Out</button>`:e.status==='off'?`<button class="btn bp bsm bpill" onclick="staffClk('clkin')">Clock In</button>`:`<span class="badge ${e.status==='cuti'?'gpu':'gam'}">${e.status==='cuti'?'Cuti':'Sakit'}</span>`;}
 function staffClk(act){if(!curStaff)return;empAct(curStaff.id,act);}
 
+// ===== SUBSCRIPTION =====
+let _renewCycle = 'monthly'; // 'monthly' | 'annual'
+
+function _daysLeft(){
+  if(!currentPlanExpiry) return null;
+  const diff = new Date(currentPlanExpiry) - new Date();
+  return Math.ceil(diff / 86400000);
+}
+
+function renderPlanBadge(){
+  const p = PLANS[currentPlan] || PLANS.basic;
+  const nameEl = g('plan-badge-name'), emojiEl = g('plan-badge-emoji');
+  if(nameEl) nameEl.textContent = p.name;
+  if(emojiEl) emojiEl.textContent = p.emoji;
+  const subEl = g('plan-badge-sub');
+  if(subEl){
+    const d = _daysLeft();
+    const isTrial = currentPlanStatus === 'trial';
+    if(d !== null && d <= 0){
+      subEl.textContent = isTrial ? '⚠️ Trial Berakhir' : '⚠️ Expired';
+      subEl.style.color = '#E53935';
+    } else if(isTrial){
+      subEl.textContent = d !== null ? `Trial: ${d} hari lagi` : 'Trial';
+      subEl.style.color = d !== null && d <= 3 ? '#F57C00' : '#888';
+    } else if(currentPlanStatus === 'active'){
+      if(d === null){ subEl.textContent = ''; }
+      else if(d <= 7){ subEl.textContent = `⚠️ ${d} hari lagi`; subEl.style.color = '#F57C00'; }
+      else { subEl.textContent = `${d} hari lagi`; subEl.style.color = '#888'; }
+    } else {
+      subEl.textContent = '';
+    }
+  }
+}
+
+function checkPlanExpiry(){
+  // Lock/unlock the nav
+  const nav = g('o-nav');
+  if(nav){ if(isPlanExpired()) nav.classList.add('plan-locked'); else nav.classList.remove('plan-locked'); }
+  // Also lock the Buat Pesanan button
+  const fabBtn = document.querySelector('.fab-sb .fab');
+  if(fabBtn){ fabBtn.disabled = isPlanExpired(); fabBtn.style.opacity = isPlanExpired() ? '.35' : ''; }
+
+  const el = g('plan-expiry-banner');
+  if(!el) return;
+  const d = _daysLeft();
+  const isTrial = currentPlanStatus === 'trial';
+  if(d === null){ el.style.display = 'none'; return; }
+  if(d <= 0){
+    el.style.display = 'block';
+    el.style.background = 'var(--reb)'; el.style.border = '1px solid #E53935'; el.style.color = 'var(--re)';
+    el.innerHTML = isTrial
+      ? `❌ Masa trial 14 hari kamu sudah berakhir. Silakan berlangganan untuk terus menggunakan CleanPOS. <a style="cursor:pointer;font-weight:700;text-decoration:underline" onclick="showUpgradeModal()">Pilih Plan →</a>`
+      : `❌ Plan <strong>${PLANS[currentPlan]?.name}</strong> kamu sudah expired. Outlet dibatasi ke 1. <a style="cursor:pointer;font-weight:700;text-decoration:underline" onclick="showRenewModal('${currentPlan}')">Perpanjang sekarang →</a>`;
+    if(outlets.length > 1) toast('⚠️ Langganan berakhir — hanya 1 outlet aktif.');
+  } else if(d <= 7){
+    el.style.display = 'block';
+    el.style.background = 'var(--amb)'; el.style.border = '1px solid #FFE082'; el.style.color = 'var(--am)';
+    el.innerHTML = isTrial
+      ? `⚠️ Masa trial kamu berakhir dalam <strong>${d} hari</strong>. <a style="cursor:pointer;font-weight:700;text-decoration:underline" onclick="showUpgradeModal()">Pilih Plan →</a>`
+      : `⚠️ Plan <strong>${PLANS[currentPlan]?.name}</strong> berakhir dalam <strong>${d} hari</strong>. <a style="cursor:pointer;font-weight:700;text-decoration:underline" onclick="showRenewModal('${currentPlan}')">Perpanjang →</a>`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function showUpgradeModal(){
+  const el = g('upgrade-cards'); if(!el) return;
+  const isTrial = currentPlanStatus === 'trial';
+  const isSubscribed = currentPlanStatus === 'active'; // paid & active
+  const FEATS = ['Pesanan tak terbatas','Laporan keuangan','Multi-karyawan','Sync cloud real-time','Support WhatsApp'];
+  el.innerHTML = Object.entries(PLANS).map(([key,p]) => {
+    const isCurrent = key === currentPlan;
+    // A plan is "locked / no action" only if it's the current active (paid) subscription
+    const isActiveHere = isCurrent && isSubscribed;
+    let btnLabel, btnAttr;
+    if(isActiveHere){
+      btnLabel = '🔄 Perpanjang'; btnAttr = `onclick="showRenewModal('${key}')"`;
+    } else {
+      btnLabel = isTrial ? 'Berlangganan →' : (isCurrent ? 'Berlangganan →' : 'Upgrade →');
+      btnAttr = `onclick="showRenewModal('${key}')"`;
+    }
+    return `<div style="border:2px solid ${isCurrent?p.color:'var(--b1)'};border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;background:${isCurrent?p.color+'12':'var(--ca)'}">
+      <div style="text-align:center">
+        <div style="font-size:30px">${p.emoji}</div>
+        <div style="font-weight:800;font-size:15px;color:${p.color};margin-top:4px">${p.name}</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:2px;font-weight:600">${p.blurb}</div>
+        ${isTrial&&isCurrent?`<div style="font-size:10px;margin-top:4px;background:${p.color}22;color:${p.color};border-radius:6px;padding:2px 8px;display:inline-block;font-weight:700">Sedang Trial</div>`:''}
+      </div>
+      <div style="height:1px;background:var(--b1)"></div>
+      <div style="font-size:12px;line-height:2;color:var(--t2)">
+        <div style="font-weight:700;color:${p.color};font-size:13px;margin-bottom:4px">${p.outlets} Outlet</div>
+        ${FEATS.map(f=>`<div>✅ ${f}</div>`).join('')}
+      </div>
+      <button class="btn bfull bpill" style="font-size:12px;background:${p.color};border-color:${p.color};color:#fff" ${btnAttr}>
+        ${btnLabel}
+      </button>
+    </div>`;
+  }).join('');
+  g('m-upgrade').className = 'mbg on';
+}
+
+function showRenewModal(plan){
+  _renewCycle = 'monthly';
+  cm('m-upgrade');
+  const p = PLANS[plan] || PLANS.elite;
+  const titleEl = g('renew-plan-name');
+  const isRenewal = currentPlanStatus === 'active' && currentPlan === plan;
+  if(titleEl) titleEl.textContent = `${p.emoji} ${p.name} — ${isRenewal ? 'Perpanjang' : 'Berlangganan'}`;
+  _renderRenewModal(plan);
+  g('m-renew').className = 'mbg on';
+}
+
+function _setRenewCycle(cycle){
+  _renewCycle = cycle;
+  const mBtn = g('renew-cycle-monthly'), aBtn = g('renew-cycle-annual');
+  if(mBtn){ mBtn.style.background = cycle==='monthly'?'var(--p)':'var(--ca)'; mBtn.style.color = cycle==='monthly'?'#fff':'var(--t1)'; mBtn.style.borderColor = cycle==='monthly'?'var(--p)':'var(--b1)'; }
+  if(aBtn){ aBtn.style.background = cycle==='annual'?'var(--p)':'var(--ca)'; aBtn.style.color = cycle==='annual'?'#fff':'var(--t1)'; aBtn.style.borderColor = cycle==='annual'?'var(--p)':'var(--b1)'; }
+  const plan = g('renew-pay-btn')?.dataset.plan;
+  if(plan) _renderRenewPrice(plan);
+}
+
+function _renderRenewModal(plan){
+  const p = PLANS[plan];
+  const payBtn = g('renew-pay-btn');
+  if(payBtn) payBtn.dataset.plan = plan;
+  _setRenewCycle('monthly');
+  _renderRenewPrice(plan);
+}
+
+function _renderRenewPrice(plan){
+  const p = PLANS[plan]; if(!p) return;
+  const isAnnual = _renewCycle === 'annual';
+  const price = isAnnual ? p.annual : p.price;
+  const days = isAnnual ? 365 : 30;
+  const saving = isAnnual ? fmt(p.price*12 - p.annual) : null;
+  const priceEl = g('renew-price-display');
+  if(priceEl){
+    priceEl.innerHTML = `<div style="font-size:22px;font-weight:800;color:var(--p)">${fmt(price)}</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:4px">+${days} hari aktif${isAnnual&&saving?' · <span style="color:#4CAF50;font-weight:700">Hemat '+saving+'</span>':''}</div>`;
+  }
+}
+
+// processSuccessfulPayment — dipanggil setelah pembayaran berhasil
+async function processSuccessfulPayment(plan, cycle){
+  const days = cycle === 'annual' ? 365 : 30;
+  // Stack on top of existing expiry (never lose days)
+  let newExpiry;
+  if(currentPlanExpiry && new Date(currentPlanExpiry) > new Date()){
+    const base = new Date(currentPlanExpiry);
+    base.setDate(base.getDate() + days);
+    newExpiry = base.toISOString();
+  } else {
+    const base = new Date();
+    base.setDate(base.getDate() + days);
+    newExpiry = base.toISOString();
+  }
+  currentPlan = plan;
+  currentPlanStatus = 'active';
+  currentPlanExpiry = newExpiry;
+  await sbUpsert('subscriptions', {
+    user_id: currentUserId,
+    plan, status: 'active', expires_at: newExpiry
+  }, 'user_id');
+  renderPlanBadge();
+  renderSubCard();
+  checkPlanExpiry(); // also unlocks nav
+  cm('m-renew'); cm('m-upgrade');
+  // Return to dashboard now that plan is active
+  oGo('dashboard', document.querySelector('#o-nav .ni[onclick*="dashboard"]'));
+  toast(`✅ Plan ${PLANS[plan]?.name} aktif ${days} hari! Berakhir ${new Date(newExpiry).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}`);
+}
+
+function renderSubCard(){
+  const el = g('settings-sub-card'); if(!el) return;
+  const p = PLANS[currentPlan] || PLANS.basic;
+  const d = _daysLeft();
+  const isExpired = d !== null && d <= 0;
+  const isWarn = d !== null && d > 0 && d <= 7;
+
+  const isTrial = currentPlanStatus === 'trial';
+
+  // Status pill
+  let statusHtml;
+  if(isTrial && isExpired){
+    statusHtml = `<span style="background:var(--reb);color:var(--re);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">❌ Trial Berakhir</span>`;
+  } else if(isTrial){
+    statusHtml = `<span style="background:#FFF8E1;color:#F57C00;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">⏳ Trial Gratis</span>`;
+  } else if(isExpired){
+    statusHtml = `<span style="background:var(--reb);color:var(--re);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">❌ Expired</span>`;
+  } else if(currentPlanStatus === 'active'){
+    statusHtml = `<span style="background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">✅ Aktif</span>`;
+  } else {
+    statusHtml = `<span style="background:var(--amb);color:var(--am);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">⏳ ${currentPlanStatus}</span>`;
+  }
+
+  // Expiry line
+  let expiryHtml = '';
+  if(currentPlanExpiry){
+    const expiryDate = new Date(currentPlanExpiry).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+    if(isExpired){
+      expiryHtml = `<div style="font-size:12px;color:var(--re);margin-top:4px">${isTrial?'Trial berakhir':'Berakhir'}: ${expiryDate}</div>`;
+    } else if(isWarn){
+      expiryHtml = `<div style="font-size:12px;color:#F57C00;margin-top:4px">⚠️ ${isTrial?'Trial berakhir':'Berakhir'}: ${expiryDate} (${d} hari lagi)</div>`;
+    } else {
+      expiryHtml = `<div style="font-size:12px;color:var(--t2);margin-top:4px">${isTrial?'Trial berakhir':'Berakhir'}: ${expiryDate} · <strong style="color:var(--t1)">${d} hari lagi</strong></div>`;
+    }
+  }
+
+  // Features for current plan
+  const FEATS = ['Pesanan tak terbatas','Laporan keuangan','Multi-karyawan','Sync cloud real-time'];
+
+  el.innerHTML = `<div class="card" style="border-left:4px solid ${p.color}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:22px">${p.emoji}</span>
+          <div>
+            <div style="font-weight:800;font-size:15px;color:${p.color}">${p.name}</div>
+            <div style="font-size:12px;color:var(--t2)">${p.blurb} · ${p.outlets} outlet</div>
+          </div>
+          <div style="margin-left:4px">${statusHtml}</div>
+        </div>
+        ${expiryHtml}
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+          ${FEATS.map(f=>`<span style="font-size:11px;background:var(--ca);border:1px solid var(--b1);border-radius:6px;padding:2px 8px;color:var(--t2)">✓ ${f}</span>`).join('')}
+          <span style="font-size:11px;background:${p.color}18;border:1px solid ${p.color}44;border-radius:6px;padding:2px 8px;color:${p.color};font-weight:700">✓ ${p.outlets} Outlet</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:120px">
+        ${isTrial || isExpired
+          ? `<button class="btn bpill bsm" style="background:${p.color};border-color:${p.color};color:#fff;font-size:12px" onclick="showUpgradeModal()">⭐ Berlangganan</button>`
+          : `<button class="btn bpill bsm" style="background:${p.color};border-color:${p.color};color:#fff;font-size:12px" onclick="showRenewModal('${currentPlan}')">🔄 Perpanjang</button>`}
+        <button class="btn bpill bsm" style="font-size:12px" onclick="showUpgradeModal()">Lihat Semua Plan</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== MIDTRANS PAYMENT — uncomment setelah integrasi backend siap =====
+function initMidtransPayment(plan, cycle){
+  // ------------------------------------------------------------------
+  // CARA INTEGRASI MIDTRANS SNAP:
+  // 1. Tambahkan script Midtrans di index.html (sudah ada, tinggal uncomment):
+  //    <script src="https://app.midtrans.com/snap/snap.js" data-client-key="YOUR_CLIENT_KEY"></script>
+  //    (Gunakan https://app.sandbox.midtrans.com/snap/snap.js untuk testing)
+  //
+  // 2. Buat Supabase Edge Function `create-payment`:
+  //    - Terima: { plan, cycle, user_id }
+  //    - Hitung amount dari PLANS[plan][cycle === 'annual' ? 'annual' : 'price']
+  //    - Panggil Midtrans Transactions API → kembalikan snap_token
+  //
+  // 3. Uncomment kode di bawah ini dan hapus baris toast() terakhir.
+  // ------------------------------------------------------------------
+  //
+  // (async () => {
+  //   const btn = g('renew-pay-btn');
+  //   if(btn){ btn.disabled = true; btn.textContent = '⏳ Memproses...'; }
+  //   try {
+  //     const res = await fetch('/functions/v1/create-payment', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (await supabase.auth.getSession()).data.session?.access_token },
+  //       body: JSON.stringify({ plan, cycle, user_id: currentUserId })
+  //     });
+  //     const { snap_token, error } = await res.json();
+  //     if(error) throw new Error(error);
+  //     window.snap.pay(snap_token, {
+  //       onSuccess: async (result) => {
+  //         console.log('[midtrans] success', result);
+  //         await processSuccessfulPayment(plan, cycle);
+  //       },
+  //       onPending: (result) => {
+  //         console.log('[midtrans] pending', result);
+  //         toast('⏳ Pembayaran pending. Cek email untuk instruksi.');
+  //       },
+  //       onError: (result) => {
+  //         console.error('[midtrans] error', result);
+  //         toast('❌ Pembayaran gagal. Coba lagi.');
+  //       },
+  //       onClose: () => {
+  //         // User closed the Snap popup
+  //       }
+  //     });
+  //   } catch(err) {
+  //     console.error('[payment]', err);
+  //     toast('❌ Error: ' + err.message);
+  //   } finally {
+  //     if(btn){ btn.disabled = false; btn.textContent = 'Bayar Sekarang'; }
+  //   }
+  // })();
+
+  // TODO: hapus baris ini setelah Midtrans aktif
+  toast('🔔 Pembayaran via Midtrans segera hadir! Hubungi admin untuk upgrade manual.');
+}
+
 // ===== OUTLETS =====
 function renderOutlets(){const el=g('outlet-list-ui');if(!el)return;el.innerHTML=outlets.map(o=>{const cnt=employees.filter(e=>e.oid===o.id).length;return `<div class="card" style="border-left:5px solid ${o.color}"><div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:12px;background:${o.color}20;display:flex;align-items:center;justify-content:center;font-size:22px">\uD83C\uDFEA</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${o.name}</div><div style="font-size:12px;color:var(--t2);margin-top:3px">${o.addr} \u00B7 ${cnt} karyawan</div></div><button class="btn bre bsm" onclick="delOutlet('${o.id}')">Hapus</button></div></div>`;}).join('');}
 function openAddOutlet(){g('mo-n').value='';g('mo-a').value='';selOutletColor='#8DC440';const cols=['#8DC440','#1976D2','#E53935','#F57C00','#7B1FA2','#4CAF50'];g('mo-colors').innerHTML=cols.map((c,i)=>`<div onclick="selOutletColor='${c}';document.querySelectorAll('.oc').forEach(x=>x.style.outline='none');this.style.outline='3px solid ${c}';this.style.outlineOffset='3px'" class="oc" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;${i===0?`outline:3px solid ${c};outline-offset:3px`:''}"></div>`).join('');g('m-outlet').className='mbg on';}
-function saveOutlet(){const name=g('mo-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama outlet wajib diisi');return;}outlets.push({id:'o'+outletCtr++,name,addr:g('mo-a').value.trim()||'\u2014',color:selOutletColor});cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('\u2713 Outlet "'+name+'" ditambahkan');}
+function saveOutlet(){
+  const max=PLAN_LIMITS[currentPlan]||1;
+  if(outlets.length>=max){
+    cm('m-outlet');
+    toast(`\u26A0\uFE0F Plan ${PLANS[currentPlan]?.name||'Basic'} maksimal ${max} outlet`);
+    showUpgradeModal();return;
+  }
+  const name=g('mo-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama outlet wajib diisi');return;}
+  outlets.push({id:'o'+outletCtr++,name,addr:g('mo-a').value.trim()||'\u2014',color:selOutletColor});
+  cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('\u2713 Outlet "'+name+'" ditambahkan');
+}
 function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
 
 // ===== CUSTOMERS =====

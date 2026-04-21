@@ -7,6 +7,9 @@ let supabase = null;
 let supaRealtimeCh = null;
 let supaEnabled = false;
 let currentUserId = null;
+let currentPlan = 'basic';
+let currentPlanStatus = 'active';
+let currentPlanExpiry = null;
 
 // Initialize Supabase client — createClient is passed in from dynamic import in main.js
 function initSupabase(createClientFn) {

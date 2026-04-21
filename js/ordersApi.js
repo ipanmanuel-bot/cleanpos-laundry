@@ -117,11 +117,11 @@ async function supaLoadAll() {
   toast('☁️ Memuat data dari cloud...');
   const [
     ordersData, custsData, outletsData, empsData,
-    kasData, expData, printersData, settingsData
+    kasData, expData, printersData, settingsData, subData
   ] = await Promise.all([
     sbFetch('orders'), sbFetch('customers'), sbFetch('outlets'),
     sbFetch('employees'), sbFetch('kas_log'), sbFetch('expenses'),
-    sbFetch('printers'), sbFetch('settings')
+    sbFetch('printers'), sbFetch('settings'), sbFetch('subscriptions')
   ]);
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
@@ -144,6 +144,16 @@ async function supaLoadAll() {
     if (s.promos)        promos = JSON.parse(s.promos);
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     if (s.wa_tpl_new)    waTplNew = JSON.parse(s.wa_tpl_new);
+  }
+  if (subData && subData.length) {
+    currentPlan       = subData[0].plan        || 'basic';
+    currentPlanStatus = subData[0].status       || 'active';
+    currentPlanExpiry = subData[0].expires_at   || null;
+  } else {
+    currentPlan = 'basic'; currentPlanStatus = 'trial';
+    const _trialExp = new Date(); _trialExp.setDate(_trialExp.getDate() + 14);
+    currentPlanExpiry = _trialExp.toISOString();
+    sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'trial', expires_at: currentPlanExpiry }, 'user_id');
   }
   toast('✅ Data cloud berhasil dimuat!');
   supaSubscribeOrders();
