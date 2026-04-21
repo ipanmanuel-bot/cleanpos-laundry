@@ -26,7 +26,43 @@ function toggleAddonLbl(pre, aid, checked) {
 }
 
 function bQty(type, cat, qty) {
-  return isKgType(type) && (cat === 'regular' || cat === 'sameday') && qty < minKg ? minKg : qty;
+  if (!isKgType(type)) return qty;
+  const svc = getSvcById(type);
+  const apply = svc?.minKgApply || {};
+  const min = svc?.minKg || 0;
+  return (apply[cat] && qty < min) ? min : qty;
+}
+
+function buildSatuanOrderItems(pre) {
+  const el = g(pre + '-satuan-items'); if (!el) return;
+  const cat = g(pre + '-cat')?.value || 'regular';
+  if (!satuanItems.length) {
+    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:8px 0">Belum ada item satuan. Tambah di menu Harga.</div>';
+    return;
+  }
+  const ch = pre === 'no' ? 'calcO()' : 'calcS()';
+  el.innerHTML = satuanItems.map(item => {
+    const price = item.prices[cat] || 0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)">
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${item.name}</div><div style="font-size:11px;color:var(--t2)">${fmt(price)} / pcs</div></div>
+      <input type="number" id="${pre}-sat-${item.id}" value="0" min="0" step="1" style="width:60px;text-align:center;font-size:16px;font-weight:700;padding:6px 8px" oninput="${ch}">
+    </div>`;
+  }).join('');
+}
+
+function typeChange(pre) {
+  const type = g(pre + '-type')?.value;
+  const isSat = type === 'satuan';
+  const kgSect = g(pre + '-kg-sect'); if (kgSect) kgSect.style.display = isSat ? 'none' : '';
+  const satSect = g(pre + '-satuan-sect');
+  if (satSect) { satSect.style.display = isSat ? '' : 'none'; if (isSat) buildSatuanOrderItems(pre); }
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function catChange(pre) {
+  const type = g(pre + '-type')?.value;
+  if (type === 'satuan') buildSatuanOrderItems(pre);
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function getActivePromo(type, cat) {
@@ -57,25 +93,50 @@ function discTypeChange(pre) {
 
 function calcBase(pre) {
   const type = g(pre + '-type').value, cat = g(pre + '-cat').value;
+  const EST = { regular: '2-3 hari', sameday: '± 8 jam', express: '1 hari' };
+  const est = g(pre + '-est'); if (est) est.value = EST[cat] || '';
+
+  if (type === 'satuan') {
+    const satuanLines = [];
+    satuanItems.forEach(item => {
+      const qEl = g(pre + '-sat-' + item.id);
+      const qty = parseInt(qEl?.value) || 0;
+      if (qty > 0) {
+        const unitPrice = item.prices[cat] || 0;
+        satuanLines.push({ id: item.id, name: item.name, qty, unitPrice, lineTotal: unitPrice * qty });
+      }
+    });
+    const base = satuanLines.reduce((s, l) => s + l.lineTotal, 0);
+    const bq = satuanLines.reduce((s, l) => s + l.qty, 0);
+    let addTotal = 0; const addonLines = [];
+    addons.forEach(a => {
+      const ck = g(pre + '-ck-' + a.id);
+      if (ck && ck.checked) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
+    });
+    return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines };
+  }
+
   const rawQty = parseFloat(g(pre + '-qty').value) || 1;
   const bq = bQty(type, cat, rawQty);
-  const hasMin = isKgType(type) && (cat === 'regular' || cat === 'sameday');
-  const ql = g(pre + '-qty-lbl'); if (ql) ql.childNodes[0].textContent = isKgType(type) ? 'Berat (' + getSvcById(type)?.unit + ') ' : 'Jumlah (' + getSvcById(type)?.unit + ') ';
-  const mb = g(pre + '-min-b'); if (mb) { mb.style.display = hasMin ? 'inline' : 'none'; mb.textContent = 'min.' + minKg + 'kg'; }
-  const mw = g(pre + '-min-w'); if (mw) { mw.style.display = hasMin && rawQty < minKg ? 'block' : 'none'; mw.textContent = '→ Dihitung ' + minKg + 'kg'; }
-  const est = g(pre + '-est'); if (est) est.value = { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[cat];
+  const svc = getSvcById(type);
+  const apply = svc?.minKgApply || {};
+  const minKgVal = svc?.minKg || 0;
+  const hasMin = isKgType(type) && !!apply[cat];
+  const ql = g(pre + '-qty-lbl'); if (ql) ql.childNodes[0].textContent = isKgType(type) ? 'Berat (' + (svc?.unit || 'kg') + ') ' : 'Jumlah (' + (svc?.unit || 'pcs') + ') ';
+  const mb = g(pre + '-min-b'); if (mb) { mb.style.display = hasMin ? 'inline' : 'none'; mb.textContent = 'min.' + minKgVal + 'kg'; }
+  const mw = g(pre + '-min-w'); if (mw) { mw.style.display = hasMin && rawQty < minKgVal ? 'block' : 'none'; mw.textContent = '→ Dihitung ' + minKgVal + 'kg'; }
   const base = (getP()[type]?.[cat] || 0) * bq;
   let addTotal = 0; const addonLines = [];
   addons.forEach(a => {
     const ck = g(pre + '-ck-' + a.id);
     if (ck && ck.checked) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
   });
-  return { type, cat, rawQty, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat) };
+  return { type, cat, rawQty, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines: [] };
 }
 
 function doCalc(pre, hasDisc) {
   const res = calcBase(pre);
-  const { type, cat, bq, base, addTotal, addonLines, subtotal, actPromo } = res;
+  const { type, cat, bq, base, addTotal, addonLines, subtotal, actPromo, satuanLines } = res;
   let promoEnabled = true; const pc = g(pre + '-promo-chk'); if (pc) promoEnabled = pc.checked;
   let promoAmt = actPromo && promoEnabled ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
   const pb = g(pre + '-promo-box');
@@ -94,7 +155,13 @@ function doCalc(pre, hasDisc) {
   const total = Math.max(0, subtotal - promoAmt - discAmt);
   const pv = g(pre + '-preview');
   if (pv) {
-    let html = `<div class="sr"><span style="text-transform:capitalize">${type} ${cat} × ${bq}${getSvcUnit(type) || 'pcs'} × ${fmt(getP()[type]?.[cat] || 0)}</span><span>${fmt(base)}</span></div>`;
+    let html = '';
+    if (type === 'satuan') {
+      if (satuanLines?.length) { satuanLines.forEach(l => { html += `<div class="sr"><span>${l.name} × ${l.qty} pcs × ${fmt(l.unitPrice)}</span><span>${fmt(l.lineTotal)}</span></div>`; }); }
+      else { html = `<div class="sr" style="color:var(--t2)"><span>Pilih item satuan di atas</span><span>—</span></div>`; }
+    } else {
+      html = `<div class="sr"><span style="text-transform:capitalize">${getSvcById(type)?.name||type} ${cat} × ${bq}${getSvcUnit(type)||'pcs'} × ${fmt(getP()[type]?.[cat]||0)}</span><span>${fmt(base)}</span></div>`;
+    }
     addonLines.forEach(al => { html += `<div class="sr"><span>${al.n}</span><span>${fmt(al.v)}</span></div>`; });
     if (promoAmt > 0) html += `<div class="sr" style="color:var(--p)"><span>🎟️ ${actPromo.name}</span><span>- ${fmt(promoAmt)}</span></div>`;
     if (discAmt > 0)  html += `<div class="sr" style="color:var(--re)"><span>Diskon manual</span><span>- ${fmt(discAmt)}</span></div>`;
@@ -122,7 +189,7 @@ function buildOrder(pre) {
   const addOns = []; addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck && ck.checked) addOns.push({ id: a.id, name: a.name }); });
   const o = {
     id: genId(), name, phone, svcType: res.type, svcCat: res.cat,
-    qty: res.bq, rawQty: res.rawQty, addOns, addOnAmt: res.addTotal,
+    qty: res.bq, rawQty: res.rawQty, satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
     base: res.base, discType: res.discType, discAmt: res.discAmt,
     promoAmt: res.promoAmt, total: res.total,
     payMethod: g(pre + '-pm')?.value || 'Tunai',
@@ -144,6 +211,7 @@ function buildOrder(pre) {
   const dw = g(pre + '-dv-w');  if (dw) dw.style.display = 'none';
   const ps = g(pre + '-ps');    if (ps) ps.value = 'Belum Bayar';
   const dpg = g(pre + '-dp-g'); if (dpg) dpg.style.display = 'none';
+  if (res.type === 'satuan') satuanItems.forEach(item => { const el = g(pre + '-sat-' + item.id); if (el) el.value = '0'; });
   if (pre === 'no') calcO(); else calcS();
   return o;
 }
@@ -276,7 +344,7 @@ function showDetail(id) {
     <div class="rrow"><span style="color:var(--t2)">WA</span><span>${o.phone}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${go(o.outletId)?.name || '—'}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${o.svcType}·${o.svcCat}</span></div>
-    <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${minKg}kg)</span>` : ''}</span></div>
+    <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>
     <div class="rrow rb" style="border-top:1px dashed #ccc;padding-top:5px;margin-top:4px"><span>Total</span><span>${fmt(o.total)}</span></div>
   </div>
   ${o.status === 'Selesai' || o.status === 'Diambil' ? `<div style="padding:10px;background:${o.waSent ? 'var(--pl)' : 'var(--amb)'};border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:${o.waSent ? '#3d6b10' : 'var(--am)'}">${o.waSent ? '✓ Notif WA terkirim' : 'Notif WA belum dikirim'}</span>${!o.waSent ? `<button class="btn bp bsm bpill" onclick="cm('m-detail');openWaMod('${o.id}')">💬 Kirim WA</button>` : ''}</div>` : ''}

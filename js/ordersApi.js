@@ -9,6 +9,7 @@ function orderToRow(o) {
     id: o.id, name: o.name, phone: o.phone,
     svc_type: o.svcType, svc_cat: o.svcCat,
     qty: o.qty, raw_qty: o.rawQty,
+    satuan_lines: JSON.stringify(o.satuanLines || []),
     add_ons: JSON.stringify(o.addOns), add_on_amt: o.addOnAmt,
     base: o.base, disc_type: o.discType, disc_amt: o.discAmt,
     promo_amt: o.promoAmt, total: o.total,
@@ -24,6 +25,7 @@ function rowToOrder(r) {
     id: r.id, name: r.name, phone: r.phone,
     svcType: r.svc_type, svcCat: r.svc_cat,
     qty: r.qty, rawQty: r.raw_qty,
+    satuanLines: JSON.parse(r.satuan_lines || '[]'),
     addOns: JSON.parse(r.add_ons || '[]'), addOnAmt: r.add_on_amt,
     base: r.base, discType: r.disc_type, discAmt: r.disc_amt,
     promoAmt: r.promo_amt, total: r.total,
@@ -100,8 +102,9 @@ function syncSettings() {
     id: 'main',
     store_name: storeName, store_addr: storeAddr,
     store_wa: storeWa, store_footer: storeFooter,
-    owner_pwd: ownerPwd, min_kg: minKg,
+    owner_pwd: ownerPwd,
     service_types: JSON.stringify(serviceTypes),
+    satuan_items: JSON.stringify(satuanItems),
     addons: JSON.stringify(addons),
     promos: JSON.stringify(promos),
     wa_tpl_selesai: waTplSelesai,
@@ -135,8 +138,8 @@ async function supaLoadAll() {
     if (s.store_wa)      storeWa = s.store_wa;
     if (s.store_footer)  storeFooter = s.store_footer;
     if (s.owner_pwd)     ownerPwd = s.owner_pwd;
-    if (s.min_kg)        minKg = s.min_kg;
     if (s.service_types) serviceTypes = JSON.parse(s.service_types);
+    if (s.satuan_items)  satuanItems = JSON.parse(s.satuan_items);
     if (s.addons)        addons = JSON.parse(s.addons);
     if (s.promos)        promos = JSON.parse(s.promos);
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;

@@ -50,6 +50,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text'
 .nk:active{transform:scale(.93);background:var(--p);color:#fff;border-color:var(--p)}
 input,select,textarea{padding:12px 14px;border:2px solid var(--b1);border-radius:var(--rs);background:var(--ca);color:var(--t1);font-size:16px;font-family:inherit;width:100%;transition:border-color .15s;-webkit-appearance:none;appearance:none}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--p20)}
+input[type="checkbox"],input[type="radio"]{width:17px;height:17px;min-width:17px;padding:0;border:2px solid var(--b2);background:var(--ca);-webkit-appearance:none;appearance:none;border-radius:4px;cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s;vertical-align:middle;box-shadow:none}
+input[type="checkbox"]:checked,input[type="radio"]:checked{background:var(--p);border-color:var(--p)}
+input[type="checkbox"]:checked::after{content:'';display:block;width:4px;height:8px;border:2.5px solid #fff;border-top:none;border-left:none;transform:rotate(45deg);margin:1px 0 0 4px}
+input[type="radio"]{border-radius:50%}
+input[type="radio"]:checked::after{content:'';display:block;width:7px;height:7px;background:#fff;border-radius:50%;margin:3px}
+input[type="checkbox"]:focus,input[type="radio"]:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p20)}
 textarea{resize:vertical;line-height:1.6;font-size:15px}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6B65' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .lnk{text-align:center;font-size:13px;color:var(--t2);cursor:pointer;margin-top:14px;display:block;padding:8px}
@@ -353,7 +359,7 @@ tr:hover td{background:#FAFAF7}
   <div id="o-wa-alert"></div>
   <div class="g2">
     <div class="card"><div class="sh"><span class="ct" style="margin-bottom:0">Pesanan Terbaru</span><button class="btn bsm" onclick="oGo('orders',null)">Lihat semua</button></div><div id="o-recent"></div></div>
-    <div class="card"><div class="ct">Saldo Kas Saat Ini</div><div id="o-kas-saldo"></div></div>
+    <div class="card" style="display:flex;flex-direction:column"><div class="ct">Omset Bulan Ini</div><div id="o-kas-saldo" style="flex:1;display:flex;flex-direction:column"></div></div>
   </div>
   <div class="card"><div class="ct">Status Pesanan</div><div id="o-status-grid" class="g4" style="margin-bottom:0"></div></div>
 </div>
@@ -385,18 +391,24 @@ tr:hover td{background:#FAFAF7}
       </div>
       <div class="card"><div class="ct">Detail Layanan</div>
         <div class="g2">
-          <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="no-type" onchange="calcO()"></select></div>
-          <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="no-cat" onchange="calcO()"><option value="regular">Regular</option><option value="express">Express</option><option value="sameday">Same-day</option></select></div>
+          <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="no-type" onchange="typeChange('no')"></select></div>
+          <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="no-cat" onchange="catChange('no')"><option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option></select></div>
         </div>
         <div class="div_"></div>
-        <div class="g2">
-          <div class="fg" style="margin-bottom:0"><label id="no-qty-lbl">Berat (kg) <span id="no-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
-            <input type="number" id="no-qty" value="1" min="0.5" step="0.5" oninput="calcO()">
-            <div id="no-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
+        <div id="no-satuan-sect" style="display:none">
+          <div id="no-satuan-items"></div>
+          <div class="div_"></div>
+        </div>
+        <div id="no-kg-sect">
+          <div class="g2">
+            <div class="fg" style="margin-bottom:0"><label id="no-qty-lbl">Berat (kg) <span id="no-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
+              <input type="number" id="no-qty" value="1" min="0.5" step="0.5" oninput="calcO()">
+              <div id="no-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
+            </div>
+            <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="no-est" readonly style="color:var(--t2)"></div>
           </div>
-          <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="no-est" readonly style="color:var(--t2)"></div>
+          <div class="div_"></div>
         </div>
-        <div class="div_"></div>
         <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Layanan Tambahan</div>
         <div id="no-addons" class="g2"></div>
       </div>
@@ -558,23 +570,15 @@ tr:hover td{background:#FAFAF7}
 <!-- PRICING -->
 <div class="page" id="o-p-pricing">
   <div class="pt">Harga &amp; Layanan</div>
-  <div class="card" style="border:2px solid var(--am)">
-    <div class="ct" style="margin-bottom:6px">⚖️ Berat Minimum Kiloan</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Berlaku untuk Kiloan Regular &amp; Same-day. Bawaan kurang dari batas ini tetap dihitung sesuai minimum.</div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:8px">
-        <input type="number" id="min-kg-input" value="3" min="0.5" max="20" step="0.5" style="width:80px;font-size:16px;font-weight:700;text-align:center">
-        <span style="font-size:14px;font-weight:600">kg</span>
-      </div>
-      <button class="btn bp bpill" onclick="saveMinKg()">Simpan</button>
-      <span id="min-kg-saved" style="font-size:12px;color:var(--p);display:none">✓ Tersimpan</span>
-    </div>
-    <div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--t2)" id="min-kg-preview">Contoh: pelanggan bawa <strong>1.5 kg</strong> → dihitung <strong>3 kg</strong></div>
+  <div class="card">
+    <div class="sh"><div class="ct" style="margin-bottom:0">Layanan Kiloan</div><button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan</button></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Harga per kg · Regular → Same-day → Express. Min. berat per layanan dapat diatur di bawah tiap baris.</div>
+    <div id="svc-type-list"></div>
   </div>
   <div class="card">
-    <div class="sh"><div class="ct" style="margin-bottom:0">Harga Dasar (per qty/unit)</div><button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan</button></div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Tambah, edit, atau hapus jenis layanan. Harga per Regular / Express / Same-day.</div>
-    <div id="svc-type-list"></div>
+    <div class="sh"><div class="ct" style="margin-bottom:0">Item Satuan</div><button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Item</button></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Item per pcs · pilih beberapa item sekaligus saat buat pesanan. Harga Regular → Same-day → Express.</div>
+    <div id="satuan-items-list"></div>
   </div>
   <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Layanan Tambahan</div><button class="btn bp bsm" onclick="openAddAddon()">+ Tambah</button></div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Otomatis muncul di form Buat Pesanan</div>
@@ -677,18 +681,24 @@ tr:hover td{background:#FAFAF7}
         </div>
         <div class="card"><div class="ct">Detail Layanan</div>
           <div class="g2">
-            <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="sno-type" onchange="calcS()"></select></div>
-            <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="sno-cat" onchange="calcS()"><option value="regular">Regular</option><option value="express">Express</option><option value="sameday">Same-day</option></select></div>
+            <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="sno-type" onchange="typeChange('sno')"></select></div>
+            <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="sno-cat" onchange="catChange('sno')"><option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option></select></div>
           </div>
           <div class="div_"></div>
-          <div class="g2">
-            <div class="fg" style="margin-bottom:0"><label id="sno-qty-lbl">Berat (kg) <span id="sno-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
-              <input type="number" id="sno-qty" value="1" min="0.5" step="0.5" oninput="calcS()">
-              <div id="sno-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
+          <div id="sno-satuan-sect" style="display:none">
+            <div id="sno-satuan-items"></div>
+            <div class="div_"></div>
+          </div>
+          <div id="sno-kg-sect">
+            <div class="g2">
+              <div class="fg" style="margin-bottom:0"><label id="sno-qty-lbl">Berat (kg) <span id="sno-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
+                <input type="number" id="sno-qty" value="1" min="0.5" step="0.5" oninput="calcS()">
+                <div id="sno-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
+              </div>
+              <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="sno-est" readonly style="color:var(--t2)"></div>
             </div>
-            <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="sno-est" readonly style="color:var(--t2)"></div>
+            <div class="div_"></div>
           </div>
-          <div class="div_"></div>
           <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Layanan Tambahan</div>
           <div id="sno-addons" class="g2"></div>
         </div>
@@ -818,11 +828,23 @@ tr:hover td{background:#FAFAF7}
     <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Kategori</div>
     <div class="g3">
       <div class="fg" style="margin-bottom:0"><label>Regular</label><input type="number" id="msvc-r" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msvc-sd" placeholder="0" min="0"></div>
       <div class="fg" style="margin-bottom:0"><label>Express</label><input type="number" id="msvc-e" placeholder="0" min="0"></div>
-      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msvc-s" placeholder="0" min="0"></div>
     </div>
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-svc')">Batal</button><button class="btn bp" onclick="saveSvc()">Simpan</button></div>
+</div></div>
+<div class="mbg" id="m-satuan-item"><div class="mbox"><div class="mhd"><span class="mht" id="m-sat-title">Tambah Item Satuan</span><button class="xb" onclick="cm('m-satuan-item')">×</button></div>
+  <div class="mbd">
+    <div class="fg"><label>Nama Item *</label><input id="msat-name" placeholder="Contoh: Bed Cover"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Kategori (per pcs)</div>
+    <div class="g3">
+      <div class="fg" style="margin-bottom:0"><label>Regular</label><input type="number" id="msat-r" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msat-sd" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Express</label><input type="number" id="msat-e" placeholder="0" min="0"></div>
+    </div>
+  </div>
+  <div class="mft"><button class="btn" onclick="cm('m-satuan-item')">Batal</button><button class="btn bp" onclick="saveSatuanItem()">Simpan</button></div>
 </div></div>
 <!-- Reset Owner Password Modal -->
 <div class="mbg" id="m-reset-owner-pwd"><div class="mbox" style="max-width:360px">
