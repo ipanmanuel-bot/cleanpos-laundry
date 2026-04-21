@@ -72,7 +72,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ni:hover{background:var(--dk3);color:#ccc}
 .ni.on{background:var(--p20);color:var(--p);font-weight:600}
 .plan-locked .ni:not([onclick*="settings"]){opacity:.35;pointer-events:none}
-.ni .nic{font-size:16px;width:22px;flex-shrink:0}
+.ni .nic{width:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.nic svg{width:17px;height:17px;stroke-width:1.75;display:block}
 .sb-bot{padding:8px;border-top:1px solid var(--dk3)}
 .back-sb{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:12px;color:#555;border:none;background:none;width:100%;font-family:inherit;min-height:40px}
 .back-sb:hover{color:#999}
@@ -83,7 +84,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dk);z-index:50;padding-bottom:env(safe-area-inset-bottom,4px)}
 .bnav-inner{display:flex;align-items:flex-end;justify-content:space-around;padding:6px 8px 2px}
 .bni{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 8px;font-size:10px;color:#555;min-width:52px;border:none;background:none;font-family:inherit;transition:color .15s}
-.bni.on{color:var(--p)}.bni .bn-ic{font-size:22px;line-height:1}
+.bni.on{color:var(--p)}.bni .bn-ic{display:flex;align-items:center;justify-content:center;height:26px}
+.bn-ic svg{width:22px;height:22px;stroke-width:1.75;display:block}
 .bfab{width:56px;height:56px;border-radius:50%;background:var(--p);border:3px solid var(--dk);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;transform:translateY(-12px);box-shadow:0 4px 20px rgba(141,196,64,.5);flex-shrink:0;color:#fff;transition:all .2s}
 .bfab:hover{background:var(--pd)}.bfab:active{transform:translateY(-12px) scale(.92)}
 .hbg{display:none;position:fixed;top:12px;right:14px;z-index:40;width:44px;height:44px;border-radius:12px;background:var(--dk);border:none;cursor:pointer;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:var(--sh2)}
@@ -94,7 +96,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .more-bg.on .more-sheet{transform:translateX(0)}
 .mi{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;color:rgba(255,255,255,.9);font-size:14px;font-weight:500;width:100%;border:none;background:none;font-family:inherit;text-align:left;min-height:52px;transition:background .12s}
 .mi:hover,.mi:active{background:rgba(255,255,255,.15)}
-.mic{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+.mic{flex-shrink:0;width:24px;display:flex;align-items:center;justify-content:center}
+.mic svg{width:18px;height:18px;stroke-width:1.75;display:block}
+.logo-ic svg{width:36px;height:36px;stroke-width:1.5;display:block;color:#fff}
+.role-ic svg{width:28px;height:28px;stroke-width:1.5;display:block}
+#plan-badge-emoji svg{width:20px;height:20px;stroke-width:1.75;display:block}
 .page{display:none}.page.on{display:block}
 .card{background:var(--ca);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
 .ct{font-weight:700;font-size:14px;margin-bottom:12px}
@@ -234,7 +240,7 @@ tr:hover td{background:#FAFAF7}
   <div class="lbox" style="max-width:440px">
     <div class="logo-wrap">
       <div class="logo-ic"><img src="img/icon.png" style="width:56px;height:56px;object-fit:contain;border-radius:10px"></div>
-      <div class="logo-name">Selamat Datang! 👋</div>
+      <div class="logo-name">Selamat Datang!</div>
       <div class="logo-sub">Lengkapi info toko kamu sebelum mulai</div>
     </div>
     <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Info Toko</div>
@@ -246,7 +252,7 @@ tr:hover td{background:#FAFAF7}
       <label>Password Baru *</label>
       <div style="position:relative">
         <input type="password" id="setup-pwd" placeholder="Min. 4 karakter" onkeydown="if(event.key==='Enter')g('setup-pwd-confirm').focus()">
-        <button onclick="togglePwd('setup-pwd',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--t2);padding:4px">👁</button>
+        <button onclick="togglePwd('setup-pwd',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--t2);padding:4px;display:flex;align-items:center"><i data-lucide="eye" style="width:18px;height:18px;stroke-width:2;display:block"></i></button>
       </div>
     </div>
     <div class="fg">
@@ -270,12 +276,12 @@ tr:hover td{background:#FAFAF7}
       </div>
     </div>
     <button class="role-btn" onclick="goOwnerPwd()">
-      <div class="role-ic" style="background:#1A1A1A">👑</div>
+      <div class="role-ic" style="background:#1A1A1A;color:#fff"><i data-lucide="crown" style="width:26px;height:26px;stroke-width:1.5;display:block;color:#fff"></i></div>
       <div style="flex:1"><div style="font-weight:700;font-size:16px">Owner / Admin</div><div style="font-size:12px;color:var(--t2);margin-top:3px">Akses penuh ke semua fitur</div></div>
       <span style="color:var(--t3);font-size:22px">›</span>
     </button>
     <button class="role-btn" onclick="goOutletSelect()">
-      <div class="role-ic" style="background:var(--pl)">👤</div>
+      <div class="role-ic" style="background:var(--pl);color:var(--p)"><i data-lucide="users" style="width:26px;height:26px;stroke-width:1.5;display:block;color:var(--p)"></i></div>
       <div style="flex:1"><div style="font-weight:700;font-size:16px">Karyawan</div><div style="font-size:12px;color:var(--t2);margin-top:3px">Akses operasional harian</div></div>
       <span style="color:var(--t3);font-size:22px">›</span>
     </button>
@@ -283,13 +289,13 @@ tr:hover td{background:#FAFAF7}
 </div>
 <div id="scr-opwd" class="scr">
   <div class="lbox">
-    <div class="logo-wrap"><div class="logo-ic" style="background:#1A1A1A">🔒</div><div class="logo-name">Login Owner</div><div class="logo-sub">Masukkan password untuk lanjut</div></div>
+    <div class="logo-wrap"><div class="logo-ic" style="background:#1A1A1A"><i data-lucide="lock" style="width:36px;height:36px;stroke-width:1.5;display:block;color:#fff"></i></div><div class="logo-name">Login Owner</div><div class="logo-sub">Masukkan password untuk lanjut</div></div>
     <div class="fg"><label>Password</label>
       <div style="position:relative"><input type="password" id="opwd-in" placeholder="••••••••" onkeydown="if(event.key==='Enter')doOwnerLogin()">
-        <button onclick="togglePwd('opwd-in',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--t2);padding:4px">👁</button>
+        <button onclick="togglePwd('opwd-in',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--t2);padding:4px;display:flex;align-items:center"><i data-lucide="eye" style="width:18px;height:18px;stroke-width:2;display:block"></i></button>
       </div>
     </div>
-    <div id="opwd-err" style="font-size:12px;color:var(--re);display:none;margin-bottom:10px;text-align:center">⚠️ Password salah. Coba lagi.</div>
+    <div id="opwd-err" style="font-size:12px;color:var(--re);display:none;margin-bottom:10px;text-align:center">Password salah. Coba lagi.</div>
     <button class="btn bp bfull bpill" onclick="doOwnerLogin()">Masuk sebagai Owner</button>
     <a class="lnk" onclick="showScr('scr-login')">← Kembali ke pilihan login</a>
     <div style="text-align:center;margin-top:8px">
@@ -299,21 +305,21 @@ tr:hover td{background:#FAFAF7}
 </div>
 <div id="scr-outlet" class="scr">
   <div class="lbox">
-    <div class="logo-wrap"><div class="logo-ic">🏪</div><div class="logo-name">Pilih Outlet</div><div class="logo-sub">Kamu bekerja di outlet mana hari ini?</div></div>
+    <div class="logo-wrap"><div class="logo-ic"><i data-lucide="store" style="width:36px;height:36px;stroke-width:1.5;display:block;color:#fff"></i></div><div class="logo-name">Pilih Outlet</div><div class="logo-sub">Kamu bekerja di outlet mana hari ini?</div></div>
     <div id="outlet-btns"></div>
     <a class="lnk" onclick="showScr('scr-login')">← Kembali</a>
   </div>
 </div>
 <div id="scr-staff" class="scr">
   <div class="lbox">
-    <div class="logo-wrap"><div class="logo-ic">👤</div><div class="logo-name" id="staff-outlet-name">Pilih Nama</div><div class="logo-sub" id="staff-outlet-sub">Pilih namamu untuk lanjut</div></div>
+    <div class="logo-wrap"><div class="logo-ic"><i data-lucide="user" style="width:36px;height:36px;stroke-width:1.5;display:block;color:#fff"></i></div><div class="logo-name" id="staff-outlet-name">Pilih Nama</div><div class="logo-sub" id="staff-outlet-sub">Pilih namamu untuk lanjut</div></div>
     <div id="staff-btns"></div>
     <a class="lnk" onclick="goOutletSelect()">← Pilih outlet lain</a>
   </div>
 </div>
 <div id="scr-pin" class="scr">
   <div class="lbox">
-    <div class="logo-wrap"><div class="logo-ic">🔐</div><div class="logo-name" id="pin-name">Masukkan PIN</div><div class="logo-sub" id="pin-sub">PIN 4 digit kamu</div></div>
+    <div class="logo-wrap"><div class="logo-ic"><i data-lucide="fingerprint" style="width:36px;height:36px;stroke-width:1.5;display:block;color:#fff"></i></div><div class="logo-name" id="pin-name">Masukkan PIN</div><div class="logo-sub" id="pin-sub">PIN 4 digit kamu</div></div>
     <div class="pdots" id="pdots"><div class="pd" id="pd0"></div><div class="pd" id="pd1"></div><div class="pd" id="pd2"></div><div class="pd" id="pd3"></div></div>
     <div class="numpad">
       <div class="nk" onclick="kp('1')">1</div><div class="nk" onclick="kp('2')">2</div><div class="nk" onclick="kp('3')">3</div>
@@ -327,27 +333,27 @@ tr:hover td{background:#FAFAF7}
 </div>
 <!-- OWNER APP -->
 <div id="owner-app" class="app">
-<button class="hbg" onclick="showMore()" title="Menu Lainnya">☰</button>
+<button class="hbg" onclick="showMore()" title="Menu Lainnya"><i data-lucide="menu" style="width:22px;height:22px;stroke-width:2"></i></button>
 <nav class="sbnav">
-  <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr">👑 Owner Dashboard</div></div>
+  <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr" style="display:flex;align-items:center;gap:5px"><i data-lucide="crown" style="width:11px;height:11px;stroke-width:2;flex-shrink:0;display:block;opacity:.7"></i>Owner Dashboard</div></div>
   <div class="fab-sb"><button class="fab" onclick="oGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="o-nav">
     <div class="sb-sec">Utama</div>
-    <button class="ni on" onclick="oGo('dashboard',this)"><span class="nic">🏠</span>Dashboard</button>
-    <button class="ni" onclick="oGo('orders',this)"><span class="nic">📋</span>Pesanan</button>
-    <button class="ni" onclick="oGo('tracking',this)"><span class="nic">🔄</span>Tracking</button>
-    <button class="ni" onclick="oGo('wa',this)"><span class="nic">💬</span>WA Notifikasi</button>
+    <button class="ni on" onclick="oGo('dashboard',this)"><span class="nic"><i data-lucide="home"></i></span>Dashboard</button>
+    <button class="ni" onclick="oGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
+    <button class="ni" onclick="oGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="ni" onclick="oGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
     <div class="sb-sec">Keuangan</div>
-    <button class="ni" onclick="oGo('kas',this)"><span class="nic">💵</span>Kas Kasir</button>
-    <button class="ni" onclick="oGo('expenses',this)"><span class="nic">📌</span>Pengeluaran</button>
-    <button class="ni" onclick="oGo('reports',this)"><span class="nic">📊</span>Laporan</button>
+    <button class="ni" onclick="oGo('kas',this)"><span class="nic"><i data-lucide="wallet"></i></span>Kas Kasir</button>
+    <button class="ni" onclick="oGo('expenses',this)"><span class="nic"><i data-lucide="receipt"></i></span>Pengeluaran</button>
+    <button class="ni" onclick="oGo('reports',this)"><span class="nic"><i data-lucide="bar-chart-2"></i></span>Laporan</button>
     <div class="sb-sec">Manajemen</div>
-    <button class="ni" onclick="oGo('employees',this)"><span class="nic">👥</span>Karyawan</button>
-    <button class="ni" onclick="oGo('outlets',this)"><span class="nic">🏪</span>Outlet</button>
-    <button class="ni" onclick="oGo('customers',this)"><span class="nic">🙍</span>Pelanggan</button>
-    <button class="ni" onclick="oGo('pricing',this)"><span class="nic">💰</span>Harga</button>
-    <button class="ni" onclick="oGo('promo',this)"><span class="nic">🎟️</span>Promo</button>
-    <button class="ni" onclick="oGo('settings',this)"><span class="nic">⚙️</span>Pengaturan</button>
+    <button class="ni" onclick="oGo('employees',this)"><span class="nic"><i data-lucide="users"></i></span>Karyawan</button>
+    <button class="ni" onclick="oGo('outlets',this)"><span class="nic"><i data-lucide="store"></i></span>Outlet</button>
+    <button class="ni" onclick="oGo('customers',this)"><span class="nic"><i data-lucide="user"></i></span>Pelanggan</button>
+    <button class="ni" onclick="oGo('pricing',this)"><span class="nic"><i data-lucide="tag"></i></span>Harga</button>
+    <button class="ni" onclick="oGo('promo',this)"><span class="nic"><i data-lucide="percent"></i></span>Promo</button>
+    <button class="ni" onclick="oGo('settings',this)"><span class="nic"><i data-lucide="settings"></i></span>Pengaturan</button>
   </div>
   <div class="sb-bot">
     <div id="plan-badge" onclick="showUpgradeModal()" style="margin:0 8px 6px;background:rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
@@ -468,20 +474,20 @@ tr:hover td{background:#FAFAF7}
 <!-- WA -->
 <div class="page" id="o-p-wa">
   <div class="pt">WA Notifikasi</div>
-  <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10">💬 Variabel: <code style="background:#fff;padding:1px 5px;border-radius:4px">{nama}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{id}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{total}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{layanan}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{est}</code></div></div>
+  <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10;display:flex;align-items:flex-start;gap:6px"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;flex-shrink:0;margin-top:1px;display:block"></i><span>Variabel: <code style="background:#fff;padding:1px 5px;border-radius:4px">{nama}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{id}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{total}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{layanan}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{est}</code></span></div></div>
 
   <div class="card">
     <div class="chips" id="wa-tpl-tabs">
-      <span class="chip on" onclick="switchWaTplTab('selesai',this)">✅ Pesanan Selesai</span>
-      <span class="chip" onclick="switchWaTplTab('tagih_dp',this)">💰 Tagih DP</span>
-      <span class="chip" onclick="switchWaTplTab('tagih_lunas',this)">💳 Tagih Lunas</span>
-      <span class="chip" onclick="switchWaTplTab('konfirmasi',this)">📋 Konfirmasi Terima</span>
+      <span class="chip on" onclick="switchWaTplTab('selesai',this)"><i data-lucide="check-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Pesanan Selesai</span>
+      <span class="chip" onclick="switchWaTplTab('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih DP</span>
+      <span class="chip" onclick="switchWaTplTab('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span>
+      <span class="chip" onclick="switchWaTplTab('konfirmasi',this)"><i data-lucide="clipboard-check" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span>
     </div>
     <div style="font-size:11px;color:var(--am);background:var(--amb);border-radius:8px;padding:8px 10px;margin-bottom:10px" id="wa-tpl-hint">Dikirim otomatis saat status pesanan berubah ke Selesai</div>
     <textarea id="wa-tpl" rows="6" style="font-size:13px;line-height:1.6" oninput="prevTpl()"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
       <div style="font-size:12px;color:var(--t2);font-weight:600">Preview:</div>
-      <button class="btn bp bsm bpill" onclick="saveTpl()">💾 Simpan Template</button>
+      <button class="btn bp bsm bpill" onclick="saveTpl()"><i data-lucide="save" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Simpan Template</button>
     </div>
     <div class="wa-bg" style="margin-top:8px"><div class="wa-bbl" id="wa-prev"></div></div>
   </div>
@@ -496,8 +502,8 @@ tr:hover td{background:#FAFAF7}
   <div class="chips" id="kas-outlet-chips"></div>
   <div id="kas-metrics" class="g2" style="margin-bottom:12px"></div>
   <div class="g2" style="margin-bottom:12px">
-    <button class="btn bfull bpill" style="border-color:var(--p);color:var(--p);font-weight:700;font-size:14px;padding:16px" onclick="openKas('setor')">➕ Setor Modal</button>
-    <button class="btn bfull bpill" style="border-color:var(--re);color:var(--re);font-weight:700;font-size:14px;padding:16px" onclick="openKas('tarik')">➖ Tarik Kas</button>
+    <button class="btn bfull bpill" style="border-color:var(--p);color:var(--p);font-weight:700;font-size:14px;padding:16px" onclick="openKas('setor')"><i data-lucide="plus-circle" style="width:16px;height:16px;stroke-width:2;vertical-align:-3px;display:inline;margin-right:6px"></i>Setor Modal</button>
+    <button class="btn bfull bpill" style="border-color:var(--re);color:var(--re);font-weight:700;font-size:14px;padding:16px" onclick="openKas('tarik')"><i data-lucide="minus-circle" style="width:16px;height:16px;stroke-width:2;vertical-align:-3px;display:inline;margin-right:6px"></i>Tarik Kas</button>
   </div>
   <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Riwayat Kas</div>
     <select id="kas-filter" onchange="renderKas()" style="width:110px;padding:6px 8px;font-size:12px"><option value="all">Semua</option><option value="modal">Setor</option><option value="in">Cash Masuk</option><option value="out">Tarik</option></select>
@@ -521,7 +527,7 @@ tr:hover td{background:#FAFAF7}
         <div class="fg" style="margin-bottom:0"><label>Tanggal</label><input type="date" id="ex-date"></div>
       </div>
       <div class="fg" style="margin-top:10px"><label>Sumber Dana</label>
-        <select id="ex-src" onchange="exSrcChg()"><option value="cash">💵 Cash (Kas Kasir)</option><option value="transfer">🏦 Transfer Bank</option></select>
+        <select id="ex-src" onchange="exSrcChg()"><option value="cash">Cash (Kas Kasir)</option><option value="transfer">Transfer Bank</option></select>
       </div>
       <div id="ex-kas-w" style="display:none;font-size:12px;border-radius:10px;padding:8px 10px;margin-bottom:10px"></div>
       <div class="fg" style="margin-bottom:0"><label>Catatan (Opsional)</label><input id="ex-note" placeholder="Keterangan tambahan..."></div>
@@ -536,7 +542,7 @@ tr:hover td{background:#FAFAF7}
 
 <!-- REPORTS -->
 <div class="page" id="o-p-reports">
-  <div class="sh"><div class="pt" style="margin-bottom:0">Laporan</div><button class="btn bbl bsm" onclick="exportReport()">📥 Export Excel</button></div>
+  <div class="sh"><div class="pt" style="margin-bottom:0">Laporan</div><button class="btn bbl bsm" onclick="exportReport()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export Excel</button></div>
   <div class="chips" id="rpt-outlet-chips"></div>
   <div class="chips" id="rpt-chips">
     <span class="chip on" onclick="setRpt('today',this)">Hari Ini</span>
@@ -551,7 +557,7 @@ tr:hover td{background:#FAFAF7}
     <label style="font-size:12px;color:var(--t2)">s/d:</label><input type="date" id="rpt-to" style="width:150px;flex:none" onchange="renderReports()">
   </div>
   <div class="g4" id="rpt-metrics" style="margin-bottom:12px"></div>
-  <div class="card"><div class="ct">📊 Pemasukan vs Pengeluaran</div><div id="rpt-exp"></div></div>
+  <div class="card"><div class="ct"><i data-lucide="bar-chart-2" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pemasukan vs Pengeluaran</div><div id="rpt-exp"></div></div>
   <div class="g2">
     <div class="card"><div class="ct">Breakdown Pembayaran</div><div id="rpt-pay"></div></div>
     <div class="card"><div class="ct">Layanan Terpopuler</div><div id="rpt-svc"></div></div>
@@ -575,7 +581,7 @@ tr:hover td{background:#FAFAF7}
 
 <!-- CUSTOMERS -->
 <div class="page" id="o-p-customers">
-  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><button class="btn bbl bsm" onclick="exportCustomers()">📥 Export</button></div>
+  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div>
   <div class="card">
     <input id="cust-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderCusts()">
     <div class="tw"><table><thead><tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th>Terakhir</th></tr></thead><tbody id="cust-tb"></tbody></table></div>
@@ -613,7 +619,7 @@ tr:hover td{background:#FAFAF7}
   <div class="pt">Pengaturan</div>
   <div id="settings-sub-card" style="margin-bottom:14px"></div>
   <div class="g2 og">
-    <div class="card"><div class="ct">🔑 Ubah Password Owner</div>
+    <div class="card"><div class="ct"><i data-lucide="key-round" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Ubah Password Owner</div>
       <div class="fg"><label>Password Saat Ini</label><input type="password" id="s-cur" placeholder="••••••••"></div>
       <div class="fg"><label>Password Baru</label><input type="password" id="s-new" placeholder="••••••••"></div>
       <div class="fg" style="margin-bottom:0"><label>Konfirmasi Baru</label><input type="password" id="s-cfm" placeholder="••••••••"></div>
@@ -621,7 +627,7 @@ tr:hover td{background:#FAFAF7}
       <div class="div_"></div>
       <button class="btn bp bfull bpill" onclick="changePwd()">Simpan Password</button>
     </div>
-    <div class="card"><div class="ct">🏪 Info Toko</div>
+    <div class="card"><div class="ct"><i data-lucide="store" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Info Toko</div>
       <div class="fg"><label>Nama Toko</label><input id="s-store" value="CleanPOS Laundry"></div>
       <div class="fg"><label>Alamat</label><input id="s-addr" placeholder="Alamat lengkap..."></div>
       <div class="fg"><label>WA Toko</label><input id="s-wa" placeholder="08xx-xxxx-xxxx"></div>
@@ -632,7 +638,7 @@ tr:hover td{background:#FAFAF7}
     </div>
   </div>
   <div class="card" id="printer-card">
-    <div class="sh"><div><div class="ct" style="margin-bottom:0">🖨️ Pengaturan Printer</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Struk (80mm) · Label (58mm) · Bluetooth / USB / LAN</div></div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>
+    <div class="sh"><div><div class="ct" style="margin-bottom:0"><i data-lucide="printer" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Printer</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Struk (80mm) · Label (58mm) · Bluetooth / USB / LAN</div></div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>
     <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
     <div id="printer-list"></div>
   </div>
@@ -641,11 +647,11 @@ tr:hover td{background:#FAFAF7}
 </div><!-- end o-mc -->
 <nav class="bnav">
   <div class="bnav-inner">
-    <button class="bni on" onclick="oGoB('dashboard',this)"><span class="bn-ic">🏠</span>Beranda</button>
-    <button class="bni" onclick="oGoB('orders',this)"><span class="bn-ic">📋</span>Pesanan</button>
+    <button class="bni on" onclick="oGoB('dashboard',this)"><span class="bn-ic"><i data-lucide="home"></i></span>Beranda</button>
+    <button class="bni" onclick="oGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="oGo('new-order',null)">+</div>
-    <button class="bni" onclick="oGoB('tracking',this)"><span class="bn-ic">🔄</span>Tracking</button>
-    <button class="bni" onclick="oGoB('reports',this)"><span class="bn-ic">📊</span>Laporan</button>
+    <button class="bni" onclick="oGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="bni" onclick="oGoB('reports',this)"><span class="bn-ic"><i data-lucide="bar-chart-2"></i></span>Laporan</button>
   </div>
 </nav>
 </div><!-- end owner-app -->
@@ -656,10 +662,10 @@ tr:hover td{background:#FAFAF7}
   <div class="fab-sb"><button class="fab" onclick="sGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="s-nav">
     <div class="sb-sec">Operasional</div>
-    <button class="ni on" onclick="sGo('dashboard',this)"><span class="nic">🏠</span>Beranda</button>
-    <button class="ni" onclick="sGo('orders',this)"><span class="nic">📋</span>Pesanan</button>
-    <button class="ni" onclick="sGo('tracking',this)"><span class="nic">🔄</span>Tracking</button>
-    <button class="ni" onclick="sGo('wa',this)"><span class="nic">💬</span>WA Notifikasi</button>
+    <button class="ni on" onclick="sGo('dashboard',this)"><span class="nic"><i data-lucide="home"></i></span>Beranda</button>
+    <button class="ni" onclick="sGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
+    <button class="ni" onclick="sGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="ni" onclick="sGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
 </nav>
@@ -667,7 +673,7 @@ tr:hover td{background:#FAFAF7}
   <div class="page on" id="s-p-dashboard">
     <div class="pt">Beranda</div>
     <div id="s-welcome" style="background:var(--dk);color:#fff;border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:12px">
-      <div style="font-size:28px">👋</div>
+      <div style="width:44px;height:44px;background:rgba(255,255,255,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="sun" style="width:22px;height:22px;stroke-width:1.5;display:block;color:#fff"></i></div>
       <div style="flex:1"><div style="font-weight:700;font-size:15px" id="s-greet">Selamat datang!</div><div style="font-size:12px;color:#888;margin-top:3px" id="s-clk-st">Belum clock in</div></div>
       <div id="s-clk-btns"></div>
     </div>
@@ -743,18 +749,18 @@ tr:hover td{background:#FAFAF7}
   </div>
   <div class="page" id="s-p-wa">
     <div class="pt">WA Notifikasi</div>
-    <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10">💬 Klik tombol WA → WhatsApp terbuka → Pesan terisi otomatis → Tekan Send</div></div>
+    <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10;display:flex;align-items:center;gap:6px"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;flex-shrink:0;display:block"></i>Klik tombol WA → WhatsApp terbuka → Pesan terisi otomatis → Tekan Send</div></div>
     <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="s-wa-pend-cnt" class="badge gam">0</span></div><div id="s-wa-pend-list"></div></div>
     <div class="card"><div class="ct">Riwayat</div><div id="s-wa-log"></div></div>
   </div>
 </div>
 <nav class="bnav">
   <div class="bnav-inner">
-    <button class="bni on" onclick="sGoB('dashboard',this)"><span class="bn-ic">🏠</span>Beranda</button>
-    <button class="bni" onclick="sGoB('orders',this)"><span class="bn-ic">📋</span>Pesanan</button>
+    <button class="bni on" onclick="sGoB('dashboard',this)"><span class="bn-ic"><i data-lucide="home"></i></span>Beranda</button>
+    <button class="bni" onclick="sGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="sGo('new-order',null)">+</div>
-    <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic">🔄</span>Tracking</button>
-    <button class="bni" onclick="sGoB('wa',this)"><span class="bn-ic">💬</span>WA</button>
+    <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="bni" onclick="sGoB('wa',this)"><span class="bn-ic"><i data-lucide="message-circle"></i></span>WA</button>
   </div>
 </nav>
 </div><!-- end staff-app -->
@@ -768,17 +774,17 @@ tr:hover td{background:#FAFAF7}
     </div>
     <div style="flex:1;padding:8px 0;overflow-y:auto">
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;padding:10px 18px 4px">Utama</div>
-      <button class="mi" onclick="mMore('wa')"><span class="mic">💬</span>WA Notifikasi</button>
+      <button class="mi" onclick="mMore('wa')"><span class="mic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;padding:14px 18px 4px">Keuangan</div>
-      <button class="mi" onclick="mMore('kas')"><span class="mic">💵</span>Kas Kasir</button>
-      <button class="mi" onclick="mMore('expenses')"><span class="mic">📌</span>Pengeluaran</button>
+      <button class="mi" onclick="mMore('kas')"><span class="mic"><i data-lucide="wallet"></i></span>Kas Kasir</button>
+      <button class="mi" onclick="mMore('expenses')"><span class="mic"><i data-lucide="receipt"></i></span>Pengeluaran</button>
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;padding:14px 18px 4px">Manajemen</div>
-      <button class="mi" onclick="mMore('employees')"><span class="mic">👥</span>Karyawan</button>
-      <button class="mi" onclick="mMore('outlets')"><span class="mic">🏪</span>Outlet</button>
-      <button class="mi" onclick="mMore('customers')"><span class="mic">🙍</span>Pelanggan</button>
-      <button class="mi" onclick="mMore('pricing')"><span class="mic">💰</span>Harga</button>
-      <button class="mi" onclick="mMore('promo')"><span class="mic">🎟️</span>Promo</button>
-      <button class="mi" onclick="mMore('settings')"><span class="mic">⚙️</span>Pengaturan</button>
+      <button class="mi" onclick="mMore('employees')"><span class="mic"><i data-lucide="users"></i></span>Karyawan</button>
+      <button class="mi" onclick="mMore('outlets')"><span class="mic"><i data-lucide="store"></i></span>Outlet</button>
+      <button class="mi" onclick="mMore('customers')"><span class="mic"><i data-lucide="user"></i></span>Pelanggan</button>
+      <button class="mi" onclick="mMore('pricing')"><span class="mic"><i data-lucide="tag"></i></span>Harga</button>
+      <button class="mi" onclick="mMore('promo')"><span class="mic"><i data-lucide="percent"></i></span>Promo</button>
+      <button class="mi" onclick="mMore('settings')"><span class="mic"><i data-lucide="settings"></i></span>Pengaturan</button>
     </div>
     <div style="padding:12px 8px;border-top:1px solid rgba(255,255,255,.2)">
       <button class="mi" style="color:rgba(255,255,255,.55)" onclick="confirmBack()"><span class="mic">←</span>Menu Awal</button>
@@ -786,10 +792,10 @@ tr:hover td{background:#FAFAF7}
   </div>
 </div>
 <!-- MODALS -->
-<div class="mbg" id="m-rcpt"><div class="mbox"><div class="mhd"><span class="mht">🧾 Struk Pesanan</span><button class="xb" onclick="cm('m-rcpt')">×</button></div><div class="mbd" id="m-rcpt-body"></div><div class="mft"><button class="btn" onclick="cm('m-rcpt')">Tutup</button><button class="btn bbl bsm" onclick="printCurrentLabel()">🏷️ Cetak Label</button><button class="btn bp bsm" onclick="printCurrentReceipt()">🧾 Cetak Struk</button></div></div></div>
+<div class="mbg" id="m-rcpt"><div class="mbox"><div class="mhd"><span class="mht"><i data-lucide="receipt" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Struk Pesanan</span><button class="xb" onclick="cm('m-rcpt')">×</button></div><div class="mbd" id="m-rcpt-body"></div><div class="mft"><button class="btn" onclick="cm('m-rcpt')">Tutup</button><button class="btn bbl bsm" onclick="printCurrentLabel()"><i data-lucide="tag" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Cetak Label</button><button class="btn bp bsm" onclick="printCurrentReceipt()"><i data-lucide="printer" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Cetak Struk</button></div></div></div>
 <div class="mbg" id="m-detail"><div class="mbox"><div class="mhd"><span class="mht" id="m-detail-title">Detail Pesanan</span><button class="xb" onclick="cm('m-detail')">×</button></div><div class="mbd" id="m-detail-body"></div><div class="mft" id="m-detail-ft"></div></div></div>
-<div class="mbg" id="m-wa"><div class="mbox"><div class="mhd"><div class="mht">💬 Kirim Notifikasi WA</div><button class="xb" onclick="cm('m-wa')">×</button></div><div class="mbd" id="m-wa-body"></div><div class="mft"><button class="btn" onclick="cm('m-wa')">Batal</button><button class="btn bwa" id="m-wa-send">💬 Buka WhatsApp &amp; Kirim</button></div></div></div>
-<div class="mbg" id="m-wa-new"><div class="mbox"><div class="mhd"><div class="mht">💬 Kirim WA ke Pelanggan</div><button class="xb" onclick="cm('m-wa-new')">×</button></div><div class="mbd"><div class="chips" id="wa-new-chips"><span class="chip on" onclick="setWaNewType('konfirmasi',this)">✅ Konfirmasi Terima</span><span class="chip" onclick="setWaNewType('tagih_dp',this)">💰 Minta DP</span><span class="chip" onclick="setWaNewType('tagih_lunas',this)">💳 Tagih Lunas</span></div><div class="wa-bg"><div class="wa-bbl" id="wa-new-preview">-</div></div></div><div class="mft"><button class="btn" onclick="cm('m-wa-new')">Lewati</button><button class="btn bwa" id="m-wa-new-send">💬 Kirim WA</button></div></div></div>
+<div class="mbg" id="m-wa"><div class="mbox"><div class="mhd"><div class="mht"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kirim Notifikasi WA</div><button class="xb" onclick="cm('m-wa')">×</button></div><div class="mbd" id="m-wa-body"></div><div class="mft"><button class="btn" onclick="cm('m-wa')">Batal</button><button class="btn bwa" id="m-wa-send"><i data-lucide="send" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Buka WhatsApp &amp; Kirim</button></div></div></div>
+<div class="mbg" id="m-wa-new"><div class="mbox"><div class="mhd"><div class="mht"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kirim WA ke Pelanggan</div><button class="xb" onclick="cm('m-wa-new')">×</button></div><div class="mbd"><div class="chips" id="wa-new-chips"><span class="chip on" onclick="setWaNewType('konfirmasi',this)"><i data-lucide="check-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span><span class="chip" onclick="setWaNewType('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Minta DP</span><span class="chip" onclick="setWaNewType('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span></div><div class="wa-bg"><div class="wa-bbl" id="wa-new-preview">-</div></div></div><div class="mft"><button class="btn" onclick="cm('m-wa-new')">Lewati</button><button class="btn bwa" id="m-wa-new-send"><i data-lucide="send" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Kirim WA</button></div></div></div>
 <div class="mbg" id="m-emp"><div class="mbox"><div class="mhd"><span class="mht" id="m-emp-title">Tambah Karyawan</span><button class="xb" onclick="cm('m-emp')">×</button></div><div class="mbd"><div class="fg"><label>Nama *</label><input id="me-n" placeholder="Nama lengkap"></div><div class="g2"><div class="fg" style="margin-bottom:0"><label>Role</label><select id="me-r"><option>Kasir</option><option>Staff</option></select></div><div class="fg" style="margin-bottom:0"><label>PIN (4 digit)</label><input type="password" id="me-p" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"></div></div><div class="fg" style="margin-top:10px;margin-bottom:0"><label>Outlet</label><select id="me-o"></select></div></div><div class="mft"><button class="btn" onclick="cm('m-emp')">Batal</button><button class="btn bp" onclick="saveEmp()">Simpan</button></div></div></div>
 <div class="mbg" id="m-outlet"><div class="mbox"><div class="mhd"><span class="mht">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd"><div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div><div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Alamat lengkap outlet"></div><div class="fg"><label>Warna Penanda</label><div style="display:flex;gap:10px;margin-top:6px" id="mo-colors"></div></div></div><div class="mft"><button class="btn" onclick="cm('m-outlet')">Batal</button><button class="btn bp" onclick="saveOutlet()">Simpan Outlet</button></div></div></div>
 <div class="mbg" id="m-promo"><div class="mbox"><div class="mhd"><span class="mht" id="m-promo-title">Tambah Promo</span><button class="xb" onclick="cm('m-promo')">×</button></div>
@@ -809,18 +815,18 @@ tr:hover td{background:#FAFAF7}
 <div class="mbg" id="m-kas"><div class="mbox"><div class="mhd"><span class="mht" id="m-kas-title">Setor Modal</span><button class="xb" onclick="cm('m-kas')">×</button></div><div class="mbd"><div class="fg"><label>Nominal (Rp)</label><input type="number" id="mk-nom" placeholder="0" min="0" oninput="kasNomHint()"></div><div id="mk-hint" style="font-size:12px;color:var(--t2);margin-top:-8px;margin-bottom:10px"></div><div class="fg" style="margin-bottom:0"><label>Keterangan</label><input id="mk-note" placeholder="Contoh: modal kembalian pagi"></div></div><div class="mft"><button class="btn" onclick="cm('m-kas')">Batal</button><button class="btn bp" onclick="submitKas()">Simpan</button></div></div></div>
 <div class="mbg" id="m-printer"><div class="mbox"><div class="mhd"><span class="mht">Tambah Printer</span><button class="xb" onclick="cm('m-printer')">×</button></div>
   <div class="mbd">
-    <div class="fg"><label>Metode Koneksi</label><select id="mpr-c" onchange="prConnChg()"><option value="usb">🔌 USB</option><option value="bluetooth">📶 Bluetooth</option><option value="network">🌐 LAN / WiFi</option></select></div>
+    <div class="fg"><label>Metode Koneksi</label><select id="mpr-c" onchange="prConnChg()"><option value="usb">USB</option><option value="bluetooth">Bluetooth</option><option value="network">LAN / WiFi</option></select></div>
     <div id="mpr-bt-section" style="display:none">
       <div style="background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:12px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:600;color:#3d6b10;margin-bottom:6px">📶 Pencarian Printer Bluetooth</div>
+        <div style="font-size:13px;font-weight:600;color:#3d6b10;margin-bottom:6px;display:flex;align-items:center;gap:6px"><i data-lucide="bluetooth" style="width:14px;height:14px;stroke-width:2;display:block;flex-shrink:0"></i>Pencarian Printer Bluetooth</div>
         <div style="font-size:12px;color:#4a7a15;margin-bottom:10px">Pastikan Bluetooth aktif dan printer sudah dalam mode pairing.</div>
-        <button class="btn bp bfull bpill" id="bt-scan-btn" onclick="scanBluetooth()">🔍 Cari Printer Bluetooth</button>
+        <button class="btn bp bfull bpill" id="bt-scan-btn" onclick="scanBluetooth()"><i data-lucide="search" style="width:14px;height:14px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Cari Printer Bluetooth</button>
         <div id="bt-scan-status" style="font-size:12px;color:var(--t2);text-align:center;margin-top:8px;min-height:16px"></div>
       </div>
       <div id="bt-found-wrap" style="display:none">
         <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Perangkat Ditemukan</div>
         <div id="bt-found-device" style="border:2px solid var(--p);border-radius:10px;padding:12px;background:var(--pl);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="selectBtDevice()">
-          <span style="font-size:22px">🖨️</span>
+          <span style="width:36px;height:36px;background:var(--p20);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="printer" style="width:18px;height:18px;stroke-width:1.75;display:block;color:var(--p)"></i></span>
           <div><div id="bt-device-name" style="font-weight:700;font-size:14px">—</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Ketuk untuk pilih</div></div>
           <span style="margin-left:auto;color:var(--p);font-size:20px">›</span>
         </div>
@@ -829,7 +835,7 @@ tr:hover td{background:#FAFAF7}
     <div id="mpr-manual-section"><div class="fg"><label>Nama Printer *</label><input id="mpr-n" placeholder="Contoh: Epson TM-T82 Kasir"></div></div>
     <div class="g2">
       <div class="fg" style="margin-bottom:0"><label>Ukuran Kertas</label><select id="mpr-w"><option value="80">80mm (standar)</option><option value="58">58mm (portabel)</option></select></div>
-      <div class="fg" style="margin-bottom:0"><label>Role</label><select id="mpr-r"><option value="none">— Belum ditentukan</option><option value="receipt">🧾 Printer Struk</option><option value="label">🏷️ Printer Label</option></select></div>
+      <div class="fg" style="margin-bottom:0"><label>Role</label><select id="mpr-r"><option value="none">— Belum ditentukan</option><option value="receipt">Printer Struk</option><option value="label">Printer Label</option></select></div>
     </div>
     <div class="fg" id="mpr-ip-w" style="display:none;margin-top:8px"><label>IP Address</label><input id="mpr-ip" placeholder="192.168.1.100"></div>
   </div>
@@ -864,7 +870,7 @@ tr:hover td{background:#FAFAF7}
 </div></div>
 <!-- Reset Owner Password Modal -->
 <div class="mbg" id="m-reset-owner-pwd"><div class="mbox" style="max-width:360px">
-  <div class="mhd"><span class="mht">🔑 Reset Password Owner</span><button class="xb" onclick="cm('m-reset-owner-pwd')">×</button></div>
+  <div class="mhd"><span class="mht"><i data-lucide="key-round" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Reset Password Owner</span><button class="xb" onclick="cm('m-reset-owner-pwd')">×</button></div>
   <div class="mbd">
     <div id="rop-step1">
       <p style="font-size:13px;color:var(--t2);margin:0 0 14px;line-height:1.6">Masukkan <strong>password akun cloud</strong> kamu untuk membuktikan identitas sebagai pemilik akun.</p>
@@ -872,7 +878,7 @@ tr:hover td{background:#FAFAF7}
       <div id="rop-err" style="display:none;font-size:12px;color:var(--re);margin-bottom:10px"></div>
     </div>
     <div id="rop-step2" style="display:none">
-      <p style="font-size:13px;color:var(--t2);margin:0 0 14px">✅ Identitas terverifikasi. Buat password owner baru.</p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 14px">Identitas terverifikasi. Buat password owner baru.</p>
       <div class="fg"><label>Password Owner Baru</label><input type="password" id="rop-new-pwd" placeholder="Min. 4 karakter"></div>
       <div class="fg"><label>Konfirmasi Password</label><input type="password" id="rop-confirm-pwd" placeholder="Ulangi password" onkeydown="if(event.key==='Enter')doSetNewOwnerPwd()"></div>
       <div id="rop-err2" style="display:none;font-size:12px;color:var(--re);margin-bottom:10px"></div>
@@ -886,7 +892,7 @@ tr:hover td{background:#FAFAF7}
 </div></div>
 <!-- New Account Password Modal (shown after clicking reset link in email) -->
 <div class="mbg" id="m-new-account-pwd"><div class="mbox" style="max-width:360px">
-  <div class="mhd"><span class="mht">🔒 Buat Password Baru</span></div>
+  <div class="mhd"><span class="mht"><i data-lucide="lock" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Buat Password Baru</span></div>
   <div class="mbd">
     <p style="font-size:13px;color:var(--t2);margin:0 0 14px;line-height:1.6">Link reset berhasil. Buat password akun cloud kamu yang baru.</p>
     <div class="fg"><label>Password Baru</label><input type="password" id="nap-pwd" placeholder="Min. 6 karakter"></div>
@@ -901,14 +907,14 @@ tr:hover td{background:#FAFAF7}
 <div class="mbg" id="m-upgrade">
   <div class="mbox" style="max-width:560px">
     <div class="mhd">
-      <span class="mht">⭐ Pilih Plan CleanPOS</span>
+      <span class="mht"><i data-lucide="star" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pilih Plan CleanPOS</span>
       <button class="xb" onclick="cm('m-upgrade')">×</button>
     </div>
     <div class="mbd">
       <p style="font-size:13px;color:var(--t2);margin-bottom:16px;text-align:center;line-height:1.6">Pilih plan yang sesuai dengan kebutuhan bisnis laundry kamu</p>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="upgrade-cards"></div>
       <div style="margin-top:16px;padding:12px 14px;background:var(--amb);border-radius:10px;font-size:12px;color:var(--am);border:1px solid #FFE082;line-height:1.6">
-        💡 Pembayaran otomatis via Midtrans segera hadir. Untuk upgrade sekarang, hubungi admin.
+        <i data-lucide="lightbulb" style="width:14px;height:14px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pembayaran otomatis via Midtrans segera hadir. Untuk upgrade sekarang, hubungi admin.
       </div>
     </div>
   </div>
@@ -931,9 +937,9 @@ tr:hover td{background:#FAFAF7}
       <div id="renew-price-display" style="text-align:center;padding:12px 0;border:1px solid var(--b1);border-radius:10px;margin-bottom:16px"></div>
       <!-- Info -->
       <p style="font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:16px">
-        ✅ Hari aktif ditambahkan ke sisa waktu yang ada<br>
-        ✅ Data & pesanan tetap aman<br>
-        ✅ Bisa diperbarui kapan saja
+        <i data-lucide="check" style="width:13px;height:13px;stroke-width:2.5;vertical-align:-1px;display:inline;margin-right:4px;color:var(--p)"></i>Hari aktif ditambahkan ke sisa waktu yang ada<br>
+        <i data-lucide="check" style="width:13px;height:13px;stroke-width:2.5;vertical-align:-1px;display:inline;margin-right:4px;color:var(--p)"></i>Data &amp; pesanan tetap aman<br>
+        <i data-lucide="check" style="width:13px;height:13px;stroke-width:2.5;vertical-align:-1px;display:inline;margin-right:4px;color:var(--p)"></i>Bisa diperbarui kapan saja
       </p>
       <button class="btn bfull bpill" id="renew-pay-btn" data-plan="elite" style="font-size:14px;font-weight:700" onclick="initMidtransPayment(this.dataset.plan, _renewCycle)">
         Bayar Sekarang
@@ -948,9 +954,11 @@ tr:hover td{background:#FAFAF7}
 
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="js/supabaseClient.js"></script>
 <script src="js/ordersApi.js"></script>
 <script src="js/ordersUI.js"></script>
 <script src="js/main.js"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
