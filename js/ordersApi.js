@@ -150,8 +150,10 @@ async function supaLoadAll() {
     currentPlanStatus = subData[0].status       || 'active';
     currentPlanExpiry = subData[0].expires_at   || null;
   } else {
-    currentPlan = 'basic'; currentPlanStatus = 'active'; currentPlanExpiry = null;
-    sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'active' }, 'user_id');
+    currentPlan = 'basic'; currentPlanStatus = 'trial';
+    const _trialExp = new Date(); _trialExp.setDate(_trialExp.getDate() + 14);
+    currentPlanExpiry = _trialExp.toISOString();
+    sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'trial', expires_at: currentPlanExpiry }, 'user_id');
   }
   toast('✅ Data cloud berhasil dimuat!');
   supaSubscribeOrders();

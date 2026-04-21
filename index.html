@@ -62,11 +62,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lnk:hover{color:var(--t1)}
 .perr{text-align:center;font-size:12px;color:var(--re);min-height:16px;margin-top:6px}
 .app{display:none;width:100%;min-height:100vh}.app.on{display:flex}
-.sbnav{width:230px;min-width:230px;background:var(--dk);display:flex;flex-direction:column;height:100vh;position:fixed;top:0;left:0;z-index:50;overflow-y:auto}
+.sbnav{width:230px;min-width:230px;background:var(--dk);display:flex;flex-direction:column;height:100vh;position:fixed;top:0;left:0;z-index:50;overflow:hidden}
 .sb-logo{padding:20px 16px 16px;border-bottom:1px solid var(--dk3)}
 .sb-ln{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px}
 .sb-lr{font-size:11px;color:#666;margin-top:3px}
-.sb-items{flex:1;padding:10px 8px}
+.sb-items{flex:1;padding:10px 8px;overflow-y:auto}
 .sb-sec{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;padding:12px 10px 4px}
 .ni{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;color:#888;transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:inherit;min-height:42px}
 .ni:hover{background:var(--dk3);color:#ccc}
@@ -329,6 +329,7 @@ tr:hover td{background:#FAFAF7}
 <button class="hbg" onclick="showMore()" title="Menu Lainnya">☰</button>
 <nav class="sbnav">
   <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr">👑 Owner Dashboard</div></div>
+  <div class="fab-sb"><button class="fab" onclick="oGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="o-nav">
     <div class="sb-sec">Utama</div>
     <button class="ni on" onclick="oGo('dashboard',this)"><span class="nic">🏠</span>Dashboard</button>
@@ -361,7 +362,6 @@ tr:hover td{background:#FAFAF7}
     </div>
     <button class="back-sb" onclick="confirmBack()">← Menu Awal</button>
   </div>
-  <div class="fab-sb"><button class="fab" onclick="oGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
 </nav>
 <div class="mc" id="o-mc">
 <div id="plan-expiry-banner" style="display:none;margin:10px 10px 0;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6"></div>
@@ -610,6 +610,7 @@ tr:hover td{background:#FAFAF7}
 <!-- SETTINGS -->
 <div class="page" id="o-p-settings">
   <div class="pt">Pengaturan</div>
+  <div id="settings-sub-card" style="margin-bottom:14px"></div>
   <div class="g2 og">
     <div class="card"><div class="ct">🔑 Ubah Password Owner</div>
       <div class="fg"><label>Password Saat Ini</label><input type="password" id="s-cur" placeholder="••••••••"></div>
@@ -651,6 +652,7 @@ tr:hover td{background:#FAFAF7}
 <div id="staff-app" class="app">
 <nav class="sbnav">
   <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr" id="staff-role-lbl">👤 Karyawan</div></div>
+  <div class="fab-sb"><button class="fab" onclick="sGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="s-nav">
     <div class="sb-sec">Operasional</div>
     <button class="ni on" onclick="sGo('dashboard',this)"><span class="nic">🏠</span>Beranda</button>
@@ -659,7 +661,6 @@ tr:hover td{background:#FAFAF7}
     <button class="ni" onclick="sGo('wa',this)"><span class="nic">💬</span>WA Notifikasi</button>
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
-  <div class="fab-sb"><button class="fab" onclick="sGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
 </nav>
 <div class="mc" id="s-mc">
   <div class="page on" id="s-p-dashboard">
@@ -916,7 +917,7 @@ tr:hover td{background:#FAFAF7}
 <div class="mbg" id="m-renew">
   <div class="mbox" style="max-width:380px">
     <div class="mhd">
-      <span class="mht" id="renew-plan-name">Perpanjang Plan</span>
+      <span class="mht" id="renew-plan-name">Berlangganan</span>
       <button class="xb" onclick="cm('m-renew')">×</button>
     </div>
     <div class="mbd">
