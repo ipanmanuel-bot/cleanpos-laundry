@@ -623,7 +623,7 @@ tr:hover td{background:#FAFAF7}
 <!-- EMPLOYEES -->
 <div class="page" id="o-p-employees">
   <div class="sh"><div class="pt" style="margin-bottom:0">Karyawan</div><button class="btn bp bsm" onclick="openAddEmp()">+ Tambah</button></div>
-  <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Jatah cuti: <strong>2x</strong>/bulan · PIN hanya bisa diatur Owner</div>
+  <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Jatah cuti: <strong id="emp-cuti-lbl">2x</strong>/bulan · PIN hanya bisa diatur Owner</div>
   <div class="chips" id="emp-filter-chips"></div>
   <div id="emp-list"></div>
 </div>
@@ -691,6 +691,13 @@ tr:hover td{background:#FAFAF7}
       <div class="div_"></div>
       <button class="btn bp bfull bpill" onclick="saveStoreInfo()">Simpan Info</button>
     </div>
+  </div>
+  <div class="card">
+    <div class="ct"><i data-lucide="users" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Karyawan</div>
+    <div class="fg" style="margin-bottom:0"><label>Jatah Cuti per Bulan</label><input type="number" id="s-cuti" min="1" max="31" value="2" placeholder="Contoh: 2" style="width:100px"></div>
+    <div style="font-size:11px;color:var(--t2);margin-top:4px;margin-bottom:10px">Jumlah hari cuti yang diizinkan setiap karyawan per bulan.</div>
+    <div class="div_"></div>
+    <button class="btn bp bfull bpill" onclick="saveEmpSettings()">Simpan Pengaturan Karyawan</button>
   </div>
   <div class="card" id="printer-card">
     <div class="sh"><div><div class="ct" style="margin-bottom:0"><i data-lucide="printer" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Printer</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Struk (80mm) · Label (58mm) · Bluetooth / USB / LAN</div></div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>

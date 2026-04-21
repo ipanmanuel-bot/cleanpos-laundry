@@ -62,6 +62,7 @@ let waTplNew = {
 };
 let curWaNewType = 'konfirmasi'; let curWaNewOrder = null; let curRcptOrderId = null;
 let storeName = 'CleanPOS Laundry'; let storeAddr = ''; let storeWa = ''; let storeFooter = 'Terima kasih atas kepercayaan Anda! \uD83D\uDE4F';
+let cutiPerBulan = 2;
 let curWaTplTab = 'selesai';
 let kasLog = []; let kasCtr = 1; let kasType = 'setor';
 let expenses = []; let expCtr = 1;
@@ -276,6 +277,7 @@ function renderSettings(){
   if(g('s-addr'))g('s-addr').value=storeAddr;
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
+  if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
 }
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
@@ -283,6 +285,16 @@ function saveStoreInfo(){
   storeWa=(g('s-wa')?.value||'').trim();
   storeFooter=(g('s-footer')?.value||'').trim();
   toast('\u2713 Info toko tersimpan!');
+}
+function saveEmpSettings(){
+  const v=parseInt(g('s-cuti')?.value)||2;
+  if(v<1||v>31){toast('\u26A0\uFE0F Jatah cuti harus antara 1–31 hari');return;}
+  cutiPerBulan=v;
+  // update the employee page header label
+  const lbl=g('emp-cuti-lbl');if(lbl)lbl.textContent=cutiPerBulan+'x';
+  renderEmployees();
+  syncSettings();
+  toast('\u2713 Pengaturan karyawan tersimpan!');
 }
 
 // ===== DASHBOARDS =====
@@ -476,23 +488,21 @@ function _renderDashChart(curOrders, prevOrders, range){
         tooltip:{enabled:false,external(context){
           if(!tooltipEl)return;
           const {tooltip}=context;
-          if(tooltip.opacity===0||tooltip.dataIndex==null){tooltipEl.style.display='none';return;}
-          const idx=tooltip.dataIndex;
-          if(idx<0||idx>=N){tooltipEl.style.display='none';return;}
+          if(tooltip.opacity===0||!tooltip.dataPoints?.length){tooltipEl.style.display='none';return;}
+          const idx=tooltip.dataPoints[0].dataIndex;
           const curV=curData[idx]||0, prevV=prevData[idx]||0;
+          const lbl=labels[idx]??'';
           const pct=prevV===0?null:((curV-prevV)/prevV*100);
           const pctHtml=pct===null?'':`<div style="display:inline-block;background:${pct>=0?'#2E7D32':'#E53935'};color:#fff;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-bottom:6px">${pct>=0?'↑':'↓'} ${Math.abs(pct).toFixed(2)}%</div>`;
-          const lbl=labels[idx];
-          tooltipEl.innerHTML=`${pctHtml}<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8DC440;flex-shrink:0"></span><span style="flex:1">${lbl}</span><strong>${fmt(curV)}</strong></div><div style="display:flex;align-items:center;gap:6px;color:#aaa"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C0C0C0;flex-shrink:0"></span><span style="flex:1">${lbl}</span><span>${fmt(prevV)}</span></div>`;
+          tooltipEl.innerHTML=`${pctHtml}<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8DC440;flex-shrink:0"></span><span style="flex:1;color:#ccc">${lbl}</span><strong>${fmt(curV)}</strong></div><div style="display:flex;align-items:center;gap:6px;color:#aaa"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C0C0C0;flex-shrink:0"></span><span style="flex:1">${lbl}</span><span>${fmt(prevV)}</span></div>`;
           const pos=context.chart.canvas.getBoundingClientRect();
           const x=pos.left+tooltip.caretX;
           const y=pos.top+tooltip.caretY;
           tooltipEl.style.display='block';
-          // Position: prefer right of cursor, flip if near right edge
           const tw=tooltipEl.offsetWidth||180;
           const left=x+tw+16>window.innerWidth?x-tw-10:x+10;
           tooltipEl.style.left=left+'px';
-          tooltipEl.style.top=(y-40)+'px';
+          tooltipEl.style.top=Math.max(8,y-40)+'px';
         }}
       },
       scales:{
@@ -569,6 +579,7 @@ function refreshSDash(){
 // ===== EMPLOYEES =====
 function renderEmployees(){
   buildEmpChips();
+  const _lbl=g('emp-cuti-lbl');if(_lbl)_lbl.textContent=cutiPerBulan+'x';
   const list=empFilter==='all'?employees:employees.filter(e=>e.oid===empFilter);
   const el=g('emp-list');if(!el)return;
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Tidak ada karyawan.</div>';return;}
@@ -580,16 +591,16 @@ function renderEmployees(){
 function empCard(e){
   const out=go(e.oid);const stB={in:'gg',off:'gy',cuti:'gpu',sakit:'gam'}[e.status]||'gy';
   const stL={in:'Masuk',off:'Off',cuti:'Cuti',sakit:'Sakit'}[e.status];
-  const dots=Array.from({length:2},(_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${i<e.cutiUsed?'var(--t3)':'var(--p)'};margin-right:3px"></span>`).join('');
-  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${ini(e.name)}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${e.name}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${e.role}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${out.name}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${e.clockIn||'\u2014'}</div><div>Pulang: ${e.clockOut||'\u2014'}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${2-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<2?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
+  const dots=Array.from({length:cutiPerBulan},(_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${i<e.cutiUsed?'var(--t3)':'var(--p)'};margin-right:3px"></span>`).join('');
+  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${ini(e.name)}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${e.name}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${e.role}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${out.name}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${e.clockIn||'\u2014'}</div><div>Pulang: ${e.clockOut||'\u2014'}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${cutiPerBulan-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<cutiPerBulan?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
 }
 function buildEmpChips(){const tabs=[{id:'all',label:'Semua',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];const el=g('emp-filter-chips');if(!el)return;el.innerHTML=tabs.map(t=>`<span class="chip${empFilter===t.id?' on':''}" onclick="setEmpFilter('${t.id}')">${t.color?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t.color};margin-right:5px;vertical-align:middle"></span>`:''}${t.label}</span>`).join('');}
 function setEmpFilter(id){empFilter=id;renderEmployees();}
-function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act==='clkin'){e.status='in';e.clockIn=NOW();e.clockOut=null;}else if(act==='clkout'){e.status='off';e.clockOut=NOW();}else if(act==='cuti'&&e.cutiUsed<2){e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;}else if(act==='sakit'){e.status='sakit';e.clockIn=null;e.clockOut=null;}renderEmployees();toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/2)',sakit:'Sakit'}[act]);if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}}
+function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act==='clkin'){e.status='in';e.clockIn=NOW();e.clockOut=null;}else if(act==='clkout'){e.status='off';e.clockOut=NOW();}else if(act==='cuti'&&e.cutiUsed<cutiPerBulan){e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;}else if(act==='sakit'){e.status='sakit';e.clockIn=null;e.clockOut=null;}renderEmployees();toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/'+cutiPerBulan+')',sakit:'Sakit'}[act]);if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}}
 function resetEmpPin(id){const e=employees.find(x=>x.id===id);if(!e)return;const p=prompt('PIN baru (4 digit) untuk '+e.name+':');if(p===null)return;if(!/^\d{4}$/.test(p)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}e.pin=p;renderEmployees();toast('\u2713 PIN '+e.name+' diubah');}
-function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();toast('Karyawan dihapus');});}
-function openAddEmp(){g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');g('m-emp-title').textContent='Tambah Karyawan';g('m-emp').className='mbg on';}
-function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}employees.push({id:empCtr++,name,role:g('me-r').value,oid:g('me-o').value,pin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
+function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();deleteEmployee(id);toast('Karyawan dihapus');});}
+function openAddEmp(){g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');if(empFilter!=='all'){g('me-o').value=empFilter;}g('m-emp-title').textContent='Tambah Karyawan';g('m-emp').className='mbg on';}
+function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}const oid=g('me-o').value;if(!oid){toast('\u26A0\uFE0F Pilih outlet terlebih dahulu');return;}employees.push({id:empCtr++,name,role:g('me-r').value,oid,pin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
 function updStaffClk(){if(!curStaff)return;const e=employees.find(x=>x.id===curStaff.id);if(!e)return;const stM={in:'Sedang bekerja \u00B7 Masuk: '+e.clockIn,off:'Belum clock in hari ini',cuti:'Cuti hari ini',sakit:'Sakit hari ini'};const cs=g('s-clk-st');if(cs)cs.textContent=stM[e.status]||'';const cb=g('s-clk-btns');if(!cb)return;cb.innerHTML=e.status==='in'?`<button class="btn bre bsm bpill" onclick="staffClk('clkout')">Clock Out</button>`:e.status==='off'?`<button class="btn bp bsm bpill" onclick="staffClk('clkin')">Clock In</button>`:`<span class="badge ${e.status==='cuti'?'gpu':'gam'}">${e.status==='cuti'?'Cuti':'Sakit'}</span>`;}
 function staffClk(act){if(!curStaff)return;empAct(curStaff.id,act);}
 
@@ -1246,9 +1257,7 @@ delOutlet = function(id) { deleteOutlet(id); _origDelOutlet(id); };
 
 // Employees
 const _origSaveEmp = saveEmp;
-saveEmp = function() { _origSaveEmp(); employees.forEach(e => syncEmployee(e)); };
-const _origDelEmp = delEmp;
-delEmp = function(id) { deleteEmployee(id); _origDelEmp(id); };
+saveEmp = function() { _origSaveEmp(); syncEmployee(employees[employees.length - 1]); };
 const _origEmpAct = empAct;
 empAct = function(id, act) { _origEmpAct(id, act); const e = employees.find(x => x.id === id); if (e) syncEmployee(e); };
 

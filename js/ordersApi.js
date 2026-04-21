@@ -108,7 +108,8 @@ function syncSettings() {
     addons: JSON.stringify(addons),
     promos: JSON.stringify(promos),
     wa_tpl_selesai: waTplSelesai,
-    wa_tpl_new: JSON.stringify(waTplNew)
+    wa_tpl_new: JSON.stringify(waTplNew),
+    cuti_per_bulan: cutiPerBulan
   });
 }
 
@@ -144,6 +145,7 @@ async function supaLoadAll() {
     if (s.promos)        promos = JSON.parse(s.promos);
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     if (s.wa_tpl_new)    waTplNew = JSON.parse(s.wa_tpl_new);
+    if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
   }
   if (subData && subData.length) {
     currentPlan       = subData[0].plan        || 'basic';
