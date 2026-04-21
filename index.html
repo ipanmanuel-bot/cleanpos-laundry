@@ -347,10 +347,24 @@ tr:hover td{background:#FAFAF7}
     <button class="ni" onclick="oGo('promo',this)"><span class="nic">🎟️</span>Promo</button>
     <button class="ni" onclick="oGo('settings',this)"><span class="nic">⚙️</span>Pengaturan</button>
   </div>
-  <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
+  <div class="sb-bot">
+    <div id="plan-badge" onclick="showUpgradeModal()" style="margin:0 8px 6px;background:rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+      <div>
+        <div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Plan Aktif</div>
+        <div id="plan-badge-name" style="font-size:13px;color:#ccc;font-weight:700;margin-top:2px">Basic</div>
+        <div id="plan-badge-sub" style="font-size:10px;color:#888;margin-top:1px">Gratis</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+        <div id="plan-badge-emoji" style="font-size:18px">🌱</div>
+        <div style="font-size:9px;color:#8DC440;font-weight:700">Upgrade →</div>
+      </div>
+    </div>
+    <button class="back-sb" onclick="confirmBack()">← Menu Awal</button>
+  </div>
   <div class="fab-sb"><button class="fab" onclick="oGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
 </nav>
 <div class="mc" id="o-mc">
+<div id="plan-expiry-banner" style="display:none;margin:10px 10px 0;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6"></div>
 
 <!-- DASHBOARD -->
 <div class="page on" id="o-p-dashboard">
@@ -880,6 +894,55 @@ tr:hover td{background:#FAFAF7}
   <div class="mft"><button class="btn bp bfull" onclick="doSetNewAccountPwd()">Simpan Password Baru</button></div>
 </div></div>
 <div class="mbg" id="m-confirm"><div class="mbox" style="max-width:340px"><div class="mhd"><span class="mht" id="mc-title">Konfirmasi</span><button class="xb" onclick="cm('m-confirm')">×</button></div><div class="mbd"><p id="mc-msg" style="font-size:14px;line-height:1.6;color:var(--t2)"></p></div><div class="mft"><button class="btn" onclick="cm('m-confirm')">Batal</button><button class="btn bre" id="mc-ok">Ya, Lanjutkan</button></div></div></div>
+
+<!-- UPGRADE PLAN MODAL -->
+<div class="mbg" id="m-upgrade">
+  <div class="mbox" style="max-width:560px">
+    <div class="mhd">
+      <span class="mht">⭐ Pilih Plan CleanPOS</span>
+      <button class="xb" onclick="cm('m-upgrade')">×</button>
+    </div>
+    <div class="mbd">
+      <p style="font-size:13px;color:var(--t2);margin-bottom:16px;text-align:center;line-height:1.6">Pilih plan yang sesuai dengan kebutuhan bisnis laundry kamu</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="upgrade-cards"></div>
+      <div style="margin-top:16px;padding:12px 14px;background:var(--amb);border-radius:10px;font-size:12px;color:var(--am);border:1px solid #FFE082;line-height:1.6">
+        💡 Pembayaran otomatis via Midtrans segera hadir. Untuk upgrade sekarang, hubungi admin.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RENEW / UPGRADE PLAN MODAL -->
+<div class="mbg" id="m-renew">
+  <div class="mbox" style="max-width:380px">
+    <div class="mhd">
+      <span class="mht" id="renew-plan-name">Perpanjang Plan</span>
+      <button class="xb" onclick="cm('m-renew')">×</button>
+    </div>
+    <div class="mbd">
+      <!-- Cycle selector -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="renew-cycle-monthly" class="btn bfull" style="font-size:13px;background:var(--p);color:#fff;border-color:var(--p)" onclick="_setRenewCycle('monthly')">30 Hari</button>
+        <button id="renew-cycle-annual" class="btn bfull" style="font-size:13px" onclick="_setRenewCycle('annual')">1 Tahun <span style="font-size:10px;background:#4CAF50;color:#fff;border-radius:6px;padding:1px 5px;margin-left:3px">Hemat 2bln</span></button>
+      </div>
+      <!-- Price display -->
+      <div id="renew-price-display" style="text-align:center;padding:12px 0;border:1px solid var(--b1);border-radius:10px;margin-bottom:16px"></div>
+      <!-- Info -->
+      <p style="font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:16px">
+        ✅ Hari aktif ditambahkan ke sisa waktu yang ada<br>
+        ✅ Data & pesanan tetap aman<br>
+        ✅ Bisa diperbarui kapan saja
+      </p>
+      <button class="btn bfull bpill" id="renew-pay-btn" data-plan="elite" style="font-size:14px;font-weight:700" onclick="initMidtransPayment(this.dataset.plan, _renewCycle)">
+        Bayar Sekarang
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MIDTRANS SNAP SDK — uncomment saat integrasi payment siap -->
+<!-- <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="YOUR_SANDBOX_CLIENT_KEY"></script> -->
+<!-- Production: <script src="https://app.midtrans.com/snap/snap.js" data-client-key="YOUR_PRODUCTION_CLIENT_KEY"></script> -->
 
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
