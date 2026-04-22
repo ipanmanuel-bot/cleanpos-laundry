@@ -195,7 +195,7 @@ function buildOrder(pre) {
     payMethod: g(pre + '-pm')?.value || 'Tunai',
     payStatus: g(pre + '-ps')?.value || 'Belum Bayar',
     status: 'Diterima', notes: g(pre + '-note')?.value || '',
-    date: TODAY_STR, isoDate: TODAY_ISO, waSent: false,
+    date: TODAY_STR, isoDate: new Date().toISOString(), waSent: false,
     handledBy: curStaff ? curStaff.name : 'Owner',
     outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1'))
   };

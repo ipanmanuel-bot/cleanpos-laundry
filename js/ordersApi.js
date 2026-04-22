@@ -108,7 +108,8 @@ function syncSettings() {
     addons: JSON.stringify(addons),
     promos: JSON.stringify(promos),
     wa_tpl_selesai: waTplSelesai,
-    wa_tpl_new: JSON.stringify(waTplNew)
+    wa_tpl_new: JSON.stringify(waTplNew),
+    cuti_per_bulan: cutiPerBulan
   });
 }
 
@@ -126,10 +127,24 @@ async function supaLoadAll() {
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
   if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, lastDate: c.last_date }; }); }
-  if (outletsData)  { outlets = outletsData.map(r => ({ id: r.id, name: r.name, addr: r.addr, color: r.color })); }
-  if (empsData)     { employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out })); empCtr = employees.length + 1; }
-  if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, outletId: r.outlet_id })); kasCtr = kasLog.length + 1; }
-  if (expData)      { expenses = expData.map(r => ({ id: Number(r.id), cat: r.cat, label: r.label, nominal: r.nominal, date: r.date, note: r.note, src: r.src, outletId: r.outlet_id })); expCtr = expenses.length + 1; }
+  if (outletsData)  {
+    // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
+    const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
+    const _hadDupes = _oMap.size < outletsData.length;
+    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, color: r.color }));
+    // Update outletCtr so new outlets never collide with existing numeric IDs
+    const _oNums = outlets.map(o => parseInt((o.id||'').replace(/\D/g,''))).filter(n => !isNaN(n) && n > 0);
+    if (_oNums.length) outletCtr = Math.max(..._oNums) + 1;
+    // If we found and removed dupes, re-sync clean list to cloud
+    if (_hadDupes) { console.warn('[supa] Ditemukan outlet dengan ID duplikat — data dibersihkan otomatis'); outlets.forEach(o => syncOutlet(o)); }
+  }
+  if (empsData)     {
+    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out }));
+    // Use max id to avoid collisions (length-based counter fails if ids aren't sequential)
+    empCtr = employees.reduce((mx, e) => Math.max(mx, e.id || 0), 0) + 1;
+  }
+  if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, outletId: r.outlet_id })); kasCtr = kasLog.reduce((mx,l)=>Math.max(mx,l.id||0),0)+1; }
+  if (expData)      { expenses = expData.map(r => ({ id: Number(r.id), cat: r.cat, label: r.label, nominal: r.nominal, date: r.date, note: r.note, src: r.src, outletId: r.outlet_id })); expCtr = expenses.reduce((mx,e)=>Math.max(mx,e.id||0),0)+1; }
   if (printersData) { printers = printersData.map(r => ({ id: r.id, name: r.name, conn: r.conn, ip: r.ip, width: r.width, role: r.role, status: r.status })); printerCtr = printers.length + 1; }
   if (settingsData && settingsData.length) {
     const s = settingsData[0];
@@ -144,6 +159,7 @@ async function supaLoadAll() {
     if (s.promos)        promos = JSON.parse(s.promos);
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     if (s.wa_tpl_new)    waTplNew = JSON.parse(s.wa_tpl_new);
+    if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
   }
   if (subData && subData.length) {
     currentPlan       = subData[0].plan        || 'basic';

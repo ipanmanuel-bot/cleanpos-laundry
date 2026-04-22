@@ -33,7 +33,12 @@ async function sbUpsert(table, data, onConflict = 'user_id,id') {
   const { error } = await supabase.from(table).upsert(data, { onConflict });
   if (error) {
     console.error(`[supa] upsert ${table}:`, error.message);
-    toast(`⚠️ Gagal simpan ke cloud (${table}): ${error.message}`);
+    // Schema cache errors mean the column doesn't exist yet — guide user to run the migration
+    if (error.message.includes('schema cache') || error.message.includes('column')) {
+      console.warn(`[supa] Kolom belum ada di tabel "${table}". Jalankan SQL migration di Supabase Dashboard.`);
+    } else {
+      toast(`⚠️ Gagal simpan ke cloud (${table}): ${error.message}`);
+    }
   }
 }
 async function sbDelete(table, id) {

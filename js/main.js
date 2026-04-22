@@ -62,6 +62,7 @@ let waTplNew = {
 };
 let curWaNewType = 'konfirmasi'; let curWaNewOrder = null; let curRcptOrderId = null;
 let storeName = 'CleanPOS Laundry'; let storeAddr = ''; let storeWa = ''; let storeFooter = 'Terima kasih atas kepercayaan Anda! \uD83D\uDE4F';
+let cutiPerBulan = 2;
 let curWaTplTab = 'selesai';
 let kasLog = []; let kasCtr = 1; let kasType = 'setor';
 let expenses = []; let expCtr = 1;
@@ -71,6 +72,7 @@ let printers = [
 ];
 let printerCtr = 3; let btDevice = null;
 let rptFilter = 'today'; let empFilter = 'all';
+let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null;
 let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutlet = 'all'; let rptOutlet = 'all';
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
@@ -210,7 +212,9 @@ function seed(){
     orderCtr=i+1;
     const bq=bQty(d.svc,d.cat,d.qty);
     const base=(getSvcById(d.svc)?.prices[d.cat]||0)*bq;
-    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:d.svc,svcCat:d.cat,qty:bq,rawQty:d.qty,satuanLines:[],addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
+    const seedHours=[8,10,14];
+    const isoFull=new Date(TODAY_ISO+'T'+(seedHours[i]<10?'0':'')+seedHours[i]+':30:00').toISOString();
+    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:d.svc,svcCat:d.cat,qty:bq,rawQty:d.qty,satuanLines:[],addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:isoFull,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
     addCust(d.name,d.phone,base,TODAY_STR);
   });
   const satSeeds=[
@@ -222,11 +226,29 @@ function seed(){
     const satuanLines=d.lines.map(l=>{const item=satuanItems.find(s=>s.id===l.id);return{id:l.id,name:item?.name||l.id,qty:l.qty,unitPrice:item?.prices[d.cat]||0,lineTotal:(item?.prices[d.cat]||0)*l.qty};});
     const base=satuanLines.reduce((s,l)=>s+l.lineTotal,0);
     const qty=satuanLines.reduce((s,l)=>s+l.qty,0);
-    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:'satuan',svcCat:d.cat,qty,rawQty:qty,satuanLines,addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:TODAY_ISO,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
+    const satHours=[11,16];
+    const isoFull2=new Date(TODAY_ISO+'T'+(satHours[i]<10?'0':'')+satHours[i]+':00:00').toISOString();
+    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:'satuan',svcCat:d.cat,qty,rawQty:qty,satuanLines,addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:d.st,notes:'',date:TODAY_STR,isoDate:isoFull2,waSent:d.waSent,handledBy:'Owner',outletId:d.oid});
     addCust(d.name,d.phone,base,TODAY_STR);
   });
   if(orders[0].waSent)waLog.push({orderId:orders[0].id,name:orders[0].name,phone:orders[0].phone,time:NOW()+', '+TODAY_STR});
-  orderCtr=6;
+  // --- Yesterday seed data (for period comparison) ---
+  const yd=new Date(TODAY);yd.setDate(yd.getDate()-1);
+  const ydISO=_isoStr(yd);const ydStr=yd.toLocaleDateString('id-ID',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  const ydSeeds=[
+    {name:'Budi Santoso',phone:'081234567890',svc:'kiloan',cat:'regular',qty:5,pay:'Lunas',oid:'o1',hr:9},
+    {name:'Siti Rahayu',phone:'082345678901',svc:'kiloan',cat:'express',qty:3,pay:'Lunas',oid:'o1',hr:14},
+    {name:'Dewi Lestari',phone:'084567890123',svc:'kiloan',cat:'sameday',qty:4,pay:'Lunas',oid:'o2',hr:17},
+  ];
+  ydSeeds.forEach(d=>{
+    orderCtr++;
+    const bq=bQty(d.svc,d.cat,d.qty);
+    const base=(getSvcById(d.svc)?.prices[d.cat]||0)*bq;
+    const isoFull3=new Date(ydISO+'T'+(d.hr<10?'0':'')+d.hr+':00:00').toISOString();
+    orders.push({id:genId(),name:d.name,phone:d.phone,svcType:d.svc,svcCat:d.cat,qty:bq,rawQty:d.qty,satuanLines:[],addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod:'Tunai',payStatus:d.pay,status:'Diambil',notes:'',date:ydStr,isoDate:isoFull3,waSent:true,handledBy:'Owner',outletId:d.oid});
+    addCust(d.name,d.phone,base,ydStr);
+  });
+  orderCtr=10;
   kasLog=[{id:1,type:'modal',desc:'Setor Modal',note:'modal kembalian pagi',amount:200000,time:'08:00',outletId:'o1'},{id:2,type:'in',desc:'Penjualan Cash',note:'Budi Santoso',amount:21000,time:'09:14',outletId:'o1'},{id:3,type:'out',desc:'Tarik Kas',note:'beli deterjen',amount:50000,time:'11:30',outletId:'o1'}];
   kasCtr=4;
   expenses=[{id:1,cat:'listrik',label:'Listrik',nominal:150000,date:TODAY_ISO,note:'Tagihan PLN',src:'transfer',outletId:'o1'},{id:2,cat:'deterjen',label:'Deterjen/Sabun',nominal:75000,date:TODAY_ISO,note:'Attack 2kg',src:'cash',outletId:'o2'}];
@@ -255,6 +277,7 @@ function renderSettings(){
   if(g('s-addr'))g('s-addr').value=storeAddr;
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
+  if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
 }
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
@@ -263,66 +286,286 @@ function saveStoreInfo(){
   storeFooter=(g('s-footer')?.value||'').trim();
   toast('\u2713 Info toko tersimpan!');
 }
+function saveEmpSettings(){
+  const v=parseInt(g('s-cuti')?.value)||2;
+  if(v<1||v>31){toast('\u26A0\uFE0F Jatah cuti harus antara 1–31 hari');return;}
+  cutiPerBulan=v;
+  // update the employee page header label
+  const lbl=g('emp-cuti-lbl');if(lbl)lbl.textContent=cutiPerBulan+'x';
+  renderEmployees();
+  syncSettings();
+  toast('\u2713 Pengaturan karyawan tersimpan!');
+}
 
 // ===== DASHBOARDS =====
+// --- helpers ---
+const _MN_S = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+const _MN_F = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const _DAYS_S = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+
+function _isoStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function _orderDateISO(o){ return (o.isoDate||'').slice(0,10); }
+function _orderHour(o){ if(o.isoDate&&o.isoDate.length>10){ return new Date(o.isoDate).getHours(); } return 12; }
+function _fmtK(n){ if(!n)return '0'; if(n>=1000000)return (n/1000000).toFixed(n%1000000===0?0:1)+' jt'; if(n>=1000)return Math.round(n/1000)+' rb'; return String(Math.round(n)); }
+function _fmtPct(pct){
+  if(pct===null||pct===undefined)return '';
+  const up=pct>=0;
+  return `<span class="${up?'dpct-up':'dpct-dn'}">${up?'↑':'↓'} ${Math.abs(pct).toFixed(2)}%</span>`;
+}
+function _pct(cur,prev){ return prev===0?null:((cur-prev)/prev*100); }
+
+function setDashPeriod(p){ dashPeriod=p; dashOffset=0; refreshODash(); }
+function navDash(dir){ const n=dashOffset+dir; if(n>0)return; dashOffset=n; refreshODash(); }
+
+function getDashRange(){
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  if(dashPeriod==='harian'){
+    const cur=new Date(today); cur.setDate(cur.getDate()+dashOffset);
+    const prev=new Date(cur); prev.setDate(prev.getDate()-1);
+    const curISO=_isoStr(cur), prevISO=_isoStr(prev);
+    const fmtD=d=>d.getDate()+' '+_MN_S[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+    const fmtFull=d=>d.getDate()+' '+_MN_F[d.getMonth()]+' '+d.getFullYear();
+    return { period:'harian',
+      curISO, curEndISO: curISO, prevISO, prevEndISO: prevISO,
+      rangeLabel: fmtD(cur)+' - '+fmtD(cur), chartLabel: fmtFull(cur),
+      buckets:24, bucketLabel:i=>(i<10?'0':'')+i+':00',
+      bucketOf:o=>_orderDateISO(o)===curISO?_orderHour(o):-1,
+      prevBucketOf:o=>_orderDateISO(o)===prevISO?_orderHour(o):-1
+    };
+  }
+
+  if(dashPeriod==='mingguan'){
+    const dow=(today.getDay()+6)%7; // 0=Mon
+    const wkStart=new Date(today); wkStart.setDate(wkStart.getDate()-dow+dashOffset*7);
+    const wkEnd=new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
+    const pwkStart=new Date(wkStart); pwkStart.setDate(pwkStart.getDate()-7);
+    const pwkEnd=new Date(wkEnd); pwkEnd.setDate(pwkEnd.getDate()-7);
+    const wkISO=_isoStr(wkStart), wkEndISO=_isoStr(wkEnd);
+    const pwkISO=_isoStr(pwkStart), pwkEndISO=_isoStr(pwkEnd);
+    const fmtD=d=>d.getDate()+' '+_MN_S[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+    return { period:'mingguan',
+      curISO:wkISO, curEndISO:wkEndISO, prevISO:pwkISO, prevEndISO:pwkEndISO,
+      rangeLabel:fmtD(wkStart)+' - '+fmtD(wkEnd), chartLabel:'Minggu '+fmtD(wkStart)+' – '+fmtD(wkEnd),
+      buckets:7, bucketLabel:i=>_DAYS_S[i],
+      bucketOf:o=>{const d=_orderDateISO(o);if(d<wkISO||d>wkEndISO)return -1;return Math.floor((new Date(d+'T12:00:00')-wkStart)/86400000);},
+      prevBucketOf:o=>{const d=_orderDateISO(o);if(d<pwkISO||d>pwkEndISO)return -1;return Math.floor((new Date(d+'T12:00:00')-pwkStart)/86400000);}
+    };
+  }
+
+  // Bulanan
+  const mStart=new Date(today.getFullYear(),today.getMonth()+dashOffset,1);
+  const mEnd=new Date(mStart.getFullYear(),mStart.getMonth()+1,0);
+  const pmStart=new Date(mStart.getFullYear(),mStart.getMonth()-1,1);
+  const pmEnd=new Date(mStart.getFullYear(),mStart.getMonth(),0);
+  const mISO=_isoStr(mStart), mEndISO=_isoStr(mEnd);
+  const pmISO=_isoStr(pmStart), pmEndISO=_isoStr(pmEnd);
+  const days=mEnd.getDate();
+  return { period:'bulanan',
+    curISO:mISO, curEndISO:mEndISO, prevISO:pmISO, prevEndISO:pmEndISO,
+    rangeLabel:_MN_F[mStart.getMonth()]+' '+mStart.getFullYear(), chartLabel:_MN_F[mStart.getMonth()]+' '+mStart.getFullYear(),
+    buckets:days, bucketLabel:i=>String(i+1),
+    bucketOf:o=>{const d=_orderDateISO(o);if(d<mISO||d>mEndISO)return -1;return parseInt(d.slice(8),10)-1;},
+    prevBucketOf:o=>{const d=_orderDateISO(o);if(d<pmISO||d>pmEndISO)return -1;return parseInt(d.slice(8),10)-1;}
+  };
+}
+
+function _ordersInRange(curISO, curEndISO){
+  return orders.filter(o=>{const d=_orderDateISO(o);return d>=curISO&&d<=curEndISO;});
+}
+
+function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
+  const sum=arr=>arr.reduce((s,o)=>s+o.total,0);
+  const total=sum(cur), prevTotal=sum(prev);
+  const belum=cur.filter(o=>o.payStatus!=='Lunas').reduce((s,o)=>s+o.total,0);
+  const bayar=cur.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
+  const trx=cur.length, prevTrx=prev.length;
+  // Pesanan Diterima (status = Diterima)
+  const diterima=cur.filter(o=>o.status==='Diterima').length;
+  const prevDiterima=prev.filter(o=>o.status==='Diterima').length;
+  // Pesanan Selesai (status = Selesai or Diambil)
+  const selesai=cur.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
+  const prevSelesai=prev.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
+  // Pengeluaran
+  const pengeluaran=expenses.filter(e=>e.date>=curISO&&e.date<=curEndISO).reduce((s,e)=>s+e.nominal,0);
+  const prevPengeluaran=expenses.filter(e=>e.date>=prevISO&&e.date<=prevEndISO).reduce((s,e)=>s+e.nominal,0);
+  return { total, prevTotal, belum, bayar,
+    trx, prevTrx, diterima, prevDiterima, selesai, prevSelesai,
+    pengeluaran, prevPengeluaran,
+    pctTotal:_pct(total,prevTotal), pctTrx:_pct(trx,prevTrx),
+    pctPengeluaran:_pct(pengeluaran,prevPengeluaran),
+    pctDiterima:_pct(diterima,prevDiterima), pctSelesai:_pct(selesai,prevSelesai)
+  };
+}
+
+function _renderDashStats(s, range){
+  const el=g('dash-stats'); if(!el)return;
+  // Month-to-date accumulation (always for the month of curStart)
+  const mISO=range.curISO.slice(0,7);
+  const mOrders=orders.filter(o=>o.payStatus==='Lunas'&&_orderDateISO(o).startsWith(mISO));
+  const mTotal=mOrders.reduce((sum,o)=>sum+o.total,0);
+  // Days elapsed in that month (up to today or end of period)
+  const dayOfMonth=parseInt(range.curEndISO.slice(8),10)||1;
+  const daysInMonth=new Date(parseInt(range.curISO.slice(0,4)),parseInt(range.curISO.slice(5,7)),0).getDate();
+  const proj=dayOfMonth>0?Math.round(mTotal/dayOfMonth*daysInMonth):0;
+
+  const scTotal=`<div class="dsc dsc-total">
+    <div class="dsc-lbl">Total Penjualan ${_fmtPct(s.pctTotal)}</div>
+    <div class="dsc-val" style="font-size:22px">${fmt(s.total)}</div>
+    <div class="dsc-sub">Akumulasi dari Awal Bulan ${fmt(mTotal)}<br>Proyeksi Bulan Ini ${fmt(proj)}</div>
+  </div>`;
+
+  const scBelum=`<div class="dsc">
+    <div class="dsc-lbl">Penjualan Belum Dibayar</div>
+    <div class="dsc-val">${fmt(s.belum)}</div>
+  </div>`;
+
+  const scBayar=`<div class="dsc">
+    <div class="dsc-lbl">Penjualan Terbayar ${_fmtPct(s.pctTotal)}</div>
+    <div class="dsc-val">${fmt(s.bayar)}</div>
+  </div>`;
+
+  const scTrx=`<div class="dsc">
+    <div class="dsc-lbl">Transaksi ${_fmtPct(s.pctTrx)}</div>
+    <div class="dsc-val">${s.trx}</div>
+  </div>`;
+
+  const scPengeluaran=`<div class="dsc">
+    <div class="dsc-lbl">Pengeluaran ${_fmtPct(s.pctPengeluaran)}</div>
+    <div class="dsc-val">${fmt(s.pengeluaran)}</div>
+  </div>`;
+
+  const scDiterima=`<div class="dsc">
+    <div class="dsc-lbl">Pesanan Diterima ${_fmtPct(s.pctDiterima)}</div>
+    <div class="dsc-val">${s.diterima}</div>
+  </div>`;
+
+  const scSelesai=`<div class="dsc">
+    <div class="dsc-lbl">Pesanan Selesai ${_fmtPct(s.pctSelesai)}</div>
+    <div class="dsc-val">${s.selesai}</div>
+  </div>`;
+
+  el.innerHTML = scTotal + scBelum + scTrx + scPengeluaran + scBayar + scDiterima + scSelesai;
+}
+
+function _renderDashChart(curOrders, prevOrders, range){
+  const canvas=g('dash-chart'); if(!canvas)return;
+  // Destroy previous chart instance
+  if(_dashChart){_dashChart.destroy();_dashChart=null;}
+
+  const N=range.buckets;
+  const curData=Array(N).fill(0);
+  const prevData=Array(N).fill(0);
+  curOrders.forEach(o=>{const i=range.bucketOf(o);if(i>=0&&i<N)curData[i]+=o.total||0;});
+  prevOrders.forEach(o=>{const i=range.prevBucketOf(o);if(i>=0&&i<N)prevData[i]+=o.total||0;});
+  const labels=Array.from({length:N},(_,i)=>range.bucketLabel(i));
+
+  const ctx=canvas.getContext('2d');
+  const h=canvas.parentElement.offsetHeight||260;
+  const gradCur=ctx.createLinearGradient(0,0,0,h);
+  gradCur.addColorStop(0,'rgba(141,196,64,0.22)');gradCur.addColorStop(1,'rgba(141,196,64,0)');
+  const gradPrev=ctx.createLinearGradient(0,0,0,h);
+  gradPrev.addColorStop(0,'rgba(180,180,180,0.22)');gradPrev.addColorStop(1,'rgba(180,180,180,0)');
+
+  const tooltipEl=g('dash-tooltip');
+
+  _dashChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Periode Sebelumnya',data:prevData,borderColor:'#C0C0C0',backgroundColor:gradPrev,
+         fill:true,tension:0.4,pointRadius:0,pointHoverRadius:4,borderWidth:2,pointHoverBackgroundColor:'#C0C0C0'},
+        {label:'Total Penjualan',data:curData,borderColor:'#8DC440',backgroundColor:gradCur,
+         fill:true,tension:0.4,pointRadius:0,pointHoverRadius:5,borderWidth:2.5,pointHoverBackgroundColor:'#8DC440'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{enabled:false,external(context){
+          if(!tooltipEl)return;
+          const {tooltip}=context;
+          if(tooltip.opacity===0||!tooltip.dataPoints?.length){tooltipEl.style.display='none';return;}
+          const idx=tooltip.dataPoints[0].dataIndex;
+          const curV=curData[idx]||0, prevV=prevData[idx]||0;
+          const lbl=labels[idx]??'';
+          const pct=prevV===0?null:((curV-prevV)/prevV*100);
+          const pctHtml=pct===null?'':`<div style="display:inline-block;background:${pct>=0?'#2E7D32':'#E53935'};color:#fff;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-bottom:6px">${pct>=0?'↑':'↓'} ${Math.abs(pct).toFixed(2)}%</div>`;
+          tooltipEl.innerHTML=`${pctHtml}<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8DC440;flex-shrink:0"></span><span style="flex:1;color:#ccc">${lbl}</span><strong>${fmt(curV)}</strong></div><div style="display:flex;align-items:center;gap:6px;color:#aaa"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C0C0C0;flex-shrink:0"></span><span style="flex:1">${lbl}</span><span>${fmt(prevV)}</span></div>`;
+          const pos=context.chart.canvas.getBoundingClientRect();
+          const x=pos.left+tooltip.caretX;
+          const y=pos.top+tooltip.caretY;
+          tooltipEl.style.display='block';
+          const tw=tooltipEl.offsetWidth||180;
+          const left=x+tw+16>window.innerWidth?x-tw-10:x+10;
+          tooltipEl.style.left=left+'px';
+          tooltipEl.style.top=Math.max(8,y-40)+'px';
+        }}
+      },
+      scales:{
+        x:{
+          grid:{color:'rgba(0,0,0,0.04)'},
+          ticks:{color:'#9A9A9A',font:{size:11},maxRotation:0,
+            callback(v,i){
+              // For harian: show every 2nd hour; for others: all
+              if(N===24)return i%2===0?labels[i]:'';
+              if(N===7)return labels[i];
+              // Bulanan: show every 5th
+              return(i%5===0||i===N-1)?labels[i]:'';
+            }
+          }
+        },
+        y:{
+          grid:{color:'rgba(0,0,0,0.04)'},
+          ticks:{color:'#9A9A9A',font:{size:11},callback:v=>_fmtK(v)},
+          beginAtZero:true
+        }
+      }
+    }
+  });
+
+  // Update chart label
+  const lbl=g('dash-chart-lbl'); if(lbl)lbl.textContent=range.chartLabel;
+}
+
 function refreshODash(){
-  const rev=orders.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
-  const expToday=expenses.filter(e=>e.date===TODAY_ISO).reduce((s,e)=>s+e.nominal,0);
-  const profit=rev-expToday;
+  // "Diperbarui" timestamp
+  const upEl=g('dash-updated');
+  if(upEl){const n=new Date();upEl.textContent='Diperbarui '+n.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})+', '+n.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+
+  const range=getDashRange();
+
+  // Update period tab buttons
+  ['harian','mingguan','bulanan'].forEach(p=>{
+    const btn=g('dtab-'+p); if(!btn)return;
+    const on=p===dashPeriod;
+    btn.classList.toggle('on',on);
+  });
+
+  // Date range label
+  const rngEl=g('dash-range'); if(rngEl)rngEl.textContent=range.rangeLabel;
+
+  // Next button disable if at current period
+  const nextBtn=g('dash-nav-next'); if(nextBtn)nextBtn.disabled=dashOffset===0;
+
+  // Get orders
+  const curOrders=_ordersInRange(range.curISO,range.curEndISO);
+  const prevOrders=_ordersInRange(range.prevISO,range.prevEndISO);
+
+  // Stats
+  const stats=_calcDashStats(curOrders,prevOrders,range.curISO,range.curEndISO,range.prevISO,range.prevEndISO);
+  _renderDashStats(stats,range);
+
+  // Chart
+  _renderDashChart(curOrders,prevOrders,range);
+
+  // WA alert
   const wp=orders.filter(o=>o.status==='Selesai'&&!o.waSent);
-  const unpaid=orders.filter(o=>o.payStatus!=='Lunas').length;
-  const m=g('o-metrics');if(!m)return;
-  m.innerHTML=`
-    <div class="mc2 ${profit>=0?'cp':'cr'}"><div class="ml">\uD83D\uDCB0 Profit Hari Ini</div><div class="mv">${profit>=0?'+':''}${fmt(profit)}</div><div class="ms">Pend. - Pengeluaran</div></div>
-    <div class="mc2 cg"><div class="ml">\uD83D\uDCC8 Pendapatan</div><div class="mv">${fmt(rev)}</div><div class="ms">${orders.length} pesanan</div></div>
-    <div class="mc2 cam"><div class="ml">\uD83D\uDD04 Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div>
-    <div class="mc2 ${unpaid>0?'cr':'cg'}"><div class="ml">\u26A0\uFE0F Belum Dibayar</div><div class="mv">${unpaid}</div></div>`;
-  const wa=g('o-wa-alert');if(wa)wa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:#3d6b10">\uD83C\uDFDF\uFE0F ${wp.length} cucian selesai belum dinotif WA</div><button class="btn bp bsm bpill" onclick="oGo('wa',null)">Kirim</button></div>`:'';
-  const last=orders.slice(-5).reverse();
-  const rEl=g('o-recent');if(rEl)rEl.innerHTML=last.length?'<table><tbody>'+last.map(o=>`<tr><td style="font-size:11px;font-family:monospace;color:var(--t2)">${o.id}</td><td style="font-weight:600">${o.name}</td><td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td><td style="font-weight:600">${fmt(o.total)}</td></tr>`).join('')+'</tbody></table>':'<div style="text-align:center;padding:20px;color:var(--t2)">Belum ada pesanan</div>';
-  const thisMonth=TODAY_ISO.slice(0,7);
-  const daysInMonth=new Date(TODAY_ISO).getDate();
-  const monthOrders=orders.filter(o=>o.payStatus==='Lunas'&&o.isoDate&&o.isoDate.startsWith(thisMonth));
-  const omsetBulanIni=monthOrders.reduce((s,o)=>s+o.total,0);
-  const dailyRev=[];
-  for(let d=1;d<=daysInMonth;d++){const ds=thisMonth+'-'+(d<10?'0'+d:String(d));dailyRev.push(monthOrders.filter(o=>o.isoDate===ds).reduce((s,o)=>s+o.total,0));}
-  (()=>{
-    const MN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-    const mi=parseInt(thisMonth.slice(5,7))-1;
-    const N=daysInMonth,H=72,padT=12,n=dailyRev.length,maxVal=Math.max(...dailyRev,1);
-    const xOf=i=>n<=1?N/2:(i/(n-1))*N;
-    const yOf=v=>padT+(1-v/maxVal)*(H-padT);
-    const pts=dailyRev.map((v,i)=>`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
-    const area=`0,${H} ${pts} ${N},${H}`;
-    const origTotal=fmt(omsetBulanIni);
-    const origStat=`${monthOrders.length} pesanan lunas \u00B7 hari ke-${daysInMonth}`;
-    const ks=g('o-kas-saldo');if(!ks)return;
-    ks.innerHTML=`<div id="omset-total" style="font-size:24px;font-weight:800;color:var(--p);letter-spacing:-.3px;margin-bottom:2px">${origTotal}</div><div id="omset-stat" style="font-size:11px;color:var(--t2);margin-bottom:6px">${origStat}</div><div style="margin:auto 0 0;border-radius:var(--rs);overflow:hidden"><svg id="omset-svg" viewBox="0 0 ${N} ${H}" style="width:100%;height:${H}px;display:block;cursor:crosshair" preserveAspectRatio="none"><defs><linearGradient id="omg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8DC440" stop-opacity=".3"/><stop offset="100%" stop-color="#8DC440" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#omg)"/><polyline points="${pts}" fill="none" stroke="#8DC440" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><line id="omset-vl" x1="-99" y1="0" x2="-99" y2="${H}" stroke="#8DC440" stroke-width="1" stroke-dasharray="3,2" opacity=".7" vector-effect="non-scaling-stroke"/></svg></div>`;
-    const svgEl=g('omset-svg'),totEl=g('omset-total'),statEl=g('omset-stat'),vl=document.getElementById('omset-vl');
-    if(!svgEl)return;
-    const onHover=cx=>{
-      const r=svgEl.getBoundingClientRect();
-      const frac=Math.max(0,Math.min(1,(cx-r.left)/r.width));
-      const di=Math.round(frac*(n-1));
-      const rev=dailyRev[di];const day=di+1;
-      const ds=thisMonth+'-'+(day<10?'0'+day:String(day));
-      const cnt=monthOrders.filter(o=>o.isoDate===ds).length;
-      if(totEl){totEl.textContent=fmt(rev);totEl.style.color=rev>0?'var(--p)':'var(--t3)';}
-      if(statEl)statEl.textContent=`${day} ${MN[mi]} \u00B7 ${cnt} pesanan \u00B7 ${rev>0?fmt(rev):'Rp 0'}`;
-      const vx=(n<=1?N/2:(di/(n-1))*N).toFixed(1);
-      if(vl){vl.setAttribute('x1',vx);vl.setAttribute('x2',vx);}
-    };
-    const onLeave=()=>{
-      if(totEl){totEl.textContent=origTotal;totEl.style.color='var(--p)';}
-      if(statEl)statEl.textContent=origStat;
-      if(vl){vl.setAttribute('x1','-99');vl.setAttribute('x2','-99');}
-    };
-    svgEl.onmousemove=e=>onHover(e.clientX);
-    svgEl.onmouseleave=onLeave;
-    svgEl.addEventListener('touchmove',e=>{e.preventDefault();onHover(e.touches[0].clientX);},{passive:false});
-    svgEl.addEventListener('touchend',onLeave,{passive:true});
-  })();
-  const sg=g('o-status-grid');if(sg)sg.innerHTML=STATUS_LIST.map(s=>`<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800">${orders.filter(o=>o.status===s).length}</div><div style="font-size:10px;color:var(--t2);margin-top:3px">${s}</div></div>`).join('');
+  const wa=g('o-wa-alert');
+  if(wa)wa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:#3d6b10">${wp.length} cucian selesai belum dinotif WA</div><button class="btn bp bsm bpill" onclick="oGo('wa',null)">Kirim</button></div>`:'';
 }
 function refreshSDash(){
   const wp=orders.filter(o=>o.status==='Selesai'&&!o.waSent);
@@ -336,6 +579,7 @@ function refreshSDash(){
 // ===== EMPLOYEES =====
 function renderEmployees(){
   buildEmpChips();
+  const _lbl=g('emp-cuti-lbl');if(_lbl)_lbl.textContent=cutiPerBulan+'x';
   const list=empFilter==='all'?employees:employees.filter(e=>e.oid===empFilter);
   const el=g('emp-list');if(!el)return;
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Tidak ada karyawan.</div>';return;}
@@ -347,16 +591,16 @@ function renderEmployees(){
 function empCard(e){
   const out=go(e.oid);const stB={in:'gg',off:'gy',cuti:'gpu',sakit:'gam'}[e.status]||'gy';
   const stL={in:'Masuk',off:'Off',cuti:'Cuti',sakit:'Sakit'}[e.status];
-  const dots=Array.from({length:2},(_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${i<e.cutiUsed?'var(--t3)':'var(--p)'};margin-right:3px"></span>`).join('');
-  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${ini(e.name)}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${e.name}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${e.role}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${out.name}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${e.clockIn||'\u2014'}</div><div>Pulang: ${e.clockOut||'\u2014'}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${2-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<2?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
+  const dots=Array.from({length:cutiPerBulan},(_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${i<e.cutiUsed?'var(--t3)':'var(--p)'};margin-right:3px"></span>`).join('');
+  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${ini(e.name)}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${e.name}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${e.role}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${out.name}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${e.clockIn||'\u2014'}</div><div>Pulang: ${e.clockOut||'\u2014'}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${cutiPerBulan-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<cutiPerBulan?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
 }
-function buildEmpChips(){const tabs=[{id:'all',label:'Semua',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];const el=g('emp-filter-chips');if(!el)return;el.innerHTML=tabs.map(t=>`<span class="chip${empFilter===t.id?' on':''}" onclick="setEmpFilter('${t.id}')">${t.color?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t.color};margin-right:5px;vertical-align:middle"></span>`:''}${t.label}</span>`).join('');}
+function buildEmpChips(){const tabs=[{id:'all',label:'Semua',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];const el=g('emp-filter-chips');if(!el)return;el.innerHTML=tabs.map(t=>{const isOn=empFilter===t.id;const colorStyle=isOn&&t.color?`background:${t.color}18;border-color:${t.color};color:${t.color}`:'';return `<span class="chip${isOn?' on':''}" style="${colorStyle}" onclick="setEmpFilter('${t.id}')">${t.color?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t.color};margin-right:5px;vertical-align:middle"></span>`:''}${t.label}</span>`;}).join('');}
 function setEmpFilter(id){empFilter=id;renderEmployees();}
-function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act==='clkin'){e.status='in';e.clockIn=NOW();e.clockOut=null;}else if(act==='clkout'){e.status='off';e.clockOut=NOW();}else if(act==='cuti'&&e.cutiUsed<2){e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;}else if(act==='sakit'){e.status='sakit';e.clockIn=null;e.clockOut=null;}renderEmployees();toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/2)',sakit:'Sakit'}[act]);if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}}
+function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act==='clkin'){e.status='in';e.clockIn=NOW();e.clockOut=null;}else if(act==='clkout'){e.status='off';e.clockOut=NOW();}else if(act==='cuti'&&e.cutiUsed<cutiPerBulan){e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;}else if(act==='sakit'){e.status='sakit';e.clockIn=null;e.clockOut=null;}renderEmployees();toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/'+cutiPerBulan+')',sakit:'Sakit'}[act]);if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}}
 function resetEmpPin(id){const e=employees.find(x=>x.id===id);if(!e)return;const p=prompt('PIN baru (4 digit) untuk '+e.name+':');if(p===null)return;if(!/^\d{4}$/.test(p)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}e.pin=p;renderEmployees();toast('\u2713 PIN '+e.name+' diubah');}
-function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();toast('Karyawan dihapus');});}
-function openAddEmp(){g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');g('m-emp-title').textContent='Tambah Karyawan';g('m-emp').className='mbg on';}
-function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}employees.push({id:empCtr++,name,role:g('me-r').value,oid:g('me-o').value,pin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
+function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();deleteEmployee(id);toast('Karyawan dihapus');});}
+function openAddEmp(){g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');if(empFilter!=='all'){g('me-o').value=empFilter;}g('m-emp-title').textContent='Tambah Karyawan';g('m-emp').className='mbg on';}
+function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}const oid=g('me-o').value;if(!oid){toast('\u26A0\uFE0F Pilih outlet terlebih dahulu');return;}const newId=Date.now();employees.push({id:newId,name,role:g('me-r').value,oid,pin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
 function updStaffClk(){if(!curStaff)return;const e=employees.find(x=>x.id===curStaff.id);if(!e)return;const stM={in:'Sedang bekerja \u00B7 Masuk: '+e.clockIn,off:'Belum clock in hari ini',cuti:'Cuti hari ini',sakit:'Sakit hari ini'};const cs=g('s-clk-st');if(cs)cs.textContent=stM[e.status]||'';const cb=g('s-clk-btns');if(!cb)return;cb.innerHTML=e.status==='in'?`<button class="btn bre bsm bpill" onclick="staffClk('clkout')">Clock Out</button>`:e.status==='off'?`<button class="btn bp bsm bpill" onclick="staffClk('clkin')">Clock In</button>`:`<span class="badge ${e.status==='cuti'?'gpu':'gam'}">${e.status==='cuti'?'Cuti':'Sakit'}</span>`;}
 function staffClk(act){if(!curStaff)return;empAct(curStaff.id,act);}
 
@@ -667,7 +911,7 @@ function saveOutlet(){
     showUpgradeModal();return;
   }
   const name=g('mo-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama outlet wajib diisi');return;}
-  outlets.push({id:'o'+outletCtr++,name,addr:g('mo-a').value.trim()||'\u2014',color:selOutletColor});
+  outlets.push({id:'o'+Date.now(),name,addr:g('mo-a').value.trim()||'\u2014',color:selOutletColor});
   cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('\u2713 Outlet "'+name+'" ditambahkan');
 }
 function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
@@ -787,7 +1031,7 @@ function renderExpenses(){
   const expToday=filtExp.filter(e=>e.date===today).reduce((s,e)=>s+e.nominal,0);
   const expMonth=filtExp.filter(e=>e.date.startsWith(thisMonth)).reduce((s,e)=>s+e.nominal,0);
   const filtOrd=expOutlet==='all'?orders:orders.filter(o=>o.outletId===expOutlet);
-  const rev=filtOrd.filter(o=>o.payStatus==='Lunas'&&o.isoDate&&o.isoDate.startsWith(thisMonth)).reduce((s,o)=>s+o.total,0);
+  const rev=filtOrd.filter(o=>o.payStatus==='Lunas'&&o.isoDate&&_orderDateISO(o).startsWith(thisMonth)).reduce((s,o)=>s+o.total,0);
   const profit=rev-expMonth;
   const outLbl=expOutlet==='all'?'Semua Outlet':(outlets.find(o=>o.id===expOutlet)?.name||'');
   const em=g('exp-metrics');if(em)em.innerHTML=`<div class="mc2 cam"><div class="ml">Pengeluaran Hari Ini${outLbl?` \u00B7 ${outLbl}`:''}</div><div class="mv" style="font-size:16px">${fmt(expToday)}</div></div><div class="mc2 cr"><div class="ml">Pengeluaran Bulan Ini</div><div class="mv" style="font-size:16px">${fmt(expMonth)}</div></div><div class="mc2 ${profit>=0?'cg':'cr'}"><div class="ml">Estimasi Profit</div><div class="mv" style="font-size:16px">${profit>=0?'+':'-'}${fmt(Math.abs(profit))}</div></div>`;
@@ -812,12 +1056,12 @@ function filterOrdersByDate(){
   const today=TODAY_ISO,thisMonth=today.slice(0,7);
   const ld=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   let base=rptOutlet==='all'?orders:orders.filter(o=>o.outletId===rptOutlet);
-  if(rptFilter==='today')return base.filter(o=>o.isoDate===today);
-  if(rptFilter==='week'){const d=new Date(TODAY);d.setDate(d.getDate()-6);return base.filter(o=>o.isoDate&&o.isoDate>=ld(d));}
-  if(rptFilter==='month')return base.filter(o=>o.isoDate&&o.isoDate.startsWith(thisMonth));
-  if(rptFilter==='3month'){const d=new Date(TODAY);d.setMonth(d.getMonth()-3);return base.filter(o=>o.isoDate&&o.isoDate>=ld(d));}
-  if(rptFilter==='year'){const d=new Date(TODAY);d.setFullYear(d.getFullYear()-1);return base.filter(o=>o.isoDate&&o.isoDate>=ld(d));}
-  if(rptFilter==='custom'){const fr=g('rpt-from')?.value,to=g('rpt-to')?.value;if(!fr||!to)return base;return base.filter(o=>o.isoDate&&o.isoDate>=fr&&o.isoDate<=to);}
+  if(rptFilter==='today')return base.filter(o=>_orderDateISO(o)===today);
+  if(rptFilter==='week'){const d=new Date(TODAY);d.setDate(d.getDate()-6);return base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
+  if(rptFilter==='month')return base.filter(o=>o.isoDate&&_orderDateISO(o).startsWith(thisMonth));
+  if(rptFilter==='3month'){const d=new Date(TODAY);d.setMonth(d.getMonth()-3);return base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
+  if(rptFilter==='year'){const d=new Date(TODAY);d.setFullYear(d.getFullYear()-1);return base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
+  if(rptFilter==='custom'){const fr=g('rpt-from')?.value,to=g('rpt-to')?.value;if(!fr||!to)return base;return base.filter(o=>o.isoDate&&_orderDateISO(o)>=fr&&_orderDateISO(o)<=to);}
   return base;
 }
 function renderReports(){
@@ -1013,9 +1257,7 @@ delOutlet = function(id) { deleteOutlet(id); _origDelOutlet(id); };
 
 // Employees
 const _origSaveEmp = saveEmp;
-saveEmp = function() { _origSaveEmp(); employees.forEach(e => syncEmployee(e)); };
-const _origDelEmp = delEmp;
-delEmp = function(id) { deleteEmployee(id); _origDelEmp(id); };
+saveEmp = function() { _origSaveEmp(); syncEmployee(employees[employees.length - 1]); };
 const _origEmpAct = empAct;
 empAct = function(id, act) { _origEmpAct(id, act); const e = employees.find(x => x.id === id); if (e) syncEmployee(e); };
 
