@@ -292,6 +292,7 @@ function renderKanban(role) {
           <div style="font-size:10px;font-weight:600;color:${go(o.outletId)?.color || 'var(--t2)'};">${go(o.outletId)?.name || ''}</div>
           <div style="font-size:11px;color:var(--t2)">${o.svcType}·${o.qty}${getSvcUnit(o.svcType)}</div>
           ${st === 'Selesai' ? `<div style="margin-top:8px">${o.waSent ? '<span class="badge gg" style="font-size:10px">✓ WA Terkirim</span>' : `<button class="btn bp bpill" style="width:100%;padding:6px;font-size:11px" onclick="openWaMod('${o.id}')">💬 Kirim WA</button>`}</div>` : ''}
+          ${st === 'Selesai' ? `<div style="margin-top:6px"><button class="btn bpill" style="width:100%;padding:7px;font-size:11px;font-weight:700;background:var(--p);color:#fff;border-color:var(--p)" onclick="updSt('${o.id}','Diambil','${role}')">✓ Sudah Diambil</button></div>` : ''}
           <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:8px">${STATUS_LIST.filter(s => s !== 'Diambil').map(s => `<button class="btn bsm${s === st ? ' bp' : ''}" style="font-size:10px;padding:3px 6px" onclick="updSt('${o.id}','${s}','${role}')">${s}</button>`).join('')}</div>
         </div>`).join('')
       : '<div style="font-size:11px;color:var(--t2);text-align:center;padding:14px">Kosong</div>'}</div>`;
