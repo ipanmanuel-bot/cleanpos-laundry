@@ -101,6 +101,8 @@ function showApp(id){document.querySelectorAll('.scr').forEach(s=>s.classList.re
 function togglePwd(id,btn){const el=g(id);el.type=el.type==='password'?'text':'password';btn.innerHTML=el.type==='password'?'<i data-lucide="eye"></i>':'<i data-lucide="eye-off"></i>';lucide.createIcons({nodes:[btn]});}
 function confirm_(title,msg,onOk){g('mc-title').textContent=title;g('mc-msg').textContent=msg;g('mc-ok').onclick=()=>{cm('m-confirm');onOk();};openModal('m-confirm');}
 function confirmBack(){confirm_('Kembali ke Menu Awal?','Sesi ini akan berakhir.',()=>{curRole=null;curStaff=null;showScr('scr-login');document.querySelectorAll('.app').forEach(a=>a.classList.remove('on'));});}
+function openDrawer(){const app=document.querySelector('.app.on');if(!app)return;app.querySelector('.sbnav')?.classList.add('open');app.querySelector('.mob-drawer-bg')?.classList.add('on');}
+function closeDrawer(){document.querySelectorAll('.sbnav').forEach(n=>n.classList.remove('open'));document.querySelectorAll('.mob-drawer-bg').forEach(b=>b.classList.remove('on'));}
 function showMore(){g('more-bg').className='more-bg on';}
 function closeMore(){g('more-bg').className='more-bg';}
 function mMore(pg){closeMore();oGo(pg,null);}
@@ -218,6 +220,7 @@ function oGo(pg,el){
   const pm={dashboard:refreshODash,orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('no');calcO();}
+  closeDrawer();
 }
 function oGoB(pg,el){document.querySelectorAll('#owner-app .bnav .bni').forEach(n=>n.classList.remove('on'));if(el)el.classList.add('on');oGo(pg,null);}
 function sGo(pg,el){
@@ -228,6 +231,7 @@ function sGo(pg,el){
   const pm={dashboard:refreshSDash,orders:renderOrders,tracking:()=>renderKanban('s'),wa:renderSWa,membership:renderMembership};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('sno');calcS();}
+  closeDrawer();
 }
 function sGoB(pg,el){document.querySelectorAll('#staff-app .bnav .bni').forEach(n=>n.classList.remove('on'));if(el)el.classList.add('on');sGo(pg,null);}
 

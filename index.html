@@ -190,11 +190,22 @@ tr:hover td{background:#FAFAF7}
 @media(min-width:769px){
   .sbnav{display:flex}.bnav{display:none}.mc{margin-left:230px;padding:24px}#toast{bottom:20px}
 }
+/* Mobile top header */
+.mob-header{display:none;position:fixed;top:0;left:0;right:0;height:54px;background:var(--ca);border-bottom:1px solid var(--b1);z-index:45;align-items:center;justify-content:space-between;padding:0 14px;box-shadow:0 1px 8px rgba(0,0,0,.07)}
+.mob-hbg{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--b1);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.mob-hbg:hover{background:var(--b1)}.mob-hbg svg{width:20px;height:20px;stroke-width:2;display:block;color:var(--t1)}
+.mob-logo{height:26px;width:auto;display:block}
+.mob-close-btn{display:none;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:20px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
+/* Drawer backdrop */
+.mob-drawer-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200}
+.mob-drawer-bg.on{display:block}
 @media(max-width:768px){
-  .sbnav{display:none}.bnav{display:block}.mc{margin-left:0;padding:16px 14px 90px}
+  .mob-header{display:flex}.mob-close-btn{display:flex}
+  .sbnav{display:flex;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:210}
+  .sbnav.open{transform:translateX(0)}
+  .bnav{display:block}.mc{margin-left:0;padding:72px 14px 90px}
   .g4{grid-template-columns:1fr 1fr}.kanban{grid-template-columns:repeat(3,minmax(0,1fr))}
   .g2.og{grid-template-columns:1fr}.hide-m{display:none}.pt{font-size:18px;margin-bottom:12px}
-  .hbg{display:flex}
 }
 @media(max-width:400px){.g2{grid-template-columns:1fr}.g3{grid-template-columns:1fr 1fr}}
 /* ===== DASHBOARD ===== */
@@ -359,7 +370,7 @@ tr:hover td{background:#FAFAF7}
 <div id="owner-app" class="app">
 <button class="hbg" onclick="showMore()" title="Menu Lainnya"><i data-lucide="menu" style="width:22px;height:22px;stroke-width:2"></i></button>
 <nav class="sbnav">
-  <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr" style="display:flex;align-items:center;gap:5px"><i data-lucide="crown" style="width:11px;height:11px;stroke-width:2;flex-shrink:0;display:block;opacity:.7"></i>Owner Dashboard</div></div>
+  <div class="sb-logo" style="display:flex;align-items:center;justify-content:space-between"><div><div class="sb-ln">CleanPOS</div><div class="sb-lr" style="display:flex;align-items:center;gap:5px"><i data-lucide="crown" style="width:11px;height:11px;stroke-width:2;flex-shrink:0;display:block;opacity:.7"></i>Owner Dashboard</div></div><button class="mob-close-btn" onclick="closeDrawer()">×</button></div>
   <div class="fab-sb"><button class="fab" onclick="oGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="o-nav">
     <div class="sb-sec">Utama</div>
@@ -394,6 +405,11 @@ tr:hover td{background:#FAFAF7}
     <button class="back-sb" onclick="confirmBack()">← Menu Awal</button>
   </div>
 </nav>
+<div class="mob-drawer-bg" onclick="closeDrawer()"></div>
+<header class="mob-header">
+  <button class="mob-hbg" onclick="openDrawer()"><i data-lucide="menu"></i></button>
+  <img src="../Black_1.svg" class="mob-logo" alt="CleanPOS">
+</header>
 <div class="mc" id="o-mc">
 <div id="plan-expiry-banner" style="display:none;margin:10px 10px 0;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6"></div>
 
@@ -744,7 +760,7 @@ tr:hover td{background:#FAFAF7}
 <!-- STAFF APP -->
 <div id="staff-app" class="app">
 <nav class="sbnav">
-  <div class="sb-logo"><div class="sb-ln">CleanPOS</div><div class="sb-lr" id="staff-role-lbl">👤 Karyawan</div></div>
+  <div class="sb-logo" style="display:flex;align-items:center;justify-content:space-between"><div><div class="sb-ln">CleanPOS</div><div class="sb-lr" id="staff-role-lbl">👤 Karyawan</div></div><button class="mob-close-btn" onclick="closeDrawer()">×</button></div>
   <div class="fab-sb"><button class="fab" onclick="sGo('new-order',null)"><span style="font-size:20px">+</span> Buat Pesanan</button></div>
   <div class="sb-items" id="s-nav">
     <div class="sb-sec">Operasional</div>
@@ -756,6 +772,11 @@ tr:hover td{background:#FAFAF7}
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
 </nav>
+<div class="mob-drawer-bg" onclick="closeDrawer()"></div>
+<header class="mob-header">
+  <button class="mob-hbg" onclick="openDrawer()"><i data-lucide="menu"></i></button>
+  <img src="../Black_1.svg" class="mob-logo" alt="CleanPOS">
+</header>
 <div class="mc" id="s-mc">
   <div class="page on" id="s-p-dashboard">
     <div class="pt">Beranda</div>
