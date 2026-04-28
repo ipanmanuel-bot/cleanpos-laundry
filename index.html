@@ -461,8 +461,13 @@ tr:hover td{background:#FAFAF7}
     <div>
       <div class="card"><div class="ct">Data Pelanggan</div>
         <div class="fg"><label>Outlet</label><select id="no-outlet"></select></div>
-        <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan"></div>
-        <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx"></div>
+        <div class="fg" style="position:relative;margin-bottom:10px">
+          <label>Cari Pelanggan Lama</label>
+          <input id="no-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('no')" autocomplete="off">
+          <div id="no-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
+        </div>
+        <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
+        <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('no')"></div>
         <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="no-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
       </div>
       <div class="card"><div class="ct">Detail Layanan</div>
@@ -508,6 +513,7 @@ tr:hover td{background:#FAFAF7}
           <div class="fg" style="margin-bottom:0"><label>Metode</label><select id="no-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select></div>
           <div class="fg" style="margin-bottom:0"><label>Status</label><select id="no-ps" onchange="dpTgl('no')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select></div>
         </div>
+        <div id="no-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-top:6px;margin-bottom:0"></div>
         <div class="fg" id="no-dp-g" style="display:none;margin-top:8px;margin-bottom:0"><label>Jumlah DP</label><input type="number" id="no-dp" placeholder="0"></div>
         <div class="div_"></div>
         <div class="fg"><label>Uang Diterima</label><input type="number" id="no-cash" oninput="calcChg('no')" placeholder="0"></div>
@@ -548,7 +554,6 @@ tr:hover td{background:#FAFAF7}
   </div>
 
   <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="wa-pend-cnt" class="badge gam">0</span></div><div id="wa-pend-list"></div></div>
-  <div class="card"><div class="ct">Riwayat Terkirim</div><div id="wa-log-list"></div></div>
 </div>
 
 <!-- KAS -->
@@ -636,10 +641,10 @@ tr:hover td{background:#FAFAF7}
 
 <!-- CUSTOMERS -->
 <div class="page" id="o-p-customers">
-  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div>
+  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Tambah</button><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div></div>
   <div class="card">
     <input id="cust-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderCusts()">
-    <div class="tw"><table><thead><tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th>Terakhir</th></tr></thead><tbody id="cust-tb"></tbody></table></div>
+    <div id="cust-table-wrap"></div>
   </div>
 </div>
 
@@ -699,6 +704,25 @@ tr:hover td{background:#FAFAF7}
     <div class="div_"></div>
     <button class="btn bp bfull bpill" onclick="saveEmpSettings()">Simpan Pengaturan Karyawan</button>
   </div>
+  <div class="card" id="membership-settings-card">
+    <div class="ct"><i data-lucide="credit-card" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Membership &amp; Saldo Pelanggan</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
+      <div>
+        <div style="font-size:14px;font-weight:600">Aktifkan Membership</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:3px;line-height:1.5">Pelanggan dapat menyimpan saldo dan menggunakannya saat membayar pesanan</div>
+      </div>
+      <button class="toggle off" id="membership-toggle" onclick="toggleMembership()" style="flex-shrink:0;margin-top:2px"></button>
+    </div>
+    <div id="membership-bonus-section" style="display:none">
+      <div class="div_"></div>
+      <div class="fg" style="margin-bottom:0"><label>Bonus Deposit (%)</label>
+        <input type="number" id="s-mbr-bonus" min="0" max="100" value="10" placeholder="0" style="width:100px">
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus. Contoh: isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
+      </div>
+      <div class="div_"></div>
+      <button class="btn bp bfull bpill" onclick="saveMembershipSettings()">Simpan Pengaturan Membership</button>
+    </div>
+  </div>
   <div class="card" id="printer-card">
     <div class="sh"><div><div class="ct" style="margin-bottom:0"><i data-lucide="printer" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Printer</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Struk (80mm) · Label (58mm) · Bluetooth / USB / LAN</div></div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>
     <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
@@ -728,6 +752,7 @@ tr:hover td{background:#FAFAF7}
     <button class="ni" onclick="sGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <button class="ni" onclick="sGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
     <button class="ni" onclick="sGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
+    <button class="ni" id="s-nav-membership" onclick="sGo('membership',this)"><span class="nic"><i data-lucide="credit-card"></i></span>Membership</button>
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
 </nav>
@@ -759,8 +784,13 @@ tr:hover td{background:#FAFAF7}
       <div>
         <div class="card"><div class="ct">Data Pelanggan</div>
           <div class="fg"><label>Outlet</label><select id="sno-outlet"></select></div>
-          <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan"></div>
-          <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xx-xxxx-xxxx"></div>
+          <div class="fg" style="position:relative;margin-bottom:10px">
+            <label>Cari Pelanggan Lama</label>
+            <input id="sno-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('sno')" autocomplete="off">
+            <div id="sno-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
+          </div>
+          <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
+          <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('sno')"></div>
           <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="sno-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
         </div>
         <div class="card"><div class="ct">Detail Layanan</div>
@@ -795,6 +825,7 @@ tr:hover td{background:#FAFAF7}
             <div class="fg" style="margin-bottom:0"><label>Metode</label><select id="sno-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select></div>
             <div class="fg" style="margin-bottom:0"><label>Status</label><select id="sno-ps" onchange="dpTgl('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select></div>
           </div>
+          <div id="sno-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-top:6px;margin-bottom:0"></div>
           <div class="fg" id="sno-dp-g" style="display:none;margin-top:8px;margin-bottom:0"><label>Jumlah DP</label><input type="number" id="sno-dp" placeholder="0"></div>
           <div class="div_"></div>
           <div class="fg"><label>Uang Diterima</label><input type="number" id="sno-cash" oninput="calcChg('sno')" placeholder="0"></div>
@@ -813,7 +844,16 @@ tr:hover td{background:#FAFAF7}
     <div class="pt">WA Notifikasi</div>
     <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10;display:flex;align-items:center;gap:6px"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;flex-shrink:0;display:block"></i>Klik tombol WA → WhatsApp terbuka → Pesan terisi otomatis → Tekan Send</div></div>
     <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="s-wa-pend-cnt" class="badge gam">0</span></div><div id="s-wa-pend-list"></div></div>
-    <div class="card"><div class="ct">Riwayat</div><div id="s-wa-log"></div></div>
+  </div>
+  <div class="page" id="s-p-membership">
+    <div class="pt">Membership</div>
+    <div id="s-mbr-disabled" style="display:none;background:var(--amb);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;font-size:13px;color:#5d2f00">
+      ⚠️ Fitur membership belum diaktifkan oleh owner. Hubungi owner untuk mengaktifkannya di menu Pengaturan.
+    </div>
+    <div id="s-mbr-content">
+      <input id="s-mbr-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderMembership()">
+      <div id="s-mbr-list"></div>
+    </div>
   </div>
 </div>
 <nav class="bnav">
@@ -822,6 +862,7 @@ tr:hover td{background:#FAFAF7}
     <button class="bni" onclick="sGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="sGo('new-order',null)">+</div>
     <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="bni" onclick="sGoB('membership',this)"><span class="bn-ic"><i data-lucide="credit-card"></i></span>Member</button>
     <button class="bni" onclick="sGoB('wa',this)"><span class="bn-ic"><i data-lucide="message-circle"></i></span>WA</button>
   </div>
 </nav>
@@ -963,6 +1004,18 @@ tr:hover td{background:#FAFAF7}
   </div>
   <div class="mft"><button class="btn bp bfull" onclick="doSetNewAccountPwd()">Simpan Password Baru</button></div>
 </div></div>
+<!-- PIN Reset Modal -->
+<div class="mbg" id="m-pin-reset">
+  <div class="mbox" style="max-width:340px">
+    <div class="mhd"><span class="mht" id="m-pin-reset-title">Reset PIN</span><button class="xb" onclick="cm('m-pin-reset')">×</button></div>
+    <div class="mbd">
+      <div class="fg"><label>PIN Baru (4 digit)</label><input type="password" id="pr-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <div class="fg"><label>Konfirmasi PIN</label><input type="password" id="pr-pin2" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <div id="pr-err" style="display:none;font-size:12px;color:var(--re);margin-bottom:10px"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-pin-reset')">Batal</button><button class="btn bp" onclick="savePinReset()">Simpan PIN</button></div>
+  </div>
+</div>
 <div class="mbg" id="m-confirm"><div class="mbox" style="max-width:340px"><div class="mhd"><span class="mht" id="mc-title">Konfirmasi</span><button class="xb" onclick="cm('m-confirm')">×</button></div><div class="mbd"><p id="mc-msg" style="font-size:14px;line-height:1.6;color:var(--t2)"></p></div><div class="mft"><button class="btn" onclick="cm('m-confirm')">Batal</button><button class="btn bre" id="mc-ok">Ya, Lanjutkan</button></div></div></div>
 
 <!-- UPGRADE PLAN MODAL -->
@@ -1010,14 +1063,83 @@ tr:hover td{background:#FAFAF7}
   </div>
 </div>
 
-<!-- MIDTRANS SNAP SDK — uncomment saat integrasi payment siap -->
-<!-- <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="YOUR_SANDBOX_CLIENT_KEY"></script> -->
-<!-- Production: <script src="https://app.midtrans.com/snap/snap.js" data-client-key="YOUR_PRODUCTION_CLIENT_KEY"></script> -->
+<!-- MIDTRANS SNAP SDK -->
+<!-- Sandbox (testing): -->
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="YOUR_SANDBOX_CLIENT_KEY"></script>
+<!-- Production (ganti baris di atas dengan baris ini saat live): -->
+<!-- <script src="https://app.midtrans.com/snap/snap.js" data-client-key="YOUR_PRODUCTION_CLIENT_KEY"></script> -->
 
+<!-- EDIT CUSTOMER Modal -->
+<div class="mbg" id="m-edit-cust">
+  <div class="mbox" style="max-width:360px">
+    <div class="mhd"><span class="mht">Edit Pelanggan</span><button class="xb" onclick="cm('m-edit-cust')">×</button></div>
+    <div class="mbd">
+      <div class="fg"><label>Nama Pelanggan</label><input id="ec-name" placeholder="Nama lengkap"></div>
+      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-edit-cust')">Batal</button><button class="btn bp" onclick="saveEditCust()">Simpan</button></div>
+  </div>
+</div>
+
+<!-- ADD CUSTOMER Modal -->
+<div class="mbg" id="m-add-cust">
+  <div class="mbox" style="max-width:360px">
+    <div class="mhd"><span class="mht">Tambah Pelanggan</span><button class="xb" onclick="cm('m-add-cust')">×</button></div>
+    <div class="mbd">
+      <div class="fg"><label>Nama Pelanggan</label><input id="ac-name" placeholder="Nama lengkap"></div>
+      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ac-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-add-cust')">Batal</button><button class="btn bp" onclick="saveNewCust()">Simpan</button></div>
+  </div>
+</div>
+
+<!-- MEMBERSHIP: Deposit Modal -->
+<div class="mbg" id="m-member-deposit">
+  <div class="mbox" style="max-width:360px">
+    <div class="mhd"><span class="mht" id="md-title">Deposit Member</span><button class="xb" onclick="cm('m-member-deposit')">×</button></div>
+    <div class="mbd">
+      <div style="font-size:13px;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:10px" id="md-cust-info"></div>
+      <div class="fg"><label>Jumlah Bayar (Rp)</label>
+        <input type="number" id="md-amount" placeholder="0" min="0" oninput="calcDepositPreview()">
+      </div>
+      <div id="md-preview" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
+        <div class="sr"><span>Jumlah Bayar</span><span id="md-base-lbl">Rp 0</span></div>
+        <div class="sr" id="md-bonus-row" style="color:var(--p)"><span id="md-bonus-lbl">Bonus (10%)</span><span id="md-bonus-amt">+ Rp 0</span></div>
+        <div style="height:1px;background:var(--b1);margin:8px 0"></div>
+        <div class="sr"><span style="font-weight:700">Total Saldo Masuk</span><span id="md-total-lbl" style="font-weight:700;color:var(--p)">Rp 0</span></div>
+      </div>
+      <div class="fg"><label>Metode Pembayaran</label>
+        <select id="md-pay-method">
+          <option value="Tunai">Tunai (Cash)</option>
+          <option value="QRIS">QRIS</option>
+          <option value="Transfer">Transfer</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:0"><label>Catatan (Opsional)</label>
+        <input id="md-note" placeholder="Contoh: Deposit tunai">
+      </div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-member-deposit')">Batal</button><button class="btn bp" onclick="saveDeposit()">Simpan Deposit</button></div>
+  </div>
+</div>
+<!-- MEMBERSHIP: Transaction History Modal -->
+<div class="mbg" id="m-member-txn">
+  <div class="mbox" style="max-width:420px">
+    <div class="mhd"><span class="mht" id="mt-title">Riwayat Membership</span><button class="xb" onclick="cm('m-member-txn')">×</button></div>
+    <div class="mbd">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--b1)">
+        <div id="mt-cust-info" style="font-size:13px;color:var(--t2)"></div>
+        <div><div style="font-size:11px;color:var(--t2);text-align:right">Saldo</div><div style="font-size:18px;font-weight:800;color:var(--p)" id="mt-balance"></div></div>
+      </div>
+      <div id="mt-list"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-member-txn')">Tutup</button></div>
+  </div>
+</div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
 <script src="js/supabaseClient.js"></script>
 <script src="js/ordersApi.js"></script>
 <script src="js/ordersUI.js"></script>
