@@ -308,7 +308,7 @@ function submitO(role) {
   const pre = role === 'o' ? 'no' : 'sno';
   const o = buildOrder(pre); if (!o) return;
   showRcpt(o.id); curWaNewOrder = o;
-  setTimeout(() => { setWaNewType('konfirmasi', g('wa-new-chips').querySelector('.chip')); g('m-wa-new').className = 'mbg on'; }, 600);
+  setTimeout(() => { setWaNewType('konfirmasi', g('wa-new-chips').querySelector('.chip')); openModal('m-wa-new'); }, 600);
   if (role === 'o') refreshODash(); else refreshSDash();
 }
 
@@ -405,7 +405,7 @@ function showRcpt(id) {
   if (o.promoAmt > 0) lines += `<div class="rrow" style="color:var(--p)"><span>Diskon Promo</span><span>- ${o.promoAmt.toLocaleString('id-ID')}</span></div>`;
   if (o.discAmt > 0)  lines += `<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ${o.discAmt.toLocaleString('id-ID')}</span></div>`;
   g('m-rcpt-body').innerHTML = `<div class="rcpt"><div class="rc rb">CLEANPOS LAUNDRY</div><div class="rc" style="font-size:10px">${esc(go(o.outletId)?.addr || '')}</div><hr class="rdash"><div class="rrow"><span>No Nota</span><span>${esc(o.id)}</span></div><div class="rrow"><span>Pelanggan</span><span>${esc(o.name)}</span></div><div class="rrow"><span>Kasir</span><span>${esc(o.handledBy || '—')}</span></div><div class="rrow"><span>Tgl Masuk</span><span>${esc(o.date)}</span></div><hr class="rdash">${lines}<hr class="rdash"><div class="rrow"><span>Status</span><span>${esc(o.payStatus)}</span></div><div class="rrow rb"><span>Total</span><span>${o.total.toLocaleString('id-ID')}</span></div><div class="rrow"><span>Metode</span><span>${esc(o.payMethod)}</span></div><hr class="rdash"><div class="rc">Terima kasih! 🙏</div></div>`;
-  g('m-rcpt').className = 'mbg on';
+  openModal('m-rcpt');
 }
 
 function deleteOrder(id) {
@@ -442,7 +442,7 @@ function showDetail(id) {
   <div><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Update Status Bayar</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">${['Belum Bayar', 'DP', 'Lunas'].map(ps => `<button class="btn bsm${ps === o.payStatus ? ' bp' : ''}" onclick="setPayModal('${id}','${ps}',this)">${ps}</button>`).join('')}</div></div>`;
   g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button><button class="btn bp" onclick="cm('m-detail');showRcpt('${id}')">Struk</button>`;
-  g('m-detail').className = 'mbg on';
+  openModal('m-detail');
 }
 
 function setStModal(id, st, btn) {
@@ -497,7 +497,7 @@ function openWaMod(id) {
     renderWaCenter(); renderSWa();
     if (curRole === 'owner') refreshODash(); else refreshSDash();
   };
-  g('m-wa').className = 'mbg on';
+  openModal('m-wa');
 }
 
 function setWaNewType(type, el) {

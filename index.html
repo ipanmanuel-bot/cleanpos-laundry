@@ -1069,6 +1069,18 @@ tr:hover td{background:#FAFAF7}
 <!-- Production (ganti baris di atas dengan baris ini saat live): -->
 <!-- <script src="https://app.midtrans.com/snap/snap.js" data-client-key="YOUR_PRODUCTION_CLIENT_KEY"></script> -->
 
+<!-- EDIT CUSTOMER Modal -->
+<div class="mbg" id="m-edit-cust">
+  <div class="mbox" style="max-width:360px">
+    <div class="mhd"><span class="mht">Edit Pelanggan</span><button class="xb" onclick="cm('m-edit-cust')">×</button></div>
+    <div class="mbd">
+      <div class="fg"><label>Nama Pelanggan</label><input id="ec-name" placeholder="Nama lengkap"></div>
+      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-edit-cust')">Batal</button><button class="btn bp" onclick="saveEditCust()">Simpan</button></div>
+  </div>
+</div>
+
 <!-- ADD CUSTOMER Modal -->
 <div class="mbg" id="m-add-cust">
   <div class="mbox" style="max-width:360px">
