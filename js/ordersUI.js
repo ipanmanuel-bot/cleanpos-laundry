@@ -31,13 +31,57 @@ function updWalletOption(pre) {
     if (pmSel.options[i].value === 'Dompet Member') pmSel.remove(i);
   }
   if (cust && bal > 0) {
-    pmSel.add(new Option('Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
-    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>`; }
+    pmSel.add(new Option('💳 Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
+    pmSel.value = 'Dompet Member'; // auto-select when balance exists
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`💳 Saldo member: <strong>${fmt(bal)}</strong>`; }
   } else {
     if (pmSel.value === 'Dompet Member') pmSel.value = 'Tunai';
     if (infoEl) infoEl.style.display='none';
   }
 }
+
+function custSearch(pre) {
+  const q = (g(pre+'-cust-srch')?.value||'').toLowerCase().trim();
+  const drop = g(pre+'-cust-drop');
+  if (!drop) return;
+  if (!q) { drop.style.display='none'; return; }
+  const matches = Object.values(customers).filter(c =>
+    c.name.toLowerCase().includes(q) || c.phone.includes(q)
+  ).slice(0,8);
+  if (!matches.length) { drop.style.display='none'; return; }
+  drop.innerHTML = matches.map(c => {
+    const bal = c.balance||0;
+    const balBadge = membershipEnabled && bal > 0
+      ? `<span style="font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:1px 8px;border-radius:10px;margin-left:6px">💳 ${fmt(bal)}</span>`
+      : '';
+    return `<div onclick="pickCust('${pre}','${esc(c.phone)}')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${esc(c.name)}${balBadge}</div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  drop.style.display = '';
+}
+
+function pickCust(pre, phone) {
+  const c = customers[phone]; if (!c) return;
+  const nameEl = g(pre+'-name'); if (nameEl) nameEl.value = c.name;
+  const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
+  const srchEl = g(pre+'-cust-srch'); if (srchEl) srchEl.value = '';
+  const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
+  updWalletOption(pre);
+}
+
+// Close customer dropdowns when clicking outside
+document.addEventListener('click', e => {
+  ['no','sno'].forEach(pre => {
+    const wrap = g(pre+'-cust-srch')?.parentElement;
+    if (wrap && !wrap.contains(e.target)) {
+      const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
+    }
+  });
+});
 
 function toggleAddonLbl(pre, aid, checked) {
   const lbl = g(pre + '-lbl-' + aid); if (!lbl) return;

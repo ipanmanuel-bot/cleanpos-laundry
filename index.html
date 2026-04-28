@@ -461,7 +461,12 @@ tr:hover td{background:#FAFAF7}
     <div>
       <div class="card"><div class="ct">Data Pelanggan</div>
         <div class="fg"><label>Outlet</label><select id="no-outlet"></select></div>
-        <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan"></div>
+        <div class="fg" style="position:relative;margin-bottom:10px">
+          <label>Cari Pelanggan Lama</label>
+          <input id="no-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('no')" autocomplete="off">
+          <div id="no-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
+        </div>
+        <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
         <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('no')"></div>
         <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="no-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
       </div>
@@ -779,7 +784,12 @@ tr:hover td{background:#FAFAF7}
       <div>
         <div class="card"><div class="ct">Data Pelanggan</div>
           <div class="fg"><label>Outlet</label><select id="sno-outlet"></select></div>
-          <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan"></div>
+          <div class="fg" style="position:relative;margin-bottom:10px">
+            <label>Cari Pelanggan Lama</label>
+            <input id="sno-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('sno')" autocomplete="off">
+            <div id="sno-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
+          </div>
+          <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
           <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('sno')"></div>
           <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="sno-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
         </div>
