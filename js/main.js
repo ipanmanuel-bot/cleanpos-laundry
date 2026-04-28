@@ -993,15 +993,18 @@ function saveDeposit(){
   const bonus=Math.round(base*(membershipBonus/100));
   const credited=base+bonus;
   const note=(g('md-note')?.value||'').trim();
+  const payMethod=(g('md-pay-method')?.value||'Tunai');
   const txnId='MBR-'+String(memberTxnCtr++).padStart(5,'0');
   const txn={id:txnId,phone:_mdPhone,type:'deposit',amount:credited,baseAmount:base,bonusAmount:bonus,note:note||null,orderId:null,time:NOW()};
   memberTxns.push(txn);
   c.balance=(c.balance||0)+credited;
-  const kasEntry={id:kasCtr++,type:'in',desc:'Deposit Member – '+c.name,note:note||null,amount:base,time:NOW(),outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||'')};
-  kasLog.push(kasEntry);
   syncMemberTxn(txn);
   syncCustomer(c);
-  syncKas(kasEntry);
+  if(payMethod==='Tunai'){
+    const kasEntry={id:kasCtr++,type:'in',desc:'Deposit Member – '+c.name,note:note||null,amount:base,time:NOW(),outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||'')};
+    kasLog.push(kasEntry);
+    syncKas(kasEntry);
+  }
   cm('m-member-deposit');
   renderCusts();
   if(curRole==='staff')renderMembership();

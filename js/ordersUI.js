@@ -34,8 +34,9 @@ function updWalletOption(pre) {
     pmSel.add(new Option('💳 Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
     pmSel.value = 'Dompet Member'; // auto-select when balance exists
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`💳 Saldo member: <strong>${fmt(bal)}</strong>`; }
+    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
   } else {
-    if (pmSel.value === 'Dompet Member') pmSel.value = 'Tunai';
+    if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
     if (infoEl) infoEl.style.display='none';
   }
 }
@@ -249,7 +250,7 @@ function dpTgl(pre) {
 
 function buildOrder(pre) {
   const name = (g(pre + '-name')?.value || '').trim(); if (!name) { toast('⚠️ Nama pelanggan wajib diisi!'); return null; }
-  const phone = g(pre + '-phone')?.value || '—';
+  const phone = (g(pre + '-phone')?.value || '').trim() || '—';
   const res = doCalc(pre, pre === 'no');
   const addOns = []; addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck && ck.checked) addOns.push({ id: a.id, name: a.name }); });
   const o = {
