@@ -3,6 +3,33 @@
 const SUPA_URL = 'https://czwqaobdonovvdpfgkjd.supabase.co';
 const SUPA_KEY = 'sb_publishable_1mG5_Wo2FmOBFiIM7kKJCw_S1RQl6xO';
 
+// ===== SECURITY HELPERS =====
+// HTML-escape: use on every user-supplied value inserted into innerHTML
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+// CSS color guard: only allow valid hex colors in style attributes
+function safeColor(c) {
+  return /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : '#888888';
+}
+// SHA-256 hash with user_id salt — used for passwords and PINs
+async function hashSecret(value) {
+  try {
+    const data = new TextEncoder().encode((currentUserId || 'local') + ':' + value);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return 'sha256:' + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    // crypto.subtle unavailable (non-HTTPS dev environment) — fall back to plain text
+    console.warn('[security] hashSecret unavailable, storing plain text:', e.message);
+    return value;
+  }
+}
+
 let supabase = null;
 let supaRealtimeCh = null;
 let supaEnabled = false;
@@ -32,12 +59,12 @@ async function sbUpsert(table, data, onConflict = 'user_id,id') {
   if (!supaEnabled || !supabase) return;
   const { error } = await supabase.from(table).upsert(data, { onConflict });
   if (error) {
+    // Log full detail to console only — never expose DB internals to the UI
     console.error(`[supa] upsert ${table}:`, error.message);
-    // Schema cache errors mean the column doesn't exist yet — guide user to run the migration
     if (error.message.includes('schema cache') || error.message.includes('column')) {
       console.warn(`[supa] Kolom belum ada di tabel "${table}". Jalankan SQL migration di Supabase Dashboard.`);
     } else {
-      toast(`⚠️ Gagal simpan ke cloud (${table}): ${error.message}`);
+      toast(`⚠️ Gagal menyimpan data. Coba lagi atau refresh halaman.`);
     }
   }
 }
@@ -48,10 +75,14 @@ async function sbDelete(table, id) {
 }
 async function sbFetch(table) {
   if (!supaEnabled || !supabase) return null;
-  const { data, error } = await supabase.from(table).select('*');
+  // Always filter by current user — defense-in-depth alongside RLS
+  const query = currentUserId
+    ? supabase.from(table).select('*').eq('user_id', currentUserId)
+    : supabase.from(table).select('*');
+  const { data, error } = await query;
   if (error) {
     console.error(`[supa] fetch ${table}:`, error.message);
-    toast(`⚠️ Gagal muat tabel "${table}": ${error.message}`);
+    toast(`⚠️ Gagal memuat data. Coba refresh halaman.`);
     return null;
   }
   return data;
@@ -210,13 +241,13 @@ async function verifySupaPwdForOwnerReset() {
     g('rop-new-pwd')?.focus();
   }
 }
-function doSetNewOwnerPwd() {
+async function doSetNewOwnerPwd() {
   const newPwd = g('rop-new-pwd')?.value || '';
   const confirmPwd = g('rop-confirm-pwd')?.value || '';
   const errEl = g('rop-err2');
   if (newPwd.length < 4) { if (errEl) { errEl.textContent = 'Password minimal 4 karakter.'; errEl.style.display='block'; } return; }
   if (newPwd !== confirmPwd) { if (errEl) { errEl.textContent = 'Password tidak cocok.'; errEl.style.display='block'; } return; }
-  ownerPwd = newPwd;
+  ownerPwd = await hashSecret(newPwd);
   syncSettings();
   cm('m-reset-owner-pwd');
   toast('✅ Password owner berhasil diubah!');

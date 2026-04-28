@@ -18,6 +18,27 @@ function buildOrderForm(pre) {
   ).join('');
 }
 
+function updWalletOption(pre) {
+  if (!membershipEnabled) return;
+  const pmSel = g(pre+'-pm');
+  const infoEl = g(pre+'-wallet-info');
+  if (!pmSel) return;
+  const phone = (g(pre+'-phone')?.value||'').trim();
+  const cust = phone ? customers[phone] : null;
+  const bal = cust?.balance||0;
+  // Remove old wallet option if present
+  for (let i = pmSel.options.length-1; i >= 0; i--) {
+    if (pmSel.options[i].value === 'Dompet Member') pmSel.remove(i);
+  }
+  if (cust && bal > 0) {
+    pmSel.add(new Option('Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>`; }
+  } else {
+    if (pmSel.value === 'Dompet Member') pmSel.value = 'Tunai';
+    if (infoEl) infoEl.style.display='none';
+  }
+}
+
 function toggleAddonLbl(pre, aid, checked) {
   const lbl = g(pre + '-lbl-' + aid); if (!lbl) return;
   lbl.style.borderColor = checked ? 'var(--p)' : 'var(--b1)';
@@ -44,7 +65,7 @@ function buildSatuanOrderItems(pre) {
   el.innerHTML = satuanItems.map(item => {
     const price = item.prices[cat] || 0;
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)">
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${item.name}</div><div style="font-size:11px;color:var(--t2)">${fmt(price)} / pcs</div></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(item.name)}</div><div style="font-size:11px;color:var(--t2)">${fmt(price)} / pcs</div></div>
       <input type="number" id="${pre}-sat-${item.id}" value="0" min="0" step="1" style="width:60px;text-align:center;font-size:16px;font-weight:700;padding:6px 8px" oninput="${ch}">
     </div>`;
   }).join('');
@@ -199,10 +220,27 @@ function buildOrder(pre) {
     handledBy: curStaff ? curStaff.name : 'Owner',
     outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1'))
   };
+  // Wallet payment: validate before pushing order
+  if (membershipEnabled && o.payMethod === 'Dompet Member') {
+    const walletCust = phone !== '—' ? customers[phone] : null;
+    if (!walletCust || (walletCust.balance||0) < o.total) {
+      toast('⚠️ Saldo member tidak cukup! Saldo: ' + fmt(walletCust?.balance||0));
+      return null;
+    }
+    o.payStatus = 'Lunas';
+  }
   orders.push(o); orderCtr++;
   if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
     kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId });
+  if (membershipEnabled && o.payMethod === 'Dompet Member' && phone !== '—') {
+    const cust = customers[phone];
+    if (cust) {
+      cust.balance = (cust.balance||0) - o.total;
+      const txnId = 'MBR-'+String(memberTxnCtr++).padStart(5,'0');
+      memberTxns.push({ id: txnId, phone, type: 'deduct', amount: o.total, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() });
+    }
+  }
   [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
   addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false; });
   const qq = g(pre + '-qty'); if (qq) qq.value = '1';
@@ -212,6 +250,7 @@ function buildOrder(pre) {
   const ps = g(pre + '-ps');    if (ps) ps.value = 'Belum Bayar';
   const dpg = g(pre + '-dp-g'); if (dpg) dpg.style.display = 'none';
   if (res.type === 'satuan') satuanItems.forEach(item => { const el = g(pre + '-sat-' + item.id); if (el) el.value = '0'; });
+  if (membershipEnabled) updWalletOption(pre);
   if (pre === 'no') calcO(); else calcS();
   return o;
 }
@@ -247,24 +286,24 @@ function renderOrders() {
     ? (o.waSent ? `<span class="badge gg">✓</span>` : `<button class="btn bp bsm" onclick="openWaMod('${o.id}')">💬</button>`)
     : '—';
   if (isO) {
-    tb.innerHTML = list.map(o => `<tr>
-      <td style="font-size:11px;font-family:monospace;white-space:nowrap">${o.id}</td>
-      <td><div style="font-weight:600">${o.name}</div><div style="font-size:11px;color:var(--t2)">${o.phone}</div></td>
-      <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${go(o.outletId)?.color || '#ccc'}18;color:${go(o.outletId)?.color || '#666'}">${go(o.outletId)?.name || '—'}</span></td>
-      <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${o.svcType}·${o.svcCat}</td>
+    tb.innerHTML = list.map(o => { const _oc=go(o.outletId);const _osc=_oc?.color?safeColor(_oc.color):'#ccc';return `<tr>
+      <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
+      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
+      <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${_osc}18;color:${_oc?.color?safeColor(_oc.color):'#666'}">${esc(_oc?.name || '—')}</span></td>
+      <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
-      <td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td>
-      <td><span class="badge ${SL_PAY[o.payStatus]}">${o.payStatus}</span></td>
+      <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
+      <td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td>
       <td>${waBtn(o)}</td>
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
-    </tr>`).join('');
+    </tr>`; }).join('');
   } else {
     tb.innerHTML = list.map(o => `<tr>
-      <td style="font-size:11px;font-family:monospace;white-space:nowrap">${o.id}</td>
-      <td style="font-weight:600">${o.name}</td>
-      <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${o.svcType}·${o.svcCat}</td>
-      <td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td>
-      <td><span class="badge ${SL_PAY[o.payStatus]}">${o.payStatus}</span></td>
+      <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
+      <td style="font-weight:600">${esc(o.name)}</td>
+      <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
+      <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
+      <td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td>
       <td>${waBtn(o)}</td>
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
     </tr>`).join('');
@@ -286,15 +325,15 @@ function renderKanban(role) {
   kb.innerHTML = cols.map(st => {
     const items = filtOrders.filter(o => o.status === st);
     return `<div class="kcol"><div class="khd"><span>${st}</span><span style="background:var(--ca);padding:1px 7px;border-radius:12px;font-size:10px">${items.length}</span></div>${items.length
-      ? items.map(o => `<div class="kcard${st === 'Selesai' ? ' kdone' : ''}">
-          <div style="font-size:10px;font-family:monospace;color:var(--t2)">${o.id}</div>
-          <div style="font-weight:700;font-size:12px;margin:3px 0">${o.name}</div>
-          <div style="font-size:10px;font-weight:600;color:${go(o.outletId)?.color || 'var(--t2)'};">${go(o.outletId)?.name || ''}</div>
-          <div style="font-size:11px;color:var(--t2)">${o.svcType}·${o.qty}${getSvcUnit(o.svcType)}</div>
+      ? items.map(o => { const _oc=go(o.outletId);const _ocColor=_oc?.color?safeColor(_oc.color):'var(--t2)'; return `<div class="kcard${st === 'Selesai' ? ' kdone' : ''}">
+          <div style="font-size:10px;font-family:monospace;color:var(--t2)">${esc(o.id)}</div>
+          <div style="font-weight:700;font-size:12px;margin:3px 0">${esc(o.name)}</div>
+          <div style="font-size:10px;font-weight:600;color:${_ocColor};">${esc(_oc?.name || '')}</div>
+          <div style="font-size:11px;color:var(--t2)">${esc(o.svcType)}·${o.qty}${getSvcUnit(o.svcType)}</div>
           ${st === 'Selesai' ? `<div style="margin-top:8px">${o.waSent ? '<span class="badge gg" style="font-size:10px">✓ WA Terkirim</span>' : `<button class="btn bp bpill" style="width:100%;padding:6px;font-size:11px" onclick="openWaMod('${o.id}')">💬 Kirim WA</button>`}</div>` : ''}
           ${st === 'Selesai' ? `<div style="margin-top:6px"><button class="btn bpill" style="width:100%;padding:7px;font-size:11px;font-weight:700;background:var(--p);color:#fff;border-color:var(--p)" onclick="updSt('${o.id}','Diambil','${role}')">✓ Sudah Diambil</button></div>` : ''}
           <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:8px">${STATUS_LIST.filter(s => s !== 'Diambil').map(s => `<button class="btn bsm${s === st ? ' bp' : ''}" style="font-size:10px;padding:3px 6px" onclick="updSt('${o.id}','${s}','${role}')">${s}</button>`).join('')}</div>
-        </div>`).join('')
+        </div>`; }).join('')
       : '<div style="font-size:11px;color:var(--t2);text-align:center;padding:14px">Kosong</div>'}</div>`;
   }).join('');
 }
@@ -312,11 +351,11 @@ function showRcpt(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
   curRcptOrderId = id;
   const base = (getP()[o.svcType]?.[o.svcCat] || 0) * o.qty;
-  let lines = `<div class="rrow"><span style="text-transform:capitalize">${o.svcType} ${o.svcCat} × ${o.qty}${getSvcUnit(o.svcType)}</span><span>${base.toLocaleString('id-ID')}</span></div>`;
-  o.addOns.forEach(a => { const ad = addons.find(x => x.id === a.id); if (ad) { const v = ad.unit === 'per_qty' ? ad.price * o.qty : ad.price; lines += `<div class="rrow"><span>${a.name}</span><span>${v.toLocaleString('id-ID')}</span></div>`; } });
+  let lines = `<div class="rrow"><span style="text-transform:capitalize">${esc(o.svcType)} ${esc(o.svcCat)} × ${o.qty}${getSvcUnit(o.svcType)}</span><span>${base.toLocaleString('id-ID')}</span></div>`;
+  o.addOns.forEach(a => { const ad = addons.find(x => x.id === a.id); if (ad) { const v = ad.unit === 'per_qty' ? ad.price * o.qty : ad.price; lines += `<div class="rrow"><span>${esc(a.name)}</span><span>${v.toLocaleString('id-ID')}</span></div>`; } });
   if (o.promoAmt > 0) lines += `<div class="rrow" style="color:var(--p)"><span>Diskon Promo</span><span>- ${o.promoAmt.toLocaleString('id-ID')}</span></div>`;
   if (o.discAmt > 0)  lines += `<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ${o.discAmt.toLocaleString('id-ID')}</span></div>`;
-  g('m-rcpt-body').innerHTML = `<div class="rcpt"><div class="rc rb">CLEANPOS LAUNDRY</div><div class="rc" style="font-size:10px">${go(o.outletId)?.addr || ''}</div><hr class="rdash"><div class="rrow"><span>No Nota</span><span>${o.id}</span></div><div class="rrow"><span>Pelanggan</span><span>${o.name}</span></div><div class="rrow"><span>Kasir</span><span>${o.handledBy || '—'}</span></div><div class="rrow"><span>Tgl Masuk</span><span>${o.date}</span></div><hr class="rdash">${lines}<hr class="rdash"><div class="rrow"><span>Status</span><span>${o.payStatus}</span></div><div class="rrow rb"><span>Total</span><span>${o.total.toLocaleString('id-ID')}</span></div><div class="rrow"><span>Metode</span><span>${o.payMethod}</span></div><hr class="rdash"><div class="rc">Terima kasih! 🙏</div></div>`;
+  g('m-rcpt-body').innerHTML = `<div class="rcpt"><div class="rc rb">CLEANPOS LAUNDRY</div><div class="rc" style="font-size:10px">${esc(go(o.outletId)?.addr || '')}</div><hr class="rdash"><div class="rrow"><span>No Nota</span><span>${esc(o.id)}</span></div><div class="rrow"><span>Pelanggan</span><span>${esc(o.name)}</span></div><div class="rrow"><span>Kasir</span><span>${esc(o.handledBy || '—')}</span></div><div class="rrow"><span>Tgl Masuk</span><span>${esc(o.date)}</span></div><hr class="rdash">${lines}<hr class="rdash"><div class="rrow"><span>Status</span><span>${esc(o.payStatus)}</span></div><div class="rrow rb"><span>Total</span><span>${o.total.toLocaleString('id-ID')}</span></div><div class="rrow"><span>Metode</span><span>${esc(o.payMethod)}</span></div><hr class="rdash"><div class="rc">Terima kasih! 🙏</div></div>`;
   g('m-rcpt').className = 'mbg on';
 }
 
@@ -337,14 +376,14 @@ function showDetail(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
   g('m-detail-title').textContent = o.id;
   g('m-detail-body').innerHTML = `<div class="g2" style="margin-bottom:14px">
-    <div class="mc2"><div class="ml">Status</div><div style="margin-top:6px"><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></div></div>
-    <div class="mc2"><div class="ml">Pembayaran</div><div style="margin-top:6px"><span class="badge ${SL_PAY[o.payStatus]}">${o.payStatus}</span></div></div>
+    <div class="mc2"><div class="ml">Status</div><div style="margin-top:6px"><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></div></div>
+    <div class="mc2"><div class="ml">Pembayaran</div><div style="margin-top:6px"><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></div></div>
   </div>
   <div class="rcpt" style="margin-bottom:12px">
-    <div class="rrow"><span style="color:var(--t2)">Pelanggan</span><span>${o.name}</span></div>
-    <div class="rrow"><span style="color:var(--t2)">WA</span><span>${o.phone}</span></div>
-    <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${go(o.outletId)?.name || '—'}</span></div>
-    <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${o.svcType}·${o.svcCat}</span></div>
+    <div class="rrow"><span style="color:var(--t2)">Pelanggan</span><span>${esc(o.name)}</span></div>
+    <div class="rrow"><span style="color:var(--t2)">WA</span><span>${esc(o.phone)}</span></div>
+    <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${esc(go(o.outletId)?.name || '—')}</span></div>
+    <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>
     <div class="rrow rb" style="border-top:1px dashed #ccc;padding-top:5px;margin-top:4px"><span>Total</span><span>${fmt(o.total)}</span></div>
   </div>
@@ -399,13 +438,14 @@ function fmtPh(p) {
 function openWaMod(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
   const msg = buildMsg(waTplSelesai, o);
-  g('m-wa-body').innerHTML = `<div style="margin-bottom:12px"><div style="font-weight:600;font-size:14px">${o.name}</div><div style="font-size:12px;color:var(--t2)">${o.id} · ${o.phone}</div></div><div class="wa-bg"><div class="wa-bbl">${msg.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div></div>`;
+  g('m-wa-body').innerHTML = `<div style="margin-bottom:12px"><div style="font-weight:600;font-size:14px">${esc(o.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(o.id)} · ${esc(o.phone)}</div></div><div class="wa-bg"><div class="wa-bbl">${esc(msg).replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div></div>`;
   g('m-wa-send').onclick = () => {
-    if (o.phone && o.phone !== '—') window.open('https://wa.me/' + fmtPh(o.phone) + '?text=' + encodeURIComponent(msg), '_blank');
+    if (o.phone && o.phone !== '—') window.open('https://wa.me/' + fmtPh(o.phone) + '?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
     o.waSent = true;
     waLog.unshift({ orderId: o.id, name: o.name, phone: o.phone, time: NOW() + ', ' + TODAY_STR });
     cm('m-wa'); toast('💬 WA terbuka untuk ' + o.name);
     renderOrders();
+    renderWaCenter(); renderSWa();
     if (curRole === 'owner') refreshODash(); else refreshSDash();
   };
   g('m-wa').className = 'mbg on';
@@ -421,7 +461,7 @@ function setWaNewType(type, el) {
   const sb = g('m-wa-new-send');
   if (sb) sb.onclick = () => {
     if (curWaNewOrder?.phone && curWaNewOrder.phone !== '—')
-      window.open('https://wa.me/' + fmtPh(curWaNewOrder.phone) + '?text=' + encodeURIComponent(buildMsg(waTplNew[curWaNewType], curWaNewOrder)), '_blank');
+      window.open('https://wa.me/' + fmtPh(curWaNewOrder.phone) + '?text=' + encodeURIComponent(buildMsg(waTplNew[curWaNewType], curWaNewOrder)), '_blank', 'noopener,noreferrer');
     waLog.unshift({ orderId: curWaNewOrder.id, name: curWaNewOrder.name, phone: curWaNewOrder.phone, time: NOW() + ', ' + TODAY_STR });
     cm('m-wa-new'); toast('💬 WA konfirmasi terkirim!');
   };
@@ -470,11 +510,11 @@ function renderWaCenter() {
   const cnt = g('wa-pend-cnt'); if (cnt) { cnt.textContent = pend.length; cnt.className = 'badge ' + (pend.length ? 'gam' : 'gg'); }
   const pl = g('wa-pend-list');
   if (pl) pl.innerHTML = pend.length
-    ? pend.map(o => `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--b1)"><div><div style="font-weight:600;font-size:13px">${o.name}</div><div style="font-size:11px;color:var(--t2)">${o.id} · ${fmt(o.total)}</div></div><button class="btn bp bsm bpill" onclick="openWaMod('${o.id}')">💬 Kirim WA</button></div>`).join('')
+    ? pend.map(o => `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--b1)"><div><div style="font-weight:600;font-size:13px">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.id)} · ${fmt(o.total)}</div></div><button class="btn bp bsm bpill" onclick="openWaMod('${o.id}')">💬 Kirim WA</button></div>`).join('')
     : '<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Semua sudah dinotifikasi ✓</div>';
   const ll = g('wa-log-list');
   if (ll) ll.innerHTML = waLog.length
-    ? waLog.map(l => `<div class="li_"><div class="lic">💬</div><div style="flex:1"><div style="font-weight:600">${l.name}</div><div style="font-size:11px;color:var(--t2)">${l.orderId}</div></div><span style="font-size:11px;color:var(--t2)">${l.time}</span><span class="badge gg">✓</span></div>`).join('')
+    ? waLog.map(l => `<div class="li_"><div class="lic">💬</div><div style="flex:1"><div style="font-weight:600">${esc(l.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(l.orderId)}</div></div><span style="font-size:11px;color:var(--t2)">${esc(l.time)}</span><span class="badge gg">✓</span></div>`).join('')
     : '<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px">Belum ada riwayat</div>';
 }
 
@@ -483,10 +523,10 @@ function renderSWa() {
   const cnt = g('s-wa-pend-cnt'); if (cnt) { cnt.textContent = pend.length; cnt.className = 'badge ' + (pend.length ? 'gam' : 'gg'); }
   const pl = g('s-wa-pend-list');
   if (pl) pl.innerHTML = pend.length
-    ? pend.map(o => `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--b1)"><div><div style="font-weight:600;font-size:13px">${o.name}</div><div style="font-size:11px;color:var(--t2)">${o.id}</div></div><button class="btn bp bsm bpill" onclick="openWaMod('${o.id}')">💬 Kirim</button></div>`).join('')
+    ? pend.map(o => `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--b1)"><div><div style="font-weight:600;font-size:13px">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.id)}</div></div><button class="btn bp bsm bpill" onclick="openWaMod('${o.id}')">💬 Kirim</button></div>`).join('')
     : '<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Semua sudah dinotifikasi ✓</div>';
   const ll = g('s-wa-log');
   if (ll) ll.innerHTML = waLog.length
-    ? waLog.slice(0, 5).map(l => `<div class="li_"><div class="lic">💬</div><div style="flex:1;font-weight:600">${l.name}</div><span class="badge gg">✓</span></div>`).join('')
+    ? waLog.slice(0, 5).map(l => `<div class="li_"><div class="lic">💬</div><div style="flex:1;font-weight:600">${esc(l.name)}</div><span class="badge gg">✓</span></div>`).join('')
     : '<div style="text-align:center;padding:16px;color:var(--t2);font-size:13px">Belum ada</div>';
 }

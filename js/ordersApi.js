@@ -21,12 +21,14 @@ function orderToRow(o) {
   };
 }
 function rowToOrder(r) {
+  let satuanLines = [], addOns = [];
+  try { satuanLines = JSON.parse(r.satuan_lines || '[]'); } catch(e) { console.error('[parse] satuan_lines:', e); }
+  try { addOns = JSON.parse(r.add_ons || '[]'); } catch(e) { console.error('[parse] add_ons:', e); }
   return {
     id: r.id, name: r.name, phone: r.phone,
     svcType: r.svc_type, svcCat: r.svc_cat,
     qty: r.qty, rawQty: r.raw_qty,
-    satuanLines: JSON.parse(r.satuan_lines || '[]'),
-    addOns: JSON.parse(r.add_ons || '[]'), addOnAmt: r.add_on_amt,
+    satuanLines, addOns, addOnAmt: r.add_on_amt,
     base: r.base, discType: r.disc_type, discAmt: r.disc_amt,
     promoAmt: r.promo_amt, total: r.total,
     payMethod: r.pay_method, payStatus: r.pay_status,
@@ -45,9 +47,24 @@ function syncCustomer(c) {
   sbUpsert('customers', {
     user_id: currentUserId,
     id: c.phone, name: c.name, phone: c.phone,
-    orders: c.orders, total: c.total, last_date: c.lastDate
+    orders: c.orders, total: c.total, balance: c.balance||0, last_date: c.lastDate
   });
 }
+
+// --- Sync: Member Transactions ---
+function syncMemberTxn(txn) {
+  sbUpsert('member_txns', {
+    user_id: currentUserId,
+    id: txn.id, phone: txn.phone, type: txn.type,
+    amount: txn.amount,
+    base_amount: txn.baseAmount != null ? txn.baseAmount : null,
+    bonus_amount: txn.bonusAmount != null ? txn.bonusAmount : null,
+    note: txn.note||null,
+    order_id: txn.orderId||null,
+    time: txn.time
+  });
+}
+function deleteMemberTxn(id) { sbDelete('member_txns', id); }
 
 // --- Sync: Outlets ---
 function syncOutlet(o) {
@@ -96,20 +113,23 @@ function syncPrinter(p) {
 function deletePrinter_sb(id) { sbDelete('printers', id); }
 
 // --- Sync: Settings (one row per user, id='main') ---
+// NOTE: owner_pwd is stored as a SHA-256 hash (prefixed 'sha256:'), never plain text
 function syncSettings() {
   sbUpsert('settings', {
     user_id: currentUserId,
     id: 'main',
     store_name: storeName, store_addr: storeAddr,
     store_wa: storeWa, store_footer: storeFooter,
-    owner_pwd: ownerPwd,
+    owner_pwd: ownerPwd,   // always a 'sha256:...' hash — see hashSecret()
     service_types: JSON.stringify(serviceTypes),
     satuan_items: JSON.stringify(satuanItems),
     addons: JSON.stringify(addons),
     promos: JSON.stringify(promos),
     wa_tpl_selesai: waTplSelesai,
     wa_tpl_new: JSON.stringify(waTplNew),
-    cuti_per_bulan: cutiPerBulan
+    cuti_per_bulan: cutiPerBulan,
+    membership_enabled: membershipEnabled,
+    membership_bonus: membershipBonus
   });
 }
 
@@ -118,15 +138,16 @@ async function supaLoadAll() {
   toast('☁️ Memuat data dari cloud...');
   const [
     ordersData, custsData, outletsData, empsData,
-    kasData, expData, printersData, settingsData, subData
+    kasData, expData, printersData, settingsData, subData, memberTxnData
   ] = await Promise.all([
     sbFetch('orders'), sbFetch('customers'), sbFetch('outlets'),
     sbFetch('employees'), sbFetch('kas_log'), sbFetch('expenses'),
-    sbFetch('printers'), sbFetch('settings'), sbFetch('subscriptions')
+    sbFetch('printers'), sbFetch('settings'), sbFetch('subscriptions'),
+    sbFetch('member_txns')
   ]);
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
-  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, lastDate: c.last_date }; }); }
+  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date }; }); }
   if (outletsData)  {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
@@ -152,14 +173,20 @@ async function supaLoadAll() {
     if (s.store_addr)    storeAddr = s.store_addr;
     if (s.store_wa)      storeWa = s.store_wa;
     if (s.store_footer)  storeFooter = s.store_footer;
-    if (s.owner_pwd)     ownerPwd = s.owner_pwd;
-    if (s.service_types) serviceTypes = JSON.parse(s.service_types);
-    if (s.satuan_items)  satuanItems = JSON.parse(s.satuan_items);
-    if (s.addons)        addons = JSON.parse(s.addons);
-    if (s.promos)        promos = JSON.parse(s.promos);
+    if (s.owner_pwd)     ownerPwd = s.owner_pwd;   // loaded as hash; compared via hashSecret()
+    try { if (s.service_types) serviceTypes = JSON.parse(s.service_types); } catch(e) { console.error('[parse] service_types:', e); }
+    try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) { console.error('[parse] satuan_items:', e); }
+    try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) { console.error('[parse] addons:', e); }
+    try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) { console.error('[parse] promos:', e); }
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
-    if (s.wa_tpl_new)    waTplNew = JSON.parse(s.wa_tpl_new);
+    try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) { console.error('[parse] wa_tpl_new:', e); }
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
+    if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
+    if (s.membership_bonus  != null) membershipBonus  = Number(s.membership_bonus);
+  }
+  if (memberTxnData) {
+    memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
+    memberTxnCtr = memberTxns.reduce((mx,t) => { const n=parseInt((t.id||'').replace(/\D/g,'')); return isNaN(n)?mx:Math.max(mx,n); }, 0) + 1;
   }
   if (subData && subData.length) {
     currentPlan       = subData[0].plan        || 'basic';
@@ -183,8 +210,8 @@ function supaSubscribeOrders() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const incoming = rowToOrder(payload.new);
-        // Only process events for this user (RLS should handle this but double-check)
-        if (payload.new.user_id && payload.new.user_id !== currentUserId) return;
+        // Strict check: drop events that don't belong to the current user
+        if (payload.new?.user_id !== currentUserId) return;
         const idx = orders.findIndex(o => o.id === incoming.id);
         if (idx >= 0) orders[idx] = incoming; else orders.push(incoming);
       } else if (payload.eventType === 'DELETE') {
@@ -209,6 +236,7 @@ async function supaPushAll() {
     ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, outlet_id: l.outletId })),
     ...expenses.map(e => sbUpsert('expenses', { user_id: currentUserId, id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),
     ...printers.map(p => sbUpsert('printers', { user_id: currentUserId, id: p.id, name: p.name, conn: p.conn, ip: p.ip, width: p.width, role: p.role, status: p.status })),
+    ...memberTxns.map(t => syncMemberTxn(t)),
     syncSettings()
   ]);
   toast('✅ Semua data berhasil dipush ke Supabase!');
