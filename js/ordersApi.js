@@ -187,6 +187,20 @@ async function supaLoadAll() {
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
     memberTxnCtr = memberTxns.reduce((mx,t) => { const n=parseInt((t.id||'').replace(/\D/g,'')); return isNaN(n)?mx:Math.max(mx,n); }, 0) + 1;
+    // Reconcile customer balances from transaction log (authoritative source).
+    // This fixes stale/zero balance in the customers table after page reload.
+    const _phoneSet = new Set(memberTxns.map(t => t.phone));
+    _phoneSet.forEach(ph => {
+      if (!customers[ph]) return;
+      const _computed = memberTxns
+        .filter(t => t.phone === ph)
+        .reduce((sum, t) => t.type === 'deposit' ? sum + (t.amount||0) : sum - (t.amount||0), 0);
+      const _correct = Math.max(0, _computed);
+      if (customers[ph].balance !== _correct) {
+        customers[ph].balance = _correct;
+        syncCustomer(customers[ph]); // push corrected balance back to Supabase
+      }
+    });
   }
   if (subData && subData.length) {
     currentPlan       = subData[0].plan        || 'basic';
