@@ -268,8 +268,11 @@ function buildOrder(pre) {
   // Wallet payment: validate before pushing order
   if (membershipEnabled && o.payMethod === 'Dompet Member') {
     const walletCust = phone !== '—' ? customers[phone] : null;
-    if (!walletCust || (walletCust.balance||0) < o.total) {
-      toast('⚠️ Saldo member tidak cukup! Saldo: ' + fmt(walletCust?.balance||0));
+    const walletBal = Number(walletCust?.balance || 0);
+    const walletTotal = Number(o.total || 0);
+    console.log('[wallet check] phone:', phone, '| found:', !!walletCust, '| balance:', walletBal, '| total:', walletTotal);
+    if (!walletCust || walletBal < walletTotal) {
+      toast('⚠️ Saldo tidak cukup! Saldo: ' + fmt(walletBal) + ' | Total: ' + fmt(walletTotal));
       return null;
     }
     o.payStatus = 'Lunas';
