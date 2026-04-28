@@ -641,7 +641,7 @@ tr:hover td{background:#FAFAF7}
 
 <!-- CUSTOMERS -->
 <div class="page" id="o-p-customers">
-  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div>
+  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Tambah</button><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div></div>
   <div class="card">
     <input id="cust-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderCusts()">
     <div id="cust-table-wrap"></div>
@@ -1068,6 +1068,18 @@ tr:hover td{background:#FAFAF7}
 <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="YOUR_SANDBOX_CLIENT_KEY"></script>
 <!-- Production (ganti baris di atas dengan baris ini saat live): -->
 <!-- <script src="https://app.midtrans.com/snap/snap.js" data-client-key="YOUR_PRODUCTION_CLIENT_KEY"></script> -->
+
+<!-- ADD CUSTOMER Modal -->
+<div class="mbg" id="m-add-cust">
+  <div class="mbox" style="max-width:360px">
+    <div class="mhd"><span class="mht">Tambah Pelanggan</span><button class="xb" onclick="cm('m-add-cust')">×</button></div>
+    <div class="mbd">
+      <div class="fg"><label>Nama Pelanggan</label><input id="ac-name" placeholder="Nama lengkap"></div>
+      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ac-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-add-cust')">Batal</button><button class="btn bp" onclick="saveNewCust()">Simpan</button></div>
+  </div>
+</div>
 
 <!-- MEMBERSHIP: Deposit Modal -->
 <div class="mbg" id="m-member-deposit">

@@ -956,6 +956,27 @@ function renderCusts(){
   wrap.innerHTML=`<div class="tw"><table><thead>${hdrCols}</thead><tbody>${rows}</tbody></table></div>`;
 }
 
+// ===== ADD CUSTOMER =====
+function openAddCust(){
+  if(g('ac-name'))g('ac-name').value='';
+  if(g('ac-phone'))g('ac-phone').value='';
+  g('m-add-cust').className='mbg on';
+  setTimeout(()=>g('ac-name')?.focus(),100);
+}
+function saveNewCust(){
+  const name=(g('ac-name')?.value||'').trim();
+  if(!name){toast('⚠️ Nama pelanggan wajib diisi');return;}
+  const phone=(g('ac-phone')?.value||'').trim()||'—';
+  if(phone!=='—'&&customers[phone]){toast('⚠️ Nomor WA sudah terdaftar: '+customers[phone].name);return;}
+  const key=phone==='—'?('cust-'+Date.now()):phone;
+  customers[key]={name,phone:key,orders:0,total:0,balance:0,lastDate:TODAY_STR};
+  syncCustomer(customers[key]);
+  cm('m-add-cust');
+  renderCusts();
+  toast('✅ Pelanggan '+name+' berhasil ditambahkan');
+  if(membershipEnabled) setTimeout(()=>openMemberDeposit(key),300);
+}
+
 // ===== MEMBERSHIP =====
 let _mdPhone=null;
 

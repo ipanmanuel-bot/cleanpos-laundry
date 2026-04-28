@@ -23,7 +23,7 @@ function updWalletOption(pre) {
   const pmSel = g(pre+'-pm');
   const infoEl = g(pre+'-wallet-info');
   if (!pmSel) return;
-  const phone = (g(pre+'-phone')?.value||'').trim();
+  const phone = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
   const cust = phone ? customers[phone] : null;
   const bal = cust?.balance||0;
   // Remove old wallet option if present
@@ -250,7 +250,8 @@ function dpTgl(pre) {
 
 function buildOrder(pre) {
   const name = (g(pre + '-name')?.value || '').trim(); if (!name) { toast('⚠️ Nama pelanggan wajib diisi!'); return null; }
-  const phone = (g(pre + '-phone')?.value || '').trim() || '—';
+  const _phoneRaw = (g(pre + '-phone')?.value || '').trim().replace(/^[-—]+$/, '');
+  const phone = _phoneRaw || '—';
   const res = doCalc(pre, pre === 'no');
   const addOns = []; addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck && ck.checked) addOns.push({ id: a.id, name: a.name }); });
   const o = {
