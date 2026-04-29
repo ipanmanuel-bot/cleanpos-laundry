@@ -1418,6 +1418,21 @@ async function changePwd(){
 }
 
 // ===== EXCEL EXPORT (SheetJS) =====
+const XLSX_CDNS=['https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js','https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'];
+function loadXLSX(cb){
+  if(typeof XLSX!=='undefined'){cb();return;}
+  let tried=0;
+  function tryNext(){
+    if(tried>=XLSX_CDNS.length){toast('⚠️ Gagal memuat library Excel. Cek koneksi internet.');return;}
+    const s=document.createElement('script');
+    s.src=XLSX_CDNS[tried++];
+    s.onload=()=>{if(typeof XLSX!=='undefined')cb();else tryNext();};
+    s.onerror=tryNext;
+    document.head.appendChild(s);
+  }
+  toast('⏳ Memuat library Excel...');
+  tryNext();
+}
 function makeSheet(title,infoLine,headers,rows,totalsRow,colWidths){
   const aoa=[];aoa.push([title]);if(infoLine)aoa.push([infoLine]);aoa.push([]);aoa.push(headers);rows.forEach(r=>aoa.push(r));if(totalsRow)aoa.push(totalsRow);
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=colWidths.map(w=>({wch:w}));
@@ -1425,7 +1440,7 @@ function makeSheet(title,infoLine,headers,rows,totalsRow,colWidths){
   ws['!rows']=[{hpt:18},{hpt:14}];return ws;
 }
 function exportCustomers(){
-  if(typeof XLSX==='undefined'){toast('\u26A0\uFE0F Library belum siap, coba lagi');return;}
+  loadXLSX(()=>{
   const wb=XLSX.utils.book_new();const cl=Object.values(customers);
   const info='Tanggal Export: '+TODAY_STR+'  |  Total Pelanggan: '+cl.length+' orang';
   const headers=['No','Nama Pelanggan','No. WhatsApp','Total Pesanan','Total Transaksi (Rp)','Order Terakhir'];
@@ -1434,9 +1449,9 @@ function exportCustomers(){
   const ws=makeSheet('DATA PELANGGAN \u2014 CleanPOS Laundry',info,headers,rows,tots,[5,26,18,14,22,16]);
   XLSX.utils.book_append_sheet(wb,ws,'Pelanggan');XLSX.writeFile(wb,'CleanPOS_Pelanggan_'+TODAY_ISO+'.xlsx');
   toast('\u2713 Export Excel pelanggan berhasil!');
-}
+  });}
 function exportReport(){
-  if(typeof XLSX==='undefined'){toast('\u26A0\uFE0F Library belum siap, coba lagi');return;}
+  loadXLSX(()=>{
   const filtered=filterOrdersByDate();const wb=XLSX.utils.book_new();
   const outLbl=rptOutlet==='all'?'Semua Outlet':(outlets.find(o=>o.id===rptOutlet)?.name||'');
   const perLbl={'today':'Hari Ini','week':'7 Hari Terakhir','month':'Bulan Ini','3month':'3 Bulan Terakhir','year':'1 Tahun Terakhir','custom':'Custom'}[rptFilter]||rptFilter;
@@ -1461,7 +1476,7 @@ function exportReport(){
   XLSX.utils.book_append_sheet(wb,makeSheet('LAPORAN PENGELUARAN \u2014 CleanPOS Laundry',info,expHeaders,expRows,expTots,[5,14,26,16,16,16,16,16]),'Pengeluaran');
   XLSX.writeFile(wb,'CleanPOS_Laporan_'+TODAY_ISO+'.xlsx');
   toast('\u2713 Export Excel berhasil! (4 sheet: Ringkasan, Transaksi, Kas, Pengeluaran)');
-}
+  });}
 
 // ===== SUPABASE SYNC PATCHES =====
 // Hook all data-mutating functions to also sync to Supabase.
