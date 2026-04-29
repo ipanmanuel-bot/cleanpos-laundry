@@ -315,7 +315,7 @@ function renderSettings(){
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
   if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
-  const isElite=currentPlan==='elite'&&currentPlanStatus==='active';
+  const isElite=(currentPlan==='elite'||currentPlan==='enterprise')&&currentPlanStatus==='active';
   const mCard=g('membership-settings-card');
   if(mCard){
     let lockEl=mCard.querySelector('.mbr-lock');
@@ -1200,7 +1200,7 @@ function renderMembership(){
 }
 
 function toggleMembership(){
-  if(currentPlan!=='elite'||currentPlanStatus!=='active'){showUpgradeModal();return;}
+  if((currentPlan!=='elite'&&currentPlan!=='enterprise')||currentPlanStatus!=='active'){showUpgradeModal();return;}
   membershipEnabled=!membershipEnabled;
   renderSettings();
   syncSettings();
@@ -1221,7 +1221,7 @@ function saveMembershipSettings(){
 }
 
 function toggleMembershipExpiry(){
-  if(currentPlan!=='elite'||currentPlanStatus!=='active'){showUpgradeModal();return;}
+  if((currentPlan!=='elite'&&currentPlan!=='enterprise')||currentPlanStatus!=='active'){showUpgradeModal();return;}
   membershipExpiryEnabled=!membershipExpiryEnabled;
   if(membershipExpiryEnabled)checkExpiredBalances();
   renderSettings();
