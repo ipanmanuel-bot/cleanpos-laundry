@@ -455,57 +455,71 @@ function showRcpt(id) {
   if (!o) return;
   curRcptOrderId = id;
 
-  // --- product lines ---
-  var lines = '';
-  var satuanLines = o.satuanLines || [];
-  if (o.svcType === 'satuan' && satuanLines.length > 0) {
-    for (var si = 0; si < satuanLines.length; si++) {
-      var sl = satuanLines[si];
-      lines += '<div class="rrow"><span>' + esc(sl.name || '') + ' x' + (sl.qty || 0) + '</span><span>' + Number(sl.lineTotal || 0).toLocaleString('id-ID') + '</span></div>';
+  try {
+    // --- product lines ---
+    var lines = '';
+    var satuanLines = o.satuanLines || [];
+    if (o.svcType === 'satuan' && satuanLines.length > 0) {
+      for (var si = 0; si < satuanLines.length; si++) {
+        var sl = satuanLines[si];
+        lines += '<div class="rrow"><span>' + esc(sl.name || '') + ' x' + (sl.qty || 0) + '</span><span>' + Number(sl.lineTotal || 0).toLocaleString('id-ID') + '</span></div>';
+      }
+    } else {
+      var svcUnit = 'pcs';
+      try { svcUnit = getSvcUnit(o.svcType || '') || 'pcs'; } catch(e) {}
+      lines = '<div class="rrow"><span style="text-transform:capitalize">' + esc(o.svcType || '') + ' ' + esc(o.svcCat || '') + ' x' + (o.qty || 0) + svcUnit + '</span><span>' + Number(o.base || 0).toLocaleString('id-ID') + '</span></div>';
     }
-  } else {
-    lines = '<div class="rrow"><span style="text-transform:capitalize">' + esc(o.svcType || '') + ' ' + esc(o.svcCat || '') + ' x' + (o.qty || 0) + getSvcUnit(o.svcType || '') + '</span><span>' + Number(o.base || 0).toLocaleString('id-ID') + '</span></div>';
+
+    // --- add-ons ---
+    var addOnList = o.addOns || [];
+    var addonsSafe = (typeof addons !== 'undefined' && addons) ? addons : [];
+    for (var ai = 0; ai < addOnList.length; ai++) {
+      var aon = addOnList[ai];
+      var ad = null;
+      for (var di = 0; di < addonsSafe.length; di++) { if (addonsSafe[di].id === aon.id) { ad = addonsSafe[di]; break; } }
+      if (ad) {
+        var av = ad.unit === 'per_qty' ? ad.price * (o.qty || 0) : ad.price;
+        lines += '<div class="rrow"><span>' + esc(aon.name || '') + '</span><span>' + Number(av || 0).toLocaleString('id-ID') + '</span></div>';
+      }
+    }
+    if (Number(o.promoAmt) > 0) lines += '<div class="rrow" style="color:var(--p)"><span>Diskon Promo</span><span>- ' + Number(o.promoAmt).toLocaleString('id-ID') + '</span></div>';
+    if (Number(o.discAmt)  > 0) lines += '<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ' + Number(o.discAmt).toLocaleString('id-ID') + '</span></div>';
+
+    // --- outlet ---
+    var outletAddr = '';
+    try { var outletObj = go(o.outletId); if (outletObj && outletObj.addr) outletAddr = outletObj.addr; } catch(e) {}
+
+    // --- assemble ---
+    var html = '<div class="rcpt">'
+      + '<div class="rc rb">CLEANPOS LAUNDRY</div>'
+      + '<div class="rc" style="font-size:10px">' + esc(outletAddr) + '</div>'
+      + '<hr class="rdash">'
+      + '<div class="rrow"><span>No Nota</span><span>' + esc(o.id || '') + '</span></div>'
+      + '<div class="rrow"><span>Pelanggan</span><span>' + esc(o.name || '') + '</span></div>'
+      + '<div class="rrow"><span>Kasir</span><span>' + esc(o.handledBy || '\u2014') + '</span></div>'
+      + '<div class="rrow"><span>Tgl Masuk</span><span>' + esc(o.date || '') + '</span></div>'
+      + '<hr class="rdash">'
+      + lines
+      + '<hr class="rdash">'
+      + '<div class="rrow"><span>Status</span><span>' + esc(o.payStatus || '') + '</span></div>'
+      + '<div class="rrow rb"><span>Total</span><span>' + Number(o.total || 0).toLocaleString('id-ID') + '</span></div>'
+      + '<div class="rrow"><span>Metode</span><span>' + esc(o.payMethod || '') + '</span></div>'
+      + '<hr class="rdash">'
+      + '<div class="rc">Terima kasih!</div>'
+      + '</div>';
+
+    g('m-rcpt-body').innerHTML = html;
+  } catch(e) {
+    g('m-rcpt-body').innerHTML = '<div style="padding:12px">'
+      + '<div style="font-weight:700;margin-bottom:8px">Struk</div>'
+      + '<div>No: ' + esc(o.id || '') + '</div>'
+      + '<div>Pelanggan: ' + esc(o.name || '') + '</div>'
+      + '<div>Layanan: ' + esc(o.svcType || '') + ' ' + esc(o.svcCat || '') + '</div>'
+      + '<div>Total: ' + Number(o.total || 0) + '</div>'
+      + '<div>Metode: ' + esc(o.payMethod || '') + '</div>'
+      + '</div>';
   }
 
-  // --- add-ons ---
-  var addOnList = o.addOns || [];
-  for (var ai = 0; ai < addOnList.length; ai++) {
-    var aon = addOnList[ai];
-    var ad = null;
-    for (var di = 0; di < addons.length; di++) { if (addons[di].id === aon.id) { ad = addons[di]; break; } }
-    if (ad) {
-      var av = ad.unit === 'per_qty' ? ad.price * (o.qty || 0) : ad.price;
-      lines += '<div class="rrow"><span>' + esc(aon.name || '') + '</span><span>' + Number(av || 0).toLocaleString('id-ID') + '</span></div>';
-    }
-  }
-  if (Number(o.promoAmt) > 0) lines += '<div class="rrow" style="color:var(--p)"><span>Diskon Promo</span><span>- ' + Number(o.promoAmt).toLocaleString('id-ID') + '</span></div>';
-  if (Number(o.discAmt)  > 0) lines += '<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ' + Number(o.discAmt).toLocaleString('id-ID') + '</span></div>';
-
-  // --- outlet ---
-  var outletAddr = '';
-  var outletObj = go(o.outletId);
-  if (outletObj && outletObj.addr) outletAddr = outletObj.addr;
-
-  // --- assemble ---
-  var html = '<div class="rcpt">'
-    + '<div class="rc rb">CLEANPOS LAUNDRY</div>'
-    + '<div class="rc" style="font-size:10px">' + esc(outletAddr) + '</div>'
-    + '<hr class="rdash">'
-    + '<div class="rrow"><span>No Nota</span><span>' + esc(o.id || '') + '</span></div>'
-    + '<div class="rrow"><span>Pelanggan</span><span>' + esc(o.name || '') + '</span></div>'
-    + '<div class="rrow"><span>Kasir</span><span>' + esc(o.handledBy || '\u2014') + '</span></div>'
-    + '<div class="rrow"><span>Tgl Masuk</span><span>' + esc(o.date || '') + '</span></div>'
-    + '<hr class="rdash">'
-    + lines
-    + '<hr class="rdash">'
-    + '<div class="rrow"><span>Status</span><span>' + esc(o.payStatus || '') + '</span></div>'
-    + '<div class="rrow rb"><span>Total</span><span>' + Number(o.total || 0).toLocaleString('id-ID') + '</span></div>'
-    + '<div class="rrow"><span>Metode</span><span>' + esc(o.payMethod || '') + '</span></div>'
-    + '<hr class="rdash">'
-    + '<div class="rc">Terima kasih!</div>'
-    + '</div>';
-
-  g('m-rcpt-body').innerHTML = html;
   openModal('m-rcpt');
 }
 
