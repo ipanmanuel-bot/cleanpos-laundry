@@ -1703,8 +1703,7 @@ submitO = function(role) {
     if (deductTxn) syncMemberTxn(deductTxn);
   }
   renderOrders();
-  showRcpt(o.id); curWaNewOrder = o;
-  setTimeout(() => { setWaNewType('konfirmasi', g('wa-new-chips').querySelector('.chip')); openModal('m-wa-new'); }, 600);
+  showRcpt(o.id);
   if (role === 'o') refreshODash(); else refreshSDash();
 };
 
