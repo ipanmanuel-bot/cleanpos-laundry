@@ -454,6 +454,9 @@ function showRcpt(id) {
   for (var _i = 0; _i < orders.length; _i++) { if (orders[_i].id === id) { o = orders[_i]; break; } }
   if (!o) return;
   curRcptOrderId = id;
+  // Snapshot the order so Supabase realtime updates between modal-open and print-click
+  // don't corrupt the print data (realtime rowToOrder may have null base if column missing).
+  try { curRcptOrder = JSON.parse(JSON.stringify(o)); } catch(e) { curRcptOrder = o; }
 
   try {
     // --- product lines ---

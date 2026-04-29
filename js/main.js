@@ -65,7 +65,7 @@ let waTplNew = {
   tagih_dp:    `Halo {nama} \uD83D\uDC4B\n\nPesanan Anda sudah dicatat!\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDCB0 Total: *{total}*\n\nMohon transfer DP 50% ke:\n\uD83C\uDFE6 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! \uD83D\uDE4F`,
   tagih_lunas: `Halo {nama} \uD83D\uDC4B\n\nKonfirmasi pembayaran:\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDCB0 Total: *{total}*\n\nTransfer ke:\n\uD83C\uDFE6 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. \uD83D\uDE4F`
 };
-let curWaNewType = 'konfirmasi'; let curWaNewOrder = null; let curRcptOrderId = null;
+let curWaNewType = 'konfirmasi'; let curWaNewOrder = null; let curRcptOrderId = null; let curRcptOrder = null;
 let storeName = 'CleanPOS Laundry'; let storeAddr = ''; let storeWa = ''; let storeFooter = 'Terima kasih atas kepercayaan Anda! \uD83D\uDE4F';
 let cutiPerBulan = 2;
 let curWaTplTab = 'selesai';
@@ -1648,8 +1648,8 @@ async function sendToBtPrinter(data){
     return false;
   }
 }
-async function printCurrentReceipt(){const o=orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscReceipt(o));}
-async function printCurrentLabel(){const o=orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscLabel(o));}
+async function printCurrentReceipt(){const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscReceipt(o));}
+async function printCurrentLabel(){const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscLabel(o));}
 
 // ===== SETTINGS =====
 async function changePwd(){
