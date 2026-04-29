@@ -47,7 +47,8 @@ function syncCustomer(c) {
   sbUpsert('customers', {
     user_id: currentUserId,
     id: c.phone, name: c.name, phone: c.phone,
-    orders: c.orders, total: c.total, balance: c.balance||0, last_date: c.lastDate
+    orders: c.orders, total: c.total, balance: c.balance||0, last_date: c.lastDate,
+    balance_expiry: c.balanceExpiry || null
   });
 }
 
@@ -129,7 +130,12 @@ function syncSettings() {
     wa_tpl_new: JSON.stringify(waTplNew),
     cuti_per_bulan: cutiPerBulan,
     membership_enabled: membershipEnabled,
-    membership_bonus: membershipBonus
+    membership_bonus: membershipBonus,
+    membership_style: membershipStyle,
+    membership_min_deposit: membershipMinDeposit,
+    membership_packages: JSON.stringify(membershipPackages),
+    membership_expiry_enabled: membershipExpiryEnabled,
+    membership_expiry_days: membershipExpiryDays
   });
 }
 
@@ -147,7 +153,7 @@ async function supaLoadAll() {
   ]);
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
-  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date }; }); }
+  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null }; }); }
   if (outletsData)  {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
@@ -183,6 +189,12 @@ async function supaLoadAll() {
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
     if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
     if (s.membership_bonus  != null) membershipBonus  = Number(s.membership_bonus);
+    if (s.membership_style) membershipStyle = s.membership_style;
+    if (s.membership_min_deposit != null) membershipMinDeposit = Number(s.membership_min_deposit);
+    try { if (s.membership_packages) membershipPackages = JSON.parse(s.membership_packages); } catch(e) { console.error('[parse] membership_packages:', e); }
+    if (membershipPackages.length) membershipPkgCtr = membershipPackages.reduce((mx,p)=>{ const n=parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n)?mx:Math.max(mx,n); },0)+1;
+    if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
+    if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
   }
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
@@ -212,6 +224,7 @@ async function supaLoadAll() {
     currentPlanExpiry = _trialExp.toISOString();
     sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'trial', expires_at: currentPlanExpiry }, 'user_id');
   }
+  checkExpiredBalances();
   toast('✅ Data cloud berhasil dimuat!');
   supaSubscribeOrders();
 }
@@ -244,7 +257,7 @@ async function supaPushAll() {
   toast('⬆️ Mendorong semua data...');
   await Promise.all([
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
-    ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate })),
+    ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null })),
     ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color })),
     ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
     ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, outlet_id: l.outletId })),

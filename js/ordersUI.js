@@ -30,11 +30,15 @@ function updWalletOption(pre) {
   for (let i = pmSel.options.length-1; i >= 0; i--) {
     if (pmSel.options[i].value === 'Dompet Member') pmSel.remove(i);
   }
-  if (cust && bal > 0) {
+  const balExpired = isBalanceExpired(cust);
+  if (cust && bal > 0 && !balExpired) {
     pmSel.add(new Option('💳 Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
     pmSel.value = 'Dompet Member'; // auto-select when balance exists
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`💳 Saldo member: <strong>${fmt(bal)}</strong>`; }
     const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+  } else if (cust && bal > 0 && balExpired) {
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`⚠️ Saldo <strong>${fmt(bal)}</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
+    if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
   } else {
     if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
     if (infoEl) infoEl.style.display='none';
@@ -272,6 +276,10 @@ function buildOrder(pre) {
     const walletBal = Number(walletCust?.balance || 0);
     const walletTotal = Number(o.total || 0);
     console.log('[wallet check] phone:', phone, '| found:', !!walletCust, '| balance:', walletBal, '| total:', walletTotal);
+    if (walletCust && isBalanceExpired(walletCust)) {
+      toast('⚠️ Saldo member telah kadaluarsa!');
+      return null;
+    }
     if (!walletCust || walletBal < walletTotal) {
       toast('⚠️ Saldo tidak cukup! Saldo: ' + fmt(walletBal) + ' | Total: ' + fmt(walletTotal));
       return null;
