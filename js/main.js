@@ -1638,8 +1638,13 @@ async function sendToBtPrinter(data){
     let characteristic=null;
     for(const svcUuid of BT_SERVICES){try{const svc=await server.getPrimaryService(svcUuid);for(const charUuid of BT_CHARS){try{characteristic=await svc.getCharacteristic(charUuid);break;}catch(e){}}if(!characteristic){const chars=await svc.getCharacteristics();characteristic=chars.find(c=>c.properties.writeWithoutResponse||c.properties.write)||chars[0]||null;}if(characteristic)break;}catch(e){}}
     if(!characteristic){toast('\u274C Karakteristik printer tidak ditemukan. Cek model printer.');return false;}
-    const CHUNK=512;const useWithout=characteristic.properties.writeWithoutResponse;
-    for(let i=0;i<data.length;i+=CHUNK){const chunk=data.slice(i,i+CHUNK);if(useWithout)await characteristic.writeValueWithoutResponse(chunk);else await characteristic.writeValue(chunk);await new Promise(r=>setTimeout(r,30));}
+    // Use small chunks (128 bytes) with 60ms delay so the printer buffer never overflows.
+    // Android writeValueWithoutResponse sends data without flow control — large chunks cause
+    // the printer to drop the middle of the receipt. Mac works with 512 because Chrome on Mac
+    // uses acknowledged writes internally; Android does not.
+    const CHUNK=128;
+    const useWithout=characteristic.properties.writeWithoutResponse&&!characteristic.properties.write;
+    for(let i=0;i<data.length;i+=CHUNK){const chunk=data.slice(i,i+CHUNK);if(useWithout)await characteristic.writeValueWithoutResponse(chunk);else await characteristic.writeValue(chunk);await new Promise(r=>setTimeout(r,60));}
     toast('\u2705 Berhasil dicetak!');return true;
   }catch(e){
     if(e.name==='NotFoundError'||e.name==='NotAllowedError'){toast('\u26A0\uFE0F Pemilihan printer dibatalkan.');_btConnectedDevice=null;}
@@ -1648,14 +1653,7 @@ async function sendToBtPrinter(data){
     return false;
   }
 }
-async function printCurrentReceipt(){
-  const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);
-  if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}
-  // DEBUG toast — remove after diagnosis
-  toast('DBG: type='+String(o.svcType)+'|cat='+String(o.svcCat)+'|base='+String(o.base)+'|total='+String(o.total)+'|date='+String(o.date));
-  await new Promise(function(r){setTimeout(r,3000);});
-  await sendToBtPrinter(buildEscReceipt(o));
-}
+async function printCurrentReceipt(){const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscReceipt(o));}
 async function printCurrentLabel(){const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscLabel(o));}
 
 // ===== SETTINGS =====
