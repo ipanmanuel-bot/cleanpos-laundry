@@ -1245,10 +1245,18 @@ tr:hover td{background:#FAFAF7}
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
-<script src="js/supabaseClient.js"></script>
-<script src="js/ordersApi.js"></script>
-<script src="js/ordersUI.js"></script>
-<script src="js/main.js"></script>
-<script>lucide.createIcons();</script>
+<script>
+  (function(){
+    var v=new Date().toISOString().slice(0,10).replace(/-/g,'');
+    var srcs=['js/supabaseClient.js','js/ordersApi.js','js/ordersUI.js','js/main.js'];
+    srcs.forEach(function(src,i){
+      var s=document.createElement('script');
+      s.src=src+'?v='+v;
+      s.async=false;
+      if(i===srcs.length-1)s.onload=function(){lucide.createIcons();};
+      document.body.appendChild(s);
+    });
+  })();
+</script>
 </body>
 </html>
