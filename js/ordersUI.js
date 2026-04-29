@@ -457,17 +457,26 @@ function showRcpt(id) {
 
   try {
     // --- product lines ---
+    // If base is missing/zero (e.g. column not returned from Supabase on some devices),
+    // back-calculate it from total so the receipt always shows a meaningful amount.
+    var baseStored = Number(o.base) || 0;
+    var baseDisplay = baseStored > 0
+      ? baseStored
+      : Math.max(0, Number(o.total||0) - Number(o.addOnAmt||0) + Number(o.promoAmt||0) + Number(o.discAmt||0));
+
     var lines = '';
     var satuanLines = o.satuanLines || [];
     if (o.svcType === 'satuan' && satuanLines.length > 0) {
       for (var si = 0; si < satuanLines.length; si++) {
         var sl = satuanLines[si];
-        lines += '<div class="rrow"><span>' + esc(sl.name || '') + ' x' + (sl.qty || 0) + '</span><span>' + Number(sl.lineTotal || 0).toLocaleString('id-ID') + '</span></div>';
+        var slAmt = Number(sl.lineTotal) > 0 ? Number(sl.lineTotal) : 0;
+        lines += '<div class="rrow"><span>' + esc(sl.name || '') + ' x' + (sl.qty || 0) + '</span><span>' + slAmt.toLocaleString('id-ID') + '</span></div>';
       }
     } else {
       var svcUnit = 'pcs';
       try { svcUnit = getSvcUnit(o.svcType || '') || 'pcs'; } catch(e) {}
-      lines = '<div class="rrow"><span style="text-transform:capitalize">' + esc(o.svcType || '') + ' ' + esc(o.svcCat || '') + ' x' + (o.qty || 0) + svcUnit + '</span><span>' + Number(o.base || 0).toLocaleString('id-ID') + '</span></div>';
+      var svcLabel = (String(o.svcType || '') + ' ' + String(o.svcCat || '')).trim() || 'Layanan';
+      lines = '<div class="rrow"><span style="text-transform:capitalize">' + esc(svcLabel) + ' x' + (o.qty || 0) + esc(svcUnit) + '</span><span>' + baseDisplay.toLocaleString('id-ID') + '</span></div>';
     }
 
     // --- add-ons ---
@@ -489,8 +498,12 @@ function showRcpt(id) {
     var outletAddr = '';
     try { var outletObj = go(o.outletId); if (outletObj && outletObj.addr) outletAddr = outletObj.addr; } catch(e) {}
 
+    // --- DEBUG: remove after diagnosis ---
+    var _dbg = 'type=[' + String(o.svcType) + '] cat=[' + String(o.svcCat) + '] base=[' + String(o.base) + '] total=[' + String(o.total) + '] addOnAmt=[' + String(o.addOnAmt) + '] qty=[' + String(o.qty) + '] lines=[' + lines.length + ']';
+
     // --- assemble ---
     var html = '<div class="rcpt">'
+      + '<div style="background:#ff0;color:#000;font-size:10px;padding:2px 4px;word-break:break-all">' + _dbg + '</div>'
       + '<div class="rc rb">CLEANPOS LAUNDRY</div>'
       + '<div class="rc" style="font-size:10px">' + esc(outletAddr) + '</div>'
       + '<hr class="rdash">'
