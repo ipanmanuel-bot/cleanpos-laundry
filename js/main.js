@@ -1648,7 +1648,14 @@ async function sendToBtPrinter(data){
     return false;
   }
 }
-async function printCurrentReceipt(){const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscReceipt(o));}
+async function printCurrentReceipt(){
+  const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);
+  if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}
+  // DEBUG toast — remove after diagnosis
+  toast('DBG: type='+String(o.svcType)+'|cat='+String(o.svcCat)+'|base='+String(o.base)+'|total='+String(o.total)+'|date='+String(o.date));
+  await new Promise(function(r){setTimeout(r,3000);});
+  await sendToBtPrinter(buildEscReceipt(o));
+}
 async function printCurrentLabel(){const o=curRcptOrder||orders.find(x=>x.id===curRcptOrderId);if(!o){toast('\u26A0\uFE0F Data pesanan tidak ditemukan.');return;}await sendToBtPrinter(buildEscLabel(o));}
 
 // ===== SETTINGS =====
