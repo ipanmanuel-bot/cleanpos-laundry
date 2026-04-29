@@ -986,7 +986,7 @@ function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus.',()=>{
 function todayISO(){ return new Date().toISOString().split('T')[0]; }
 function fmtExpiry(iso){ if(!iso)return '—'; const [y,m,d]=iso.split('-'); return d+'/'+m+'/'+y; }
 function isBalanceExpired(c){
-  if(!membershipExpiryEnabled||!(c.balance||0)||!c.balanceExpiry)return false;
+  if(!c||!membershipExpiryEnabled||!(c.balance||0)||!c.balanceExpiry)return false;
   return c.balanceExpiry<todayISO();
 }
 function checkExpiredBalances(){
@@ -1701,6 +1701,7 @@ submitO = function(role) {
     const deductTxn = memberTxns.find(t => t.orderId === o.id);
     if (deductTxn) syncMemberTxn(deductTxn);
   }
+  renderOrders();
   showRcpt(o.id); curWaNewOrder = o;
   setTimeout(() => { setWaNewType('konfirmasi', g('wa-new-chips').querySelector('.chip')); openModal('m-wa-new'); }, 600);
   if (role === 'o') refreshODash(); else refreshSDash();
