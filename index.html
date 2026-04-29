@@ -461,12 +461,24 @@ tr:hover td{background:#FAFAF7}
   <div class="sh"><div class="pt" style="margin-bottom:0">Pesanan</div><button class="btn bp bsm" onclick="oGo('new-order',null)">+ Buat</button></div>
   <div class="card">
     <div class="chips" id="ord-outlet-chips"></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+      <button id="odf-all"   class="btn bp bsm bpill" onclick="setOrdDateFilter('all')">Semua</button>
+      <button id="odf-today" class="btn bsm bpill" onclick="setOrdDateFilter('today')">Hari Ini</button>
+      <button id="odf-week"  class="btn bsm bpill" onclick="setOrdDateFilter('week')">Minggu Ini</button>
+      <button id="odf-month" class="btn bsm bpill" onclick="setOrdDateFilter('month')">Bulan Ini</button>
+      <button id="odf-custom" class="btn bsm bpill" onclick="setOrdDateFilter('custom')">Custom</button>
+      <div id="odf-custom-range" style="display:none;gap:5px;align-items:center">
+        <input type="date" id="o-date-from" style="width:130px;font-size:12px" onchange="renderOrders()">
+        <span style="font-size:11px;color:var(--t2)">–</span>
+        <input type="date" id="o-date-to" style="width:130px;font-size:12px" onchange="renderOrders()">
+      </div>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <input id="o-srch" placeholder="Cari nama / ID..." style="width:180px;flex:none" oninput="renderOrders()">
       <select id="o-fst" onchange="renderOrders()" style="width:140px;flex:none"><option value="">Semua Status</option><option>Diterima</option><option>Mencuci</option><option>Mengeringkan</option><option>Menyetrika</option><option>Selesai</option><option>Diambil</option></select>
       <select id="o-fpy" onchange="renderOrders()" style="width:130px;flex:none"><option value="">Semua Bayar</option><option>Belum Bayar</option><option>DP</option><option>Lunas</option></select>
     </div>
-    <div class="tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Outlet</th><th>Layanan</th><th>Total</th><th>Status</th><th>Bayar</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="ord-tb"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Outlet</th><th>Layanan</th><th>Total</th><th>Status</th><th>Bayar</th><th>Tgl Masuk</th><th>Tgl Diambil</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="ord-tb"></tbody></table></div>
   </div>
 </div>
 
@@ -826,11 +838,23 @@ tr:hover td{background:#FAFAF7}
   <div class="page" id="s-p-orders">
     <div class="sh"><div class="pt" style="margin-bottom:0">Pesanan</div></div>
     <div class="card">
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+        <button id="sodf-all"   class="btn bp bsm bpill" onclick="setOrdDateFilter('all')">Semua</button>
+        <button id="sodf-today" class="btn bsm bpill" onclick="setOrdDateFilter('today')">Hari Ini</button>
+        <button id="sodf-week"  class="btn bsm bpill" onclick="setOrdDateFilter('week')">Minggu Ini</button>
+        <button id="sodf-month" class="btn bsm bpill" onclick="setOrdDateFilter('month')">Bulan Ini</button>
+        <button id="sodf-custom" class="btn bsm bpill" onclick="setOrdDateFilter('custom')">Custom</button>
+        <div id="sodf-custom-range" style="display:none;gap:5px;align-items:center">
+          <input type="date" id="s-date-from" style="width:130px;font-size:12px" onchange="renderOrders()">
+          <span style="font-size:11px;color:var(--t2)">–</span>
+          <input type="date" id="s-date-to" style="width:130px;font-size:12px" onchange="renderOrders()">
+        </div>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <input id="s-srch" placeholder="Cari nama / ID..." style="width:180px;flex:none" oninput="renderOrders()">
         <select id="s-fst" onchange="renderOrders()" style="width:140px;flex:none"><option value="">Semua Status</option><option>Diterima</option><option>Mencuci</option><option>Mengeringkan</option><option>Menyetrika</option><option>Selesai</option><option>Diambil</option></select>
       </div>
-      <div class="tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Layanan</th><th>Status</th><th>Bayar</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="s-ord-tb"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Layanan</th><th>Status</th><th>Bayar</th><th>Tgl Masuk</th><th>Tgl Diambil</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="s-ord-tb"></tbody></table></div>
     </div>
   </div>
   <div class="page" id="s-p-new-order">

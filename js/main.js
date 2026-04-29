@@ -79,6 +79,7 @@ let printerCtr = 3; let btDevice = null;
 let rptFilter = 'today'; let empFilter = 'all';
 let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null;
 let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutlet = 'all'; let rptOutlet = 'all';
+let ordDateFilter = 'all'; let ordDateFrom = ''; let ordDateTo = '';
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
 let editSvcId = null;

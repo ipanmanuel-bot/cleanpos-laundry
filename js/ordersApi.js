@@ -17,7 +17,8 @@ function orderToRow(o) {
     status: o.status, notes: o.notes,
     date: o.date, iso_date: o.isoDate,
     wa_sent: o.waSent, handled_by: o.handledBy,
-    outlet_id: o.outletId
+    outlet_id: o.outletId,
+    pickup_date: o.pickupDate || null
   };
 }
 function rowToOrder(r) {
@@ -35,7 +36,8 @@ function rowToOrder(r) {
     status: r.status, notes: r.notes,
     date: r.date, isoDate: r.iso_date,
     waSent: r.wa_sent, handledBy: r.handled_by,
-    outletId: r.outlet_id
+    outletId: r.outlet_id,
+    pickupDate: r.pickup_date || null
   };
 }
 

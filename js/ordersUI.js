@@ -266,7 +266,7 @@ function buildOrder(pre) {
     payMethod: g(pre + '-pm')?.value || 'Tunai',
     payStatus: g(pre + '-ps')?.value || 'Belum Bayar',
     status: 'Diterima', notes: g(pre + '-note')?.value || '',
-    date: TODAY_STR, isoDate: new Date().toISOString(), waSent: false,
+    date: TODAY_STR, isoDate: new Date().toISOString(), pickupDate: null, waSent: false,
     handledBy: curStaff ? curStaff.name : 'Owner',
     outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1'))
   };
@@ -323,22 +323,56 @@ function submitO(role) {
 // ===== ORDERS LIST =====
 function setOrdOutlet(id) { ordOutlet = id; renderOrders(); }
 
+function setOrdDateFilter(f) {
+  ordDateFilter = f;
+  ['all','today','week','month','custom'].forEach(k => {
+    const ob = g('odf-'+k);  if (ob) ob.className = 'btn bsm bpill' + (f===k?' bp':'');
+    const sb = g('sodf-'+k); if (sb) sb.className = 'btn bsm bpill' + (f===k?' bp':'');
+  });
+  const ocr = g('odf-custom-range');  if (ocr) ocr.style.display = f==='custom'?'flex':'none';
+  const scr = g('sodf-custom-range'); if (scr) scr.style.display = f==='custom'?'flex':'none';
+  renderOrders();
+}
+
 function renderOrders() {
   const isO = curRole === 'owner';
   if (isO) { const oc = g('ord-outlet-chips'); if (oc) oc.innerHTML = buildOutletFilterChips(ordOutlet, 'setOrdOutlet'); }
   const q = ((isO ? g('o-srch') : g('s-srch'))?.value || '').toLowerCase();
   const fs = (isO ? g('o-fst') : g('s-fst'))?.value || '';
   const fp = isO ? (g('o-fpy')?.value || '') : '';
+
+  // Date filter range
+  let dateFrom = null, dateTo = null;
+  if (ordDateFilter === 'today') {
+    dateFrom = dateTo = TODAY_ISO;
+  } else if (ordDateFilter === 'week') {
+    const _d = new Date(); _d.setHours(0,0,0,0);
+    const _dow = (_d.getDay() + 6) % 7; // 0=Mon
+    const _wkStart = new Date(_d); _wkStart.setDate(_wkStart.getDate() - _dow);
+    dateFrom = _isoStr(_wkStart); dateTo = TODAY_ISO;
+  } else if (ordDateFilter === 'month') {
+    const _d = new Date();
+    dateFrom = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-01`;
+    dateTo = TODAY_ISO;
+  } else if (ordDateFilter === 'custom') {
+    dateFrom = (isO ? g('o-date-from') : g('s-date-from'))?.value || '';
+    dateTo   = (isO ? g('o-date-to')   : g('s-date-to'))?.value   || '';
+  }
+
   const list = orders.filter(o => {
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q);
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
     const matchO = !isO || ordOutlet === 'all' || o.outletId === ordOutlet;
-    return matchQ && matchS && matchP && matchO;
-  });
+    const oDate = _orderDateISO(o);
+    const matchD = !dateFrom || (oDate >= dateFrom && (!dateTo || oDate <= dateTo));
+    return matchQ && matchS && matchP && matchO && matchD;
+  }).slice().sort((a, b) => (b.isoDate || '').localeCompare(a.isoDate || ''));
+
   const tbId = isO ? 'ord-tb' : 's-ord-tb';
   const tb = g(tbId); if (!tb) return;
-  if (!list.length) { tb.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`; return; }
+  const colspan = isO ? 11 : 9;
+  if (!list.length) { tb.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`; return; }
   const waBtn = o => (o.status === 'Selesai' || o.status === 'Diambil')
     ? (o.waSent ? `<span class="badge gg">✓</span>` : `<button class="btn bp bsm" onclick="openWaMod('${o.id}')">💬</button>`)
     : '—';
@@ -351,6 +385,8 @@ function renderOrders() {
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
       <td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td>
+      <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
+      <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
     </tr>`; }).join('');
@@ -361,6 +397,8 @@ function renderOrders() {
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
       <td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td>
+      <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
+      <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
     </tr>`).join('');
@@ -398,6 +436,7 @@ function renderKanban(role) {
 function updSt(id, st, role) {
   const o = orders.find(x => x.id === id); if (!o) return;
   o.status = st;
+  if (st === 'Diambil' && !o.pickupDate) o.pickupDate = TODAY_STR;
   if (st === 'Selesai' && !o.waSent) setTimeout(() => openWaMod(id), 300);
   renderKanban(role); renderOrders();
   if (role === 'o') refreshODash(); else refreshSDash();
