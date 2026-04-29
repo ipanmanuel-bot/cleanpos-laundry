@@ -736,6 +736,20 @@ tr:hover td{background:#FAFAF7}
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus. Contoh: isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
       </div>
       <div class="div_"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
+        <div>
+          <div style="font-size:14px;font-weight:600">Masa Berlaku Saldo</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:3px;line-height:1.5">Saldo otomatis kadaluarsa jika tidak ada deposit dalam jangka waktu tertentu</div>
+        </div>
+        <button class="toggle off" id="membership-expiry-toggle" onclick="toggleMembershipExpiry()" style="flex-shrink:0;margin-top:2px"></button>
+      </div>
+      <div id="membership-expiry-section" style="display:none">
+        <div class="fg" style="margin-bottom:0"><label>Masa berlaku sejak deposit terakhir (hari)</label>
+          <input type="number" id="s-mbr-expiry-days" min="1" max="365" value="30" placeholder="30" style="width:100px">
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Contoh: isi 30 → saldo kadaluarsa 30 hari setelah deposit terakhir</div>
+        </div>
+      </div>
+      <div class="div_"></div>
       <button class="btn bp bfull bpill" onclick="saveMembershipSettings()">Simpan Pengaturan Membership</button>
     </div>
   </div>

@@ -55,6 +55,7 @@ let promoCtr = 3; let editPromoId = null; let selDays = []; let promoOutlets = [
 let orders = []; let orderCtr = 1; let customers = {};
 let memberTxns = []; let memberTxnCtr = 1;
 let membershipEnabled = false; let membershipBonus = 10;
+let membershipExpiryEnabled = false; let membershipExpiryDays = 30;
 let waLog = [];
 let waTplSelesai = `Halo {nama} \uD83D\uDC4B\n\nCucian Anda sudah *selesai* dan siap diambil! \uD83C\uDF89\n\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDC55 Layanan: {layanan}\n\uD83D\uDCB0 Total: *{total}*\n\nTerima kasih sudah menggunakan CleanPOS Laundry! \uD83D\uDE4F`;
 let waTplNew = {
@@ -314,11 +315,33 @@ function renderSettings(){
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
   if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
+  const isElite=currentPlan==='elite'&&currentPlanStatus==='active';
+  const mCard=g('membership-settings-card');
+  if(mCard){
+    let lockEl=mCard.querySelector('.mbr-lock');
+    if(!isElite){
+      if(!lockEl){
+        lockEl=document.createElement('div');lockEl.className='mbr-lock';
+        lockEl.style.cssText='position:absolute;inset:0;background:rgba(var(--ca-rgb,255,255,255),.82);backdrop-filter:blur(2px);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:2;cursor:pointer;';
+        lockEl.innerHTML='<div style="font-size:28px">🔒</div><div style="font-size:13px;font-weight:700;color:var(--t1)">Fitur Elite</div><div style="font-size:12px;color:var(--t2);text-align:center;padding:0 20px">Upgrade ke paket <strong>Elite</strong> untuk mengaktifkan Membership & Saldo Pelanggan</div><button class="btn bp bsm bpill" style="margin-top:4px" onclick="showUpgradeModal()">Upgrade Sekarang</button>';
+        mCard.style.position='relative';
+        mCard.appendChild(lockEl);
+      }
+    } else {
+      if(lockEl)lockEl.remove();
+      mCard.style.position='';
+    }
+  }
   const mt=g('membership-toggle');
   if(mt)mt.className='toggle'+(membershipEnabled?' on':' off');
   const mbs=g('membership-bonus-section');
   if(mbs)mbs.style.display=membershipEnabled?'':'none';
   if(g('s-mbr-bonus'))g('s-mbr-bonus').value=membershipBonus;
+  const met=g('membership-expiry-toggle');
+  if(met)met.className='toggle'+(membershipExpiryEnabled?' on':' off');
+  const mes=g('membership-expiry-section');
+  if(mes)mes.style.display=membershipExpiryEnabled?'':'none';
+  if(g('s-mbr-expiry-days'))g('s-mbr-expiry-days').value=membershipExpiryDays;
 }
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
@@ -944,6 +967,26 @@ function saveOutlet(){
 function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
 
 // ===== CUSTOMERS =====
+// ===== MEMBERSHIP EXPIRY HELPERS =====
+function todayISO(){ return new Date().toISOString().split('T')[0]; }
+function fmtExpiry(iso){ if(!iso)return '—'; const [y,m,d]=iso.split('-'); return d+'/'+m+'/'+y; }
+function isBalanceExpired(c){
+  if(!membershipExpiryEnabled||!(c.balance||0)||!c.balanceExpiry)return false;
+  return c.balanceExpiry<todayISO();
+}
+function checkExpiredBalances(){
+  if(!membershipExpiryEnabled)return;
+  Object.values(customers).forEach(c=>{
+    if((c.balance||0)>0&&isBalanceExpired(c)){
+      const txnId='MBR-'+String(memberTxnCtr++).padStart(5,'0');
+      const txn={id:txnId,phone:c.phone,type:'expired',amount:c.balance,baseAmount:null,bonusAmount:null,note:'Saldo kadaluarsa',orderId:null,time:NOW()};
+      memberTxns.push(txn);syncMemberTxn(txn);
+      c.balance=0;c.balanceExpiry=null;
+      syncCustomer(c);
+    }
+  });
+}
+
 function renderCusts(){
   const q=(g('cust-srch')?.value||'').toLowerCase();
   const list=Object.values(customers).filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q));
@@ -954,7 +997,20 @@ function renderCusts(){
   const colspan=membershipEnabled?7:6;
   const rows=list.length?list.map(c=>{
     const bal=c.balance||0;
-    const mbrTd=membershipEnabled?`<td style="font-weight:700;color:var(--p)">${fmt(bal)}</td>`:'';
+    let mbrTd='';
+    if(membershipEnabled){
+      let balHtml=`<span style="font-weight:700;color:var(--p)">${fmt(bal)}</span>`;
+      if(membershipExpiryEnabled&&bal>0&&c.balanceExpiry){
+        const today=todayISO();
+        const daysLeft=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
+        let exColor='var(--gr,#2e7d32)';
+        if(daysLeft<0)exColor='var(--re,#c62828)';
+        else if(daysLeft<=7)exColor='var(--amb,#e65100)';
+        const exLabel=daysLeft<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry);
+        balHtml+=`<div style="font-size:10px;color:${exColor};margin-top:1px">${exLabel}</div>`;
+      }
+      mbrTd=`<td>${balHtml}</td>`;
+    }
     const aksiTd=membershipEnabled
       ?`<td><div style="display:flex;gap:4px"><button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openMemberTxnHistory('${esc(c.phone)}')">Riwayat</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></td>`
       :`<td><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></td>`;
@@ -1062,6 +1118,10 @@ function saveDeposit(){
   const txn={id:txnId,phone:_mdPhone,type:'deposit',amount:credited,baseAmount:base,bonusAmount:bonus,note:note||null,orderId:null,time:NOW()};
   memberTxns.push(txn);
   c.balance=(c.balance||0)+credited;
+  if(membershipExpiryEnabled){
+    const _exp=new Date(); _exp.setDate(_exp.getDate()+membershipExpiryDays);
+    c.balanceExpiry=_exp.toISOString().split('T')[0];
+  }
   syncMemberTxn(txn);
   syncCustomer(c);
   if(payMethod==='Tunai'){
@@ -1086,9 +1146,10 @@ function openMemberTxnHistory(phone){
   else{
     list.innerHTML=txns.map(t=>{
       const isDeposit=t.type==='deposit';
+      const isExpired=t.type==='expired';
       const color=isDeposit?'var(--p)':'var(--re)';
       const sign=isDeposit?'+':'-';
-      const typeLabel=isDeposit?'Deposit':'Bayar Pesanan';
+      const typeLabel=isDeposit?'Deposit':isExpired?'Saldo Kadaluarsa':'Bayar Pesanan';
       const sub=isDeposit&&t.bonusAmount?`<div style="font-size:11px;color:var(--t2)">Bayar: ${fmt(t.baseAmount)} + Bonus: ${fmt(t.bonusAmount)}</div>`:t.orderId?`<div style="font-size:11px;color:var(--t2)">${esc(t.orderId)}</div>`:'';
       const delBtn=curRole==='owner'&&isDeposit?`<button class="btn bre bsm" onclick="deleteMemberDeposit('${esc(t.id)}','${esc(phone)}',${t.amount})">Hapus</button>`:'';
       return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--b1)"><div style="flex:1"><div style="font-weight:600;font-size:13px">${typeLabel}</div>${sub}<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(t.time)}${t.note?` · ${esc(t.note)}`:''}</div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px;color:${color}">${sign}${fmt(t.amount)}</span>${delBtn}</div></div>`;
@@ -1125,10 +1186,21 @@ function renderMembership(){
   const list=Object.values(customers).filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q));
   const el=g('s-mbr-list');if(!el)return;
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pelanggan</div>';return;}
-  el.innerHTML=list.map(c=>`<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(c.balance||0)}</div></div><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button></div>`).join('');
+  el.innerHTML=list.map(c=>{
+    const bal=c.balance||0;
+    let exHtml='';
+    if(membershipExpiryEnabled&&bal>0&&c.balanceExpiry){
+      const today=todayISO();
+      const daysLeft=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
+      let exColor=daysLeft<0?'var(--re,#c62828)':daysLeft<=7?'var(--amb,#e65100)':'var(--gr,#2e7d32)';
+      exHtml=`<div style="font-size:10px;color:${exColor};margin-top:1px">${daysLeft<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(bal)}</div>${exHtml}</div><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button></div>`;
+  }).join('');
 }
 
 function toggleMembership(){
+  if(currentPlan!=='elite'||currentPlanStatus!=='active'){showUpgradeModal();return;}
   membershipEnabled=!membershipEnabled;
   renderSettings();
   syncSettings();
@@ -1139,8 +1211,23 @@ function saveMembershipSettings(){
   const v=parseInt(g('s-mbr-bonus')?.value);
   if(isNaN(v)||v<0||v>100){toast('⚠️ Bonus harus antara 0–100%');return;}
   membershipBonus=v;
+  const ed=parseInt(g('s-mbr-expiry-days')?.value);
+  if(membershipExpiryEnabled){
+    if(isNaN(ed)||ed<1||ed>365){toast('⚠️ Masa berlaku harus antara 1–365 hari');return;}
+    membershipExpiryDays=ed;
+  }
   syncSettings();
   toast('✅ Pengaturan membership tersimpan!');
+}
+
+function toggleMembershipExpiry(){
+  if(currentPlan!=='elite'||currentPlanStatus!=='active'){showUpgradeModal();return;}
+  membershipExpiryEnabled=!membershipExpiryEnabled;
+  if(membershipExpiryEnabled)checkExpiredBalances();
+  renderSettings();
+  renderCusts();
+  syncSettings();
+  toast(membershipExpiryEnabled?'✅ Masa berlaku saldo diaktifkan':'Masa berlaku saldo dinonaktifkan');
 }
 
 // ===== PRICING & ADDONS =====
