@@ -131,6 +131,9 @@ function syncSettings() {
     cuti_per_bulan: cutiPerBulan,
     membership_enabled: membershipEnabled,
     membership_bonus: membershipBonus,
+    membership_style: membershipStyle,
+    membership_min_deposit: membershipMinDeposit,
+    membership_packages: JSON.stringify(membershipPackages),
     membership_expiry_enabled: membershipExpiryEnabled,
     membership_expiry_days: membershipExpiryDays
   });
@@ -186,6 +189,10 @@ async function supaLoadAll() {
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
     if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
     if (s.membership_bonus  != null) membershipBonus  = Number(s.membership_bonus);
+    if (s.membership_style) membershipStyle = s.membership_style;
+    if (s.membership_min_deposit != null) membershipMinDeposit = Number(s.membership_min_deposit);
+    try { if (s.membership_packages) membershipPackages = JSON.parse(s.membership_packages); } catch(e) { console.error('[parse] membership_packages:', e); }
+    if (membershipPackages.length) membershipPkgCtr = membershipPackages.reduce((mx,p)=>{ const n=parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n)?mx:Math.max(mx,n); },0)+1;
     if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
     if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
   }

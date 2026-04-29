@@ -55,6 +55,8 @@ let promoCtr = 3; let editPromoId = null; let selDays = []; let promoOutlets = [
 let orders = []; let orderCtr = 1; let customers = {};
 let memberTxns = []; let memberTxnCtr = 1;
 let membershipEnabled = false; let membershipBonus = 10;
+let membershipStyle = 'deposit'; let membershipMinDeposit = 0;
+let membershipPackages = []; let membershipPkgCtr = 1;
 let membershipExpiryEnabled = false; let membershipExpiryDays = 30;
 let waLog = [];
 let waTplSelesai = `Halo {nama} \uD83D\uDC4B\n\nCucian Anda sudah *selesai* dan siap diambil! \uD83C\uDF89\n\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDC55 Layanan: {layanan}\n\uD83D\uDCB0 Total: *{total}*\n\nTerima kasih sudah menggunakan CleanPOS Laundry! \uD83D\uDE4F`;
@@ -336,12 +338,25 @@ function renderSettings(){
   if(mt)mt.className='toggle'+(membershipEnabled?' on':' off');
   const mbs=g('membership-bonus-section');
   if(mbs)mbs.style.display=membershipEnabled?'':'none';
+  // Style tabs
+  const isPkg=membershipStyle==='package';
+  const sbd=g('mbr-style-btn-deposit'),sbp=g('mbr-style-btn-package');
+  if(sbd)sbd.className='btn bpill'+(isPkg?'':' bp');
+  if(sbp)sbp.className='btn bpill'+(isPkg?' bp':'');
+  // Deposit settings vs package settings
+  const mds=g('mbr-deposit-settings'),mps=g('mbr-package-settings');
+  if(mds)mds.style.display=isPkg?'none':'';
+  if(mps)mps.style.display=isPkg?'':'none';
+  // Deposit sub-fields
   if(g('s-mbr-bonus'))g('s-mbr-bonus').value=membershipBonus;
+  if(g('s-mbr-min-deposit'))g('s-mbr-min-deposit').value=membershipMinDeposit;
   const met=g('membership-expiry-toggle');
   if(met)met.className='toggle'+(membershipExpiryEnabled?' on':' off');
   const mes=g('membership-expiry-section');
   if(mes)mes.style.display=membershipExpiryEnabled?'':'none';
   if(g('s-mbr-expiry-days'))g('s-mbr-expiry-days').value=membershipExpiryDays;
+  // Package list
+  if(isPkg)renderMbrPackages();
 }
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
@@ -1079,16 +1094,45 @@ function saveEditCust(){
 // ===== MEMBERSHIP =====
 let _mdPhone=null;
 
+let _selectedPkg=null;
 function openMemberDeposit(phone){
   const c=customers[phone];if(!c)return;
-  _mdPhone=phone;
+  _mdPhone=phone;_selectedPkg=null;
   if(g('md-title'))g('md-title').textContent='Deposit Member';
   if(g('md-cust-info'))g('md-cust-info').innerHTML=`<span style="font-weight:700">${esc(c.name)}</span> <span style="color:var(--t2)">${esc(phone)}</span><br><span style="font-size:12px;color:var(--t2)">Saldo saat ini: <strong style="color:var(--p)">${fmt(c.balance||0)}</strong></span>`;
-  if(g('md-amount'))g('md-amount').value='';
   if(g('md-note'))g('md-note').value='';
-  if(g('md-preview'))g('md-preview').style.display='none';
+  const isPkg=membershipStyle==='package';
+  if(g('md-deposit-mode'))g('md-deposit-mode').style.display=isPkg?'none':'';
+  if(g('md-package-mode'))g('md-package-mode').style.display=isPkg?'':'none';
+  if(isPkg){
+    renderDepositPackages();
+  } else {
+    if(g('md-amount'))g('md-amount').value='';
+    if(g('md-preview'))g('md-preview').style.display='none';
+    // Show min deposit hint if set
+    const mh=g('md-min-hint');
+    if(mh){mh.style.display=membershipMinDeposit>0?'':'none';if(membershipMinDeposit>0&&g('md-min-lbl'))g('md-min-lbl').textContent=fmt(membershipMinDeposit);}
+  }
   openModal('m-member-deposit');
-  setTimeout(()=>g('md-amount')?.focus(),100);
+  if(!isPkg)setTimeout(()=>g('md-amount')?.focus(),100);
+}
+
+function renderDepositPackages(){
+  const el=g('md-pkg-picker');if(!el)return;
+  if(!membershipPackages.length){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Belum ada paket tersedia. Tambahkan di Pengaturan.</div>';
+    return;
+  }
+  el.innerHTML=membershipPackages.map(p=>`<div id="md-pkg-${esc(p.id)}" onclick="selectDepositPkg('${esc(p.id)}')" style="padding:12px 14px;border:2px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s"><div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${esc(p.name)}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="font-size:12px"><div style="color:var(--t2)">Harga</div><strong>${fmt(p.price)}</strong></div><div style="font-size:12px"><div style="color:var(--t2)">Bonus</div><strong style="color:var(--p)">+${fmt(p.bonus)}</strong></div><div style="font-size:12px"><div style="color:var(--t2)">Saldo Masuk</div><strong style="color:var(--p)">${fmt(p.price+p.bonus)}</strong></div>${p.expiryDays>0?`<div style="font-size:12px"><div style="color:var(--t2)">Masa Berlaku</div><strong>${p.expiryDays} Hari</strong></div>`:''}</div></div>`).join('');
+}
+
+function selectDepositPkg(id){
+  _selectedPkg=membershipPackages.find(p=>p.id===id)||null;
+  membershipPackages.forEach(p=>{
+    const el=g('md-pkg-'+p.id);if(!el)return;
+    if(p.id===id){el.style.borderColor='var(--p)';el.style.background='var(--pl,rgba(141,196,64,.12))';}
+    else{el.style.borderColor='var(--b1)';el.style.background='var(--ca)';}
+  });
 }
 
 function calcDepositPreview(){
@@ -1107,19 +1151,34 @@ function calcDepositPreview(){
 }
 
 function saveDeposit(){
-  const base=parseInt(g('md-amount')?.value)||0;
-  if(!base||base<=0){toast('⚠️ Masukkan jumlah deposit');return;}
   const c=customers[_mdPhone];if(!c)return;
-  const bonus=Math.round(base*(membershipBonus/100));
-  const credited=base+bonus;
   const note=(g('md-note')?.value||'').trim();
   const payMethod=(g('md-pay-method')?.value||'Tunai');
+  let base,bonus,credited,expiryDays=null;
+
+  if(membershipStyle==='package'){
+    if(!_selectedPkg){toast('⚠️ Pilih paket terlebih dahulu');return;}
+    base=_selectedPkg.price;
+    bonus=_selectedPkg.bonus;
+    credited=base+bonus;
+    expiryDays=_selectedPkg.expiryDays>0?_selectedPkg.expiryDays:null;
+  } else {
+    base=parseInt(g('md-amount')?.value)||0;
+    if(!base||base<=0){toast('⚠️ Masukkan jumlah deposit');return;}
+    if(membershipMinDeposit>0&&base<membershipMinDeposit){
+      toast('⚠️ Minimum deposit '+fmt(membershipMinDeposit)+'. Jumlah terlalu kecil.');return;
+    }
+    bonus=Math.round(base*(membershipBonus/100));
+    credited=base+bonus;
+    if(membershipExpiryEnabled)expiryDays=membershipExpiryDays;
+  }
+
   const txnId='MBR-'+String(memberTxnCtr++).padStart(5,'0');
   const txn={id:txnId,phone:_mdPhone,type:'deposit',amount:credited,baseAmount:base,bonusAmount:bonus,note:note||null,orderId:null,time:NOW()};
   memberTxns.push(txn);
   c.balance=(c.balance||0)+credited;
-  if(membershipExpiryEnabled){
-    const _exp=new Date(); _exp.setDate(_exp.getDate()+membershipExpiryDays);
+  if(expiryDays){
+    const _exp=new Date();_exp.setDate(_exp.getDate()+expiryDays);
     c.balanceExpiry=_exp.toISOString().split('T')[0];
   }
   syncMemberTxn(txn);
@@ -1132,7 +1191,7 @@ function saveDeposit(){
   cm('m-member-deposit');
   renderCusts();
   if(curRole==='staff')renderMembership();
-  toast(`✅ Deposit ${fmt(credited)} berhasil${bonus>0?' (bonus '+fmt(bonus)+' included)':''}`);
+  toast('✅ Deposit '+fmt(credited)+' berhasil'+(bonus>0?' (bonus '+fmt(bonus)+')':''));
 }
 
 function openMemberTxnHistory(phone){
@@ -1208,16 +1267,79 @@ function toggleMembership(){
 }
 
 function saveMembershipSettings(){
-  const v=parseInt(g('s-mbr-bonus')?.value);
-  if(isNaN(v)||v<0||v>100){toast('⚠️ Bonus harus antara 0–100%');return;}
-  membershipBonus=v;
-  const ed=parseInt(g('s-mbr-expiry-days')?.value);
-  if(membershipExpiryEnabled){
-    if(isNaN(ed)||ed<1||ed>365){toast('⚠️ Masa berlaku harus antara 1–365 hari');return;}
-    membershipExpiryDays=ed;
+  if(membershipStyle==='deposit'){
+    const v=parseInt(g('s-mbr-bonus')?.value);
+    if(isNaN(v)||v<0||v>100){toast('⚠️ Bonus harus antara 0–100%');return;}
+    membershipBonus=v;
+    const md=parseInt(g('s-mbr-min-deposit')?.value)||0;
+    if(md<0){toast('⚠️ Minimum deposit tidak boleh negatif');return;}
+    membershipMinDeposit=md;
+    if(membershipExpiryEnabled){
+      const ed=parseInt(g('s-mbr-expiry-days')?.value);
+      if(isNaN(ed)||ed<1||ed>365){toast('⚠️ Masa berlaku harus antara 1–365 hari');return;}
+      membershipExpiryDays=ed;
+    }
   }
   syncSettings();
   toast('✅ Pengaturan membership tersimpan!');
+}
+
+function switchMembershipStyle(style){
+  membershipStyle=style;
+  renderSettings();
+  syncSettings();
+}
+
+// ===== MEMBERSHIP PACKAGES =====
+function renderMbrPackages(){
+  const el=g('mbr-pkg-list');if(!el)return;
+  if(!membershipPackages.length){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px;border:2px dashed var(--b1);border-radius:10px">Belum ada paket. Klik "+ Tambah Paket" untuk membuat paket.</div>';
+    return;
+  }
+  el.innerHTML=membershipPackages.map(p=>`<div style="display:flex;align-items:stretch;gap:12px;padding:12px 14px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${esc(p.name)}</div><div style="font-size:12px;color:var(--t2);line-height:1.9">Harga <strong style="color:var(--t1)">${fmt(p.price)}</strong> &nbsp;·&nbsp; Bonus <strong style="color:var(--p)">${fmt(p.bonus)}</strong> &nbsp;·&nbsp; Masa Berlaku <strong>${p.expiryDays>0?p.expiryDays+' Hari':'Tanpa Batas'}</strong></div></div><div style="display:flex;flex-direction:column;gap:5px;justify-content:center"><button class="btn bsm" onclick="openAddMbrPackage('${esc(p.id)}')">Edit</button><button class="btn bre bsm" onclick="deleteMbrPackage('${esc(p.id)}')">Hapus</button></div></div>`).join('');
+}
+
+let _editPkgId=null;
+function openAddMbrPackage(id){
+  _editPkgId=id||null;
+  const pkg=id?membershipPackages.find(p=>p.id===id):null;
+  if(g('mpkg-title'))g('mpkg-title').textContent=pkg?'Edit Paket':'Tambah Paket';
+  if(g('mpkg-name'))g('mpkg-name').value=pkg?pkg.name:'';
+  if(g('mpkg-price'))g('mpkg-price').value=pkg?pkg.price:'';
+  if(g('mpkg-bonus'))g('mpkg-bonus').value=pkg?pkg.bonus:'';
+  if(g('mpkg-expiry'))g('mpkg-expiry').value=pkg?pkg.expiryDays:'';
+  openModal('m-mbr-pkg');
+  setTimeout(()=>g('mpkg-name')?.focus(),100);
+}
+
+function saveMbrPackage(){
+  const name=(g('mpkg-name')?.value||'').trim();
+  if(!name){toast('⚠️ Nama paket wajib diisi');return;}
+  const price=parseInt(g('mpkg-price')?.value)||0;
+  if(price<=0){toast('⚠️ Harga paket harus lebih dari 0');return;}
+  const bonus=parseInt(g('mpkg-bonus')?.value)||0;
+  const expiryDays=parseInt(g('mpkg-expiry')?.value)||0;
+  if(_editPkgId){
+    const pkg=membershipPackages.find(p=>p.id===_editPkgId);
+    if(pkg){pkg.name=name;pkg.price=price;pkg.bonus=bonus;pkg.expiryDays=expiryDays;}
+  } else {
+    membershipPackages.push({id:'pkg'+String(membershipPkgCtr++).padStart(3,'0'),name,price,bonus,expiryDays});
+  }
+  cm('m-mbr-pkg');
+  renderMbrPackages();
+  syncSettings();
+  toast('✅ Paket '+(name)+' disimpan');
+}
+
+function deleteMbrPackage(id){
+  const pkg=membershipPackages.find(p=>p.id===id);if(!pkg)return;
+  confirm_('Hapus Paket?','Paket "'+pkg.name+'" akan dihapus.',()=>{
+    membershipPackages=membershipPackages.filter(p=>p.id!==id);
+    renderMbrPackages();
+    syncSettings();
+    toast('Paket dihapus');
+  });
 }
 
 function toggleMembershipExpiry(){

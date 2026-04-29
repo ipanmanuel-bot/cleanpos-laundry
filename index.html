@@ -731,23 +731,43 @@ tr:hover td{background:#FAFAF7}
     </div>
     <div id="membership-bonus-section" style="display:none">
       <div class="div_"></div>
-      <div class="fg" style="margin-bottom:0"><label>Bonus Deposit (%)</label>
-        <input type="number" id="s-mbr-bonus" min="0" max="100" value="10" placeholder="0" style="width:100px">
-        <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus. Contoh: isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
+      <!-- Style selector -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="mbr-style-btn-deposit" class="btn bp bpill" onclick="switchMembershipStyle('deposit')" style="flex:1;font-size:13px">Free Deposit</button>
+        <button id="mbr-style-btn-package" class="btn bpill" onclick="switchMembershipStyle('package')" style="flex:1;font-size:13px">Paket</button>
       </div>
-      <div class="div_"></div>
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
-        <div>
-          <div style="font-size:14px;font-weight:600">Masa Berlaku Saldo</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:3px;line-height:1.5">Saldo otomatis kadaluarsa jika tidak ada deposit dalam jangka waktu tertentu</div>
+      <!-- Deposit settings -->
+      <div id="mbr-deposit-settings">
+        <div class="fg"><label>Bonus Deposit (%)</label>
+          <input type="number" id="s-mbr-bonus" min="0" max="100" value="10" placeholder="0" style="width:100px">
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus. Contoh: isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
         </div>
-        <button class="toggle off" id="membership-expiry-toggle" onclick="toggleMembershipExpiry()" style="flex-shrink:0;margin-top:2px"></button>
+        <div class="fg"><label>Minimum Deposit (Rp)</label>
+          <input type="number" id="s-mbr-min-deposit" min="0" value="0" placeholder="0" style="width:140px">
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa minimum. Kasir tidak dapat menyimpan deposit di bawah jumlah ini.</div>
+        </div>
+        <div class="div_"></div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
+          <div>
+            <div style="font-size:14px;font-weight:600">Masa Berlaku Saldo</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:3px;line-height:1.5">Saldo otomatis kadaluarsa jika tidak ada deposit dalam jangka waktu tertentu</div>
+          </div>
+          <button class="toggle off" id="membership-expiry-toggle" onclick="toggleMembershipExpiry()" style="flex-shrink:0;margin-top:2px"></button>
+        </div>
+        <div id="membership-expiry-section" style="display:none">
+          <div class="fg" style="margin-bottom:0"><label>Masa berlaku sejak deposit terakhir (hari)</label>
+            <input type="number" id="s-mbr-expiry-days" min="1" max="365" value="30" placeholder="30" style="width:100px">
+            <div style="font-size:11px;color:var(--t2);margin-top:4px">Contoh: isi 30 → saldo kadaluarsa 30 hari setelah deposit terakhir</div>
+          </div>
+        </div>
       </div>
-      <div id="membership-expiry-section" style="display:none">
-        <div class="fg" style="margin-bottom:0"><label>Masa berlaku sejak deposit terakhir (hari)</label>
-          <input type="number" id="s-mbr-expiry-days" min="1" max="365" value="30" placeholder="30" style="width:100px">
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">Contoh: isi 30 → saldo kadaluarsa 30 hari setelah deposit terakhir</div>
+      <!-- Package settings -->
+      <div id="mbr-package-settings" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);letter-spacing:.06em">PILIHAN PAKET</div>
+          <button class="btn bp bsm" onclick="openAddMbrPackage()">+ Tambah Paket</button>
         </div>
+        <div id="mbr-pkg-list"></div>
       </div>
       <div class="div_"></div>
       <button class="btn bp bfull bpill" onclick="saveMembershipSettings()">Simpan Pengaturan Membership</button>
@@ -1130,18 +1150,27 @@ tr:hover td{background:#FAFAF7}
 
 <!-- MEMBERSHIP: Deposit Modal -->
 <div class="mbg" id="m-member-deposit">
-  <div class="mbox" style="max-width:360px">
+  <div class="mbox" style="max-width:400px">
     <div class="mhd"><span class="mht" id="md-title">Deposit Member</span><button class="xb" onclick="cm('m-member-deposit')">×</button></div>
     <div class="mbd">
       <div style="font-size:13px;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:10px" id="md-cust-info"></div>
-      <div class="fg"><label>Jumlah Bayar (Rp)</label>
-        <input type="number" id="md-amount" placeholder="0" min="0" oninput="calcDepositPreview()">
+      <!-- Free deposit mode -->
+      <div id="md-deposit-mode">
+        <div class="fg"><label>Jumlah Bayar (Rp)</label>
+          <input type="number" id="md-amount" placeholder="0" min="0" oninput="calcDepositPreview()">
+        </div>
+        <div id="md-min-hint" style="display:none;font-size:11px;color:var(--t2);margin-top:-8px;margin-bottom:12px">Minimum deposit: <strong id="md-min-lbl"></strong></div>
+        <div id="md-preview" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
+          <div class="sr"><span>Jumlah Bayar</span><span id="md-base-lbl">Rp 0</span></div>
+          <div class="sr" id="md-bonus-row" style="color:var(--p)"><span id="md-bonus-lbl">Bonus (10%)</span><span id="md-bonus-amt">+ Rp 0</span></div>
+          <div style="height:1px;background:var(--b1);margin:8px 0"></div>
+          <div class="sr"><span style="font-weight:700">Total Saldo Masuk</span><span id="md-total-lbl" style="font-weight:700;color:var(--p)">Rp 0</span></div>
+        </div>
       </div>
-      <div id="md-preview" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
-        <div class="sr"><span>Jumlah Bayar</span><span id="md-base-lbl">Rp 0</span></div>
-        <div class="sr" id="md-bonus-row" style="color:var(--p)"><span id="md-bonus-lbl">Bonus (10%)</span><span id="md-bonus-amt">+ Rp 0</span></div>
-        <div style="height:1px;background:var(--b1);margin:8px 0"></div>
-        <div class="sr"><span style="font-weight:700">Total Saldo Masuk</span><span id="md-total-lbl" style="font-weight:700;color:var(--p)">Rp 0</span></div>
+      <!-- Package mode -->
+      <div id="md-package-mode" style="display:none">
+        <div style="font-size:12px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:8px">PILIH PAKET</div>
+        <div id="md-pkg-picker" style="max-height:280px;overflow-y:auto"></div>
       </div>
       <div class="fg"><label>Metode Pembayaran</label>
         <select id="md-pay-method">
@@ -1155,6 +1184,24 @@ tr:hover td{background:#FAFAF7}
       </div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-member-deposit')">Batal</button><button class="btn bp" onclick="saveDeposit()">Simpan Deposit</button></div>
+  </div>
+</div>
+
+<!-- MEMBERSHIP: Add/Edit Package Modal -->
+<div class="mbg" id="m-mbr-pkg">
+  <div class="mbox" style="max-width:340px">
+    <div class="mhd"><span class="mht" id="mpkg-title">Tambah Paket</span><button class="xb" onclick="cm('m-mbr-pkg')">×</button></div>
+    <div class="mbd">
+      <div class="fg"><label>Nama Paket</label><input id="mpkg-name" placeholder="Contoh: Basic, Premium..."></div>
+      <div class="fg"><label>Harga (Rp) — jumlah yang dibayar pelanggan</label><input type="number" id="mpkg-price" min="0" placeholder="0"></div>
+      <div class="fg"><label>Bonus Saldo (Rp flat)</label><input type="number" id="mpkg-bonus" min="0" placeholder="0">
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus</div>
+      </div>
+      <div class="fg" style="margin-bottom:0"><label>Masa Berlaku (Hari)</label><input type="number" id="mpkg-expiry" min="0" placeholder="0">
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa masa berlaku</div>
+      </div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-mbr-pkg')">Batal</button><button class="btn bp" onclick="saveMbrPackage()">Simpan Paket</button></div>
   </div>
 </div>
 <!-- MEMBERSHIP: Transaction History Modal -->
