@@ -443,6 +443,12 @@ function updSt(id, st, role) {
 }
 
 // ===== RECEIPT / DETAIL =====
+function rcptOpenWa() {
+  const o = orders.find(x => x.id === curRcptOrderId); if (!o) return;
+  curWaNewOrder = o;
+  setWaNewType('konfirmasi', g('wa-new-chips').querySelector('.chip'));
+  openModal('m-wa-new');
+}
 function showRcpt(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
   curRcptOrderId = id;
