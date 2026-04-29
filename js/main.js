@@ -1560,7 +1560,7 @@ function buildEscReceipt(o){
   const dash=escText('-'.repeat(W)+'\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
   const pad=(l,r)=>{const gap=W-l.length-r.length;return gap>0?l+' '.repeat(gap)+r+'\n':l+'\n'+' '.repeat(W-r.length)+r+'\n';};
-  const svcLines=(o.svcType==='satuan'&&o.satuanLines?.length)?o.satuanLines.map(l=>escText(pad(l.name+' x'+l.qty,'Rp '+l.lineTotal.toLocaleString('id-ID')))):[escText(pad((getSvcById(o.svcType)?.name||o.svcType)+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+o.base.toLocaleString('id-ID')))];
+  const svcLines=(o.svcType==='satuan'&&o.satuanLines&&o.satuanLines.length)?o.satuanLines.map(function(l){return escText(pad(l.name+' x'+l.qty,'Rp '+(l.lineTotal||0).toLocaleString('id-ID')));}):[escText(pad((getSvcById(o.svcType)&&getSvcById(o.svcType).name||o.svcType)+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+(o.base||0).toLocaleString('id-ID')))];
   let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(storeName+'\n'),BOLD_OFF,FONT_NORM,escText((outlet?.name||'')+'\n'),escText((outlet?.addr||storeAddr||'')+'\n'),NL,ALIGN_L,dash,escText(pad('No Nota:',o.id)),escText(pad('Pelanggan:',o.name)),escText(pad('Kasir:',o.handledBy||'\u2014')),escText(pad('Tanggal:',o.date)),dash,...svcLines];
   o.addOns.forEach(a=>{const ad=addons.find(x=>x.id===a.id);if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}});
   if(o.promoAmt>0)parts.push(escText(pad('Diskon Promo:','-Rp '+o.promoAmt.toLocaleString('id-ID'))));

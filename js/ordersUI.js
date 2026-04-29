@@ -452,17 +452,20 @@ function rcptOpenWa() {
 function showRcpt(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
   curRcptOrderId = id;
-  let lines = '';
-  if (o.svcType === 'satuan' && o.satuanLines?.length) {
-    o.satuanLines.forEach(l => { lines += `<div class="rrow"><span>${esc(l.name)} × ${l.qty}</span><span>${l.lineTotal.toLocaleString('id-ID')}</span></div>`; });
+  var lines = '';
+  if (o.svcType === 'satuan' && o.satuanLines && o.satuanLines.length) {
+    o.satuanLines.forEach(function(l) { lines += '<div class="rrow"><span>' + esc(l.name) + ' \u00d7 ' + l.qty + '</span><span>' + (l.lineTotal || 0).toLocaleString('id-ID') + '</span></div>'; });
   } else {
-    lines = `<div class="rrow"><span style="text-transform:capitalize">${esc(getSvcById(o.svcType)?.name || o.svcType)} ${esc(o.svcCat)} × ${o.qty}${getSvcUnit(o.svcType)}</span><span>${(o.base || 0).toLocaleString('id-ID')}</span></div>`;
+    var svcName = (getSvcById(o.svcType) && getSvcById(o.svcType).name) ? getSvcById(o.svcType).name : o.svcType;
+    lines = '<div class="rrow"><span style="text-transform:capitalize">' + esc(svcName) + ' ' + esc(o.svcCat) + ' \u00d7 ' + o.qty + getSvcUnit(o.svcType) + '</span><span>' + (o.base || 0).toLocaleString('id-ID') + '</span></div>';
   }
-  o.addOns.forEach(a => { const ad = addons.find(x => x.id === a.id); if (ad) { const v = ad.unit === 'per_qty' ? ad.price * o.qty : ad.price; lines += `<div class="rrow"><span>${esc(a.name)}</span><span>${v.toLocaleString('id-ID')}</span></div>`; } });
-  if (o.promoAmt > 0) lines += `<div class="rrow" style="color:var(--p)"><span>Diskon Promo</span><span>- ${o.promoAmt.toLocaleString('id-ID')}</span></div>`;
-  if (o.discAmt > 0)  lines += `<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ${o.discAmt.toLocaleString('id-ID')}</span></div>`;
-  const outlet = go(o.outletId);
-  g('m-rcpt-body').innerHTML = `<div class="rcpt"><div class="rc rb">${esc(storeName)}</div><div class="rc" style="font-size:10px">${esc(outlet?.name || '')}</div><div class="rc" style="font-size:10px">${esc(outlet?.addr || storeAddr || '')}</div><hr class="rdash"><div class="rrow"><span>No Nota</span><span>${esc(o.id)}</span></div><div class="rrow"><span>Pelanggan</span><span>${esc(o.name)}</span></div><div class="rrow"><span>Kasir</span><span>${esc(o.handledBy || '—')}</span></div><div class="rrow"><span>Tgl Masuk</span><span>${esc(o.date)}</span></div><hr class="rdash">${lines}<hr class="rdash"><div class="rrow"><span>Status</span><span>${esc(o.payStatus)}</span></div><div class="rrow rb"><span>Total</span><span>${o.total.toLocaleString('id-ID')}</span></div><div class="rrow"><span>Metode</span><span>${esc(o.payMethod)}</span></div><hr class="rdash"><div class="rc">${esc(storeFooter || 'Terima kasih! 🙏')}</div></div>`;
+  o.addOns.forEach(function(a) { var ad = addons.find(function(x) { return x.id === a.id; }); if (ad) { var v = ad.unit === 'per_qty' ? ad.price * o.qty : ad.price; lines += '<div class="rrow"><span>' + esc(a.name) + '</span><span>' + v.toLocaleString('id-ID') + '</span></div>'; } });
+  if (o.promoAmt > 0) lines += '<div class="rrow" style="color:var(--p)"><span>Diskon Promo</span><span>- ' + o.promoAmt.toLocaleString('id-ID') + '</span></div>';
+  if (o.discAmt > 0)  lines += '<div class="rrow" style="color:var(--re)"><span>Diskon Manual</span><span>- ' + o.discAmt.toLocaleString('id-ID') + '</span></div>';
+  var outlet = go(o.outletId);
+  var outletName = outlet ? outlet.name : '';
+  var outletAddr = outlet ? (outlet.addr || storeAddr || '') : (storeAddr || '');
+  g('m-rcpt-body').innerHTML = '<div class="rcpt"><div class="rc rb">' + esc(storeName) + '</div><div class="rc" style="font-size:10px">' + esc(outletName) + '</div><div class="rc" style="font-size:10px">' + esc(outletAddr) + '</div><hr class="rdash"><div class="rrow"><span>No Nota</span><span>' + esc(o.id) + '</span></div><div class="rrow"><span>Pelanggan</span><span>' + esc(o.name) + '</span></div><div class="rrow"><span>Kasir</span><span>' + esc(o.handledBy || '\u2014') + '</span></div><div class="rrow"><span>Tgl Masuk</span><span>' + esc(o.date) + '</span></div><hr class="rdash">' + lines + '<hr class="rdash"><div class="rrow"><span>Status</span><span>' + esc(o.payStatus) + '</span></div><div class="rrow rb"><span>Total</span><span>' + o.total.toLocaleString('id-ID') + '</span></div><div class="rrow"><span>Metode</span><span>' + esc(o.payMethod) + '</span></div><hr class="rdash"><div class="rc">' + esc(storeFooter || 'Terima kasih! \uD83D\uDE4F') + '</div></div>';
   openModal('m-rcpt');
 }
 
