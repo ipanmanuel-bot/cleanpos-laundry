@@ -498,12 +498,8 @@ function showRcpt(id) {
     var outletAddr = '';
     try { var outletObj = go(o.outletId); if (outletObj && outletObj.addr) outletAddr = outletObj.addr; } catch(e) {}
 
-    // --- DEBUG: remove after diagnosis ---
-    var _dbg = 'type=[' + String(o.svcType) + '] cat=[' + String(o.svcCat) + '] base=[' + String(o.base) + '] total=[' + String(o.total) + '] addOnAmt=[' + String(o.addOnAmt) + '] qty=[' + String(o.qty) + '] lines=[' + lines.length + ']';
-
     // --- assemble ---
     var html = '<div class="rcpt">'
-      + '<div style="background:#ff0;color:#000;font-size:10px;padding:2px 4px;word-break:break-all">' + _dbg + '</div>'
       + '<div class="rc rb">CLEANPOS LAUNDRY</div>'
       + '<div class="rc" style="font-size:10px">' + esc(outletAddr) + '</div>'
       + '<hr class="rdash">'

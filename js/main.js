@@ -1549,26 +1549,66 @@ let _btConnectedDevice=null;
 function escCmd(...bytes){return new Uint8Array(bytes);}
 function escText(str){return new TextEncoder().encode(str);}
 function concat(...arrays){const total=arrays.reduce((s,a)=>s+a.length,0);const out=new Uint8Array(total);let offset=0;arrays.forEach(a=>{out.set(a,offset);offset+=a.length;});return out;}
+// ASCII-safe number formatter for ESC/POS — avoids locale-specific Unicode separators
+// that can corrupt the byte stream on some Android WebView versions.
+function fmtAmt(n){return String(Math.round(Math.abs(Number(n)||0))).replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function buildEscReceipt(o){
-  const ESC=0x1B,GS=0x1D,LF=0x0A;
-  const INIT=escCmd(ESC,0x40),ALIGN_C=escCmd(ESC,0x61,0x01),ALIGN_L=escCmd(ESC,0x61,0x00);
-  const BOLD_ON=escCmd(ESC,0x45,0x01),BOLD_OFF=escCmd(ESC,0x45,0x00);
-  const FONT_LARGE=escCmd(GS,0x21,0x11),FONT_NORM=escCmd(GS,0x21,0x00);
-  const CUT=escCmd(GS,0x56,0x42,0x00),NL=escCmd(LF);
-  const activePrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='receipt')||printers.find(p=>p.conn==='bluetooth')||null;
-  const W=activePrinter?.width==='58'?32:48;
-  const dash=escText('-'.repeat(W)+'\n');
-  const outlet=outlets.find(x=>x.id===o.outletId);
-  const pad=(l,r)=>{const gap=W-l.length-r.length;return gap>0?l+' '.repeat(gap)+r+'\n':l+'\n'+' '.repeat(W-r.length)+r+'\n';};
-  const svcLines=(o.svcType==='satuan'&&o.satuanLines&&o.satuanLines.length)?o.satuanLines.map(function(l){return escText(pad(l.name+' x'+l.qty,'Rp '+(l.lineTotal||0).toLocaleString('id-ID')));}):[escText(pad((getSvcById(o.svcType)&&getSvcById(o.svcType).name||o.svcType)+' '+o.svcCat+' x'+o.qty+(getSvcUnit(o.svcType)||''),'Rp '+(o.base||0).toLocaleString('id-ID')))];
-  let parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(storeName+'\n'),BOLD_OFF,FONT_NORM,escText((outlet?.name||'')+'\n'),escText((outlet?.addr||storeAddr||'')+'\n'),NL,ALIGN_L,dash,escText(pad('No Nota:',o.id)),escText(pad('Pelanggan:',o.name)),escText(pad('Kasir:',o.handledBy||'\u2014')),escText(pad('Tanggal:',o.date)),dash,...svcLines];
-  o.addOns.forEach(a=>{const ad=addons.find(x=>x.id===a.id);if(ad){const v=ad.unit==='per_qty'?ad.price*o.qty:ad.price;parts.push(escText(pad(a.name,'Rp '+v.toLocaleString('id-ID'))));}});
-  if(o.promoAmt>0)parts.push(escText(pad('Diskon Promo:','-Rp '+o.promoAmt.toLocaleString('id-ID'))));
-  if(o.discAmt>0)parts.push(escText(pad('Diskon Manual:','-Rp '+o.discAmt.toLocaleString('id-ID'))));
-  parts.push(dash,BOLD_ON,escText(pad('TOTAL:','Rp '+o.total.toLocaleString('id-ID'))),BOLD_OFF,escText(pad('Metode:',o.payMethod)),escText(pad('Status:',o.payStatus)),dash,ALIGN_C);
-  if(storeFooter){storeFooter.split('\n').forEach(line=>{if(line.trim())parts.push(escText(line+'\n'));});}else{parts.push(escText('Terima kasih telah mempercayakan\n'),escText('cucian Anda kepada kami!\n'));}
+  var ESC=0x1B,GS=0x1D,LF=0x0A;
+  var INIT=escCmd(ESC,0x40),ALIGN_C=escCmd(ESC,0x61,0x01),ALIGN_L=escCmd(ESC,0x61,0x00);
+  var BOLD_ON=escCmd(ESC,0x45,0x01),BOLD_OFF=escCmd(ESC,0x45,0x00);
+  var FONT_LARGE=escCmd(GS,0x21,0x11),FONT_NORM=escCmd(GS,0x21,0x00);
+  var CUT=escCmd(GS,0x56,0x42,0x00),NL=escCmd(LF);
+  var activePrinter=printers.find(function(p){return p.conn==='bluetooth'&&p.role==='receipt';})||printers.find(function(p){return p.conn==='bluetooth';})||null;
+  var W=(activePrinter&&activePrinter.width==='58')?32:48;
+  var dash=escText('-'.repeat(W)+'\n');
+  var outlet=outlets.find(function(x){return x.id===o.outletId;});
+  // pad: always coerce to string to prevent null/undefined .length crash
+  var pad=function(l,r){
+    var ls=String(l==null?'':l), rs=String(r==null?'':r);
+    var gap=W-ls.length-rs.length;
+    return gap>0 ? ls+' '.repeat(gap)+rs+'\n' : ls+'\n'+' '.repeat(Math.max(0,W-rs.length))+rs+'\n';
+  };
+  // product lines — use fmtAmt (ASCII-only) to avoid byte stream corruption
+  var baseDisplay=Number(o.base)>0?Number(o.base):Math.max(0,Number(o.total||0)-Number(o.addOnAmt||0)+Number(o.promoAmt||0)+Number(o.discAmt||0));
+  var svcLines;
+  if(o.svcType==='satuan'&&o.satuanLines&&o.satuanLines.length){
+    svcLines=o.satuanLines.map(function(l){return escText(pad(String(l.name||'')+' x'+String(l.qty||0),'Rp '+fmtAmt(l.lineTotal)));});
+  }else{
+    var svcName=(getSvcById(o.svcType)&&getSvcById(o.svcType).name)||String(o.svcType||'');
+    var svcLabel=(svcName+' '+String(o.svcCat||'')).trim()||'Layanan';
+    var svcU=String((getSvcUnit&&getSvcUnit(o.svcType))||'');
+    svcLines=[escText(pad(svcLabel+' x'+String(o.qty||0)+svcU,'Rp '+fmtAmt(baseDisplay)))];
+  }
+  var parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(String(storeName||'')+'\n'),BOLD_OFF,FONT_NORM,
+    escText(String((outlet&&outlet.name)||'')+'\n'),
+    escText(String((outlet&&outlet.addr)||storeAddr||'')+'\n'),
+    NL,ALIGN_L,dash,
+    escText(pad('No Nota:',o.id)),
+    escText(pad('Pelanggan:',o.name)),
+    escText(pad('Kasir:',o.handledBy||'-')),
+    escText(pad('Tanggal:',o.date||'')),
+    dash];
+  for(var _si=0;_si<svcLines.length;_si++){parts.push(svcLines[_si]);}
+  var addOnList=o.addOns||[];
+  for(var _ai=0;_ai<addOnList.length;_ai++){
+    var _a=addOnList[_ai];
+    var _ad=null;
+    for(var _di=0;_di<addons.length;_di++){if(addons[_di].id===_a.id){_ad=addons[_di];break;}}
+    if(_ad){var _v=_ad.unit==='per_qty'?_ad.price*(o.qty||0):_ad.price;parts.push(escText(pad(String(_a.name||''),'Rp '+fmtAmt(_v))));}
+  }
+  if(Number(o.promoAmt)>0)parts.push(escText(pad('Diskon Promo:','-Rp '+fmtAmt(o.promoAmt))));
+  if(Number(o.discAmt)>0)parts.push(escText(pad('Diskon Manual:','-Rp '+fmtAmt(o.discAmt))));
+  parts.push(dash);
+  parts.push(BOLD_ON);
+  parts.push(escText(pad('TOTAL:','Rp '+fmtAmt(o.total))));
+  parts.push(BOLD_OFF);
+  parts.push(escText(pad('Metode:',o.payMethod||'')));
+  parts.push(escText(pad('Status:',o.payStatus||'')));
+  parts.push(dash,ALIGN_C);
+  if(storeFooter){storeFooter.split('\n').forEach(function(line){if(line.trim())parts.push(escText(line+'\n'));});}
+  else{parts.push(escText('Terima kasih telah mempercayakan\n'),escText('cucian Anda kepada kami!\n'));}
   parts.push(NL,NL,NL,CUT);
-  return concat(...parts);
+  return concat.apply(null,parts);
 }
 function buildEscLabel(o){
   const ESC=0x1B,GS=0x1D,LF=0x0A;
