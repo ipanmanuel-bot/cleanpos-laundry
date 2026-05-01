@@ -1255,7 +1255,7 @@ function renderMembership(){
       let exColor=daysLeft<0?'var(--re,#c62828)':daysLeft<=7?'var(--amb,#e65100)':'var(--gr,#2e7d32)';
       exHtml=`<div style="font-size:10px;color:${exColor};margin-top:1px">${daysLeft<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
     }
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(bal)}</div>${exHtml}</div><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button></div>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(bal)}</div>${exHtml}</div><div style="display:flex;flex-direction:column;gap:4px"><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></div>`;
   }).join('');
 }
 
