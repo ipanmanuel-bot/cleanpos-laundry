@@ -384,7 +384,7 @@ function renderOrders() {
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
-      <td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td>
+      <td><button class="badge ${SL_PAY[o.payStatus]}" style="cursor:pointer;border:none;font-family:inherit;font-size:inherit" onclick="openPayPicker('${o.id}',this)">${esc(o.payStatus)}</button></td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
@@ -396,7 +396,7 @@ function renderOrders() {
       <td style="font-weight:600">${esc(o.name)}</td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
-      <td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td>
+      <td><button class="badge ${SL_PAY[o.payStatus]}" style="cursor:pointer;border:none;font-family:inherit;font-size:inherit" onclick="openPayPicker('${o.id}',this)">${esc(o.payStatus)}</button></td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
@@ -592,6 +592,44 @@ function setPayModal(id, ps, btn) {
   renderOrders();
   if (curRole === 'owner') refreshODash(); else refreshSDash();
   toast('✓ Status bayar: ' + ps);
+}
+
+function setPayStatus(id, ps) {
+  const o = orders.find(x => x.id === id); if (!o) return;
+  if (o.payStatus === ps) return;
+  o.payStatus = ps;
+  if (ps === 'Lunas' && o.payMethod === 'Tunai')
+    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash (diperbarui)', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId });
+  renderOrders();
+  if (curRole === 'owner') refreshODash(); else refreshSDash();
+  toast('✓ Status bayar: ' + ps);
+}
+
+function openPayPicker(id, el) {
+  const existing = document.getElementById('_pay-pop');
+  if (existing) { existing.remove(); if (existing.dataset.oid === id) return; }
+  const o = orders.find(x => x.id === id); if (!o) return;
+  const pop = document.createElement('div');
+  pop.id = '_pay-pop';
+  pop.dataset.oid = id;
+  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--ca,#fff);border:1px solid var(--b1,#e0e0e0);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:6px;display:flex;flex-direction:column;gap:4px;min-width:110px';
+  ['Belum Bayar', 'DP', 'Lunas'].forEach(ps => {
+    const btn = document.createElement('button');
+    btn.className = 'btn bsm' + (ps === o.payStatus ? ' bp' : '');
+    btn.style.cssText = 'text-align:left;justify-content:flex-start';
+    btn.textContent = ps;
+    btn.onmousedown = e => { e.stopPropagation(); setPayStatus(id, ps); pop.remove(); };
+    pop.appendChild(btn);
+  });
+  document.body.appendChild(pop);
+  const r = el.getBoundingClientRect();
+  pop.style.top = Math.min(r.bottom + 4, window.innerHeight - 150) + 'px';
+  pop.style.left = Math.min(r.left, window.innerWidth - 130) + 'px';
+  setTimeout(() => {
+    document.addEventListener('mousedown', function h(e) {
+      if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', h); }
+    });
+  }, 0);
 }
 
 // ===== WA NOTIFICATIONS =====

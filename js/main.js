@@ -1562,33 +1562,78 @@ function buildEscReceipt(o){
   var W=(activePrinter&&activePrinter.width==='58')?32:48;
   var dash=escText('-'.repeat(W)+'\n');
   var outlet=outlets.find(function(x){return x.id===o.outletId;});
-  // pad: always coerce to string to prevent null/undefined .length crash
-  var pad=function(l,r){
-    var ls=String(l==null?'':l), rs=String(r==null?'':r);
-    var gap=W-ls.length-rs.length;
-    return gap>0 ? ls+' '.repeat(gap)+rs+'\n' : ls+'\n'+' '.repeat(Math.max(0,W-rs.length))+rs+'\n';
+
+  // Word-wrap by whole words (no mid-word breaks)
+  var wrapWords=function(text,width){
+    var words=String(text||'').split(' ');
+    var lines=[],cur='';
+    for(var i=0;i<words.length;i++){
+      var w=words[i];if(!w)continue;
+      if(!cur){cur=w;}
+      else if((cur+' '+w).length<=width){cur+=' '+w;}
+      else{lines.push(cur);cur=w;}
+    }
+    if(cur)lines.push(cur);
+    return lines.length?lines:[''];
   };
-  // product lines — use fmtAmt (ASCII-only) to avoid byte stream corruption
+
+  // Two-column pad helper
+  var pad=function(l,r){
+    var ls=String(l==null?'':l),rs=String(r==null?'':r);
+    var gap=W-ls.length-rs.length;
+    return gap>0?ls+' '.repeat(gap)+rs+'\n':ls+'\n'+' '.repeat(Math.max(0,W-rs.length))+rs+'\n';
+  };
+
+  // Item rendered as two lines: name / indented detail + right-aligned total
+  var itemBlock=function(name,detail,total){
+    var nameLine=String(name)+'\n';
+    var det='  '+String(detail),tot=String(total);
+    var gap=W-det.length-tot.length;
+    var detLine=gap>0?det+' '.repeat(gap)+tot+'\n':det+'\n'+' '.repeat(Math.max(0,W-tot.length))+tot+'\n';
+    return escText(nameLine)+escText(detLine);
+  };
+
+  // Product lines
   var baseDisplay=Number(o.base)>0?Number(o.base):Math.max(0,Number(o.total||0)-Number(o.addOnAmt||0)+Number(o.promoAmt||0)+Number(o.discAmt||0));
-  var svcLines;
+  var svcBlocks=[];
   if(o.svcType==='satuan'&&o.satuanLines&&o.satuanLines.length){
-    svcLines=o.satuanLines.map(function(l){return escText(pad(String(l.name||'')+' x'+String(l.qty||0),'Rp '+fmtAmt(l.lineTotal)));});
+    for(var _si=0;_si<o.satuanLines.length;_si++){
+      var _l=o.satuanLines[_si];
+      var _qty=Number(_l.qty)||0;
+      var _tot=Number(_l.lineTotal)||0;
+      var _unit=_qty>0?fmtAmt(Math.round(_tot/_qty)):'0';
+      svcBlocks.push(itemBlock(String(_l.name||''),_qty+'x '+_unit,fmtAmt(_tot)));
+    }
   }else{
     var svcName=(getSvcById(o.svcType)&&getSvcById(o.svcType).name)||String(o.svcType||'');
     var svcLabel=(svcName+' '+String(o.svcCat||'')).trim()||'Layanan';
     var svcU=String((getSvcUnit&&getSvcUnit(o.svcType))||'');
-    svcLines=[escText(pad(svcLabel+' x'+String(o.qty||0)+svcU,'Rp '+fmtAmt(baseDisplay)))];
+    svcBlocks.push(itemBlock(svcLabel,String(o.qty||0)+svcU,'Rp '+fmtAmt(baseDisplay)));
   }
-  var parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON,escText(String(storeName||'')+'\n'),BOLD_OFF,FONT_NORM,
-    escText(String((outlet&&outlet.name)||'')+'\n'),
-    escText(String((outlet&&outlet.addr)||storeAddr||'')+'\n'),
-    NL,ALIGN_L,dash,
-    escText(pad('No Nota:',o.id)),
-    escText(pad('Pelanggan:',o.name)),
-    escText(pad('Kasir:',o.handledBy||'-')),
-    escText(pad('Tanggal:',o.date||'')),
-    dash];
-  for(var _si=0;_si<svcLines.length;_si++){parts.push(svcLines[_si]);}
+
+  // Build header — store name word-wrapped, centered
+  var nameLines=wrapWords(String(storeName||''),W);
+  var parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON];
+  for(var _ni=0;_ni<nameLines.length;_ni++)parts.push(escText(nameLines[_ni]+'\n'));
+  parts.push(BOLD_OFF,FONT_NORM);
+  var outletName=String((outlet&&outlet.name)||'');
+  if(outletName)parts.push(escText(outletName+'\n'));
+  var addr=String((outlet&&outlet.addr)||storeAddr||'');
+  if(addr)parts.push(escText(addr+'\n'));
+  if(storeWa)parts.push(NL,escText(String(storeWa)+'\n'));
+  parts.push(NL,ALIGN_L,dash);
+
+  // Order info
+  parts.push(escText(pad('No Nota:',o.id)));
+  parts.push(escText(pad('Pelanggan:',o.name)));
+  parts.push(escText(pad('Kasir:',o.handledBy||'-')));
+  parts.push(escText(pad('Tanggal:',o.date||'')));
+  parts.push(dash);
+
+  // Items
+  for(var _bi=0;_bi<svcBlocks.length;_bi++)parts.push(svcBlocks[_bi]);
+
+  // Add-ons
   var addOnList=o.addOns||[];
   for(var _ai=0;_ai<addOnList.length;_ai++){
     var _a=addOnList[_ai];
@@ -1598,9 +1643,9 @@ function buildEscReceipt(o){
   }
   if(Number(o.promoAmt)>0)parts.push(escText(pad('Diskon Promo:','-Rp '+fmtAmt(o.promoAmt))));
   if(Number(o.discAmt)>0)parts.push(escText(pad('Diskon Manual:','-Rp '+fmtAmt(o.discAmt))));
-  parts.push(dash);
-  parts.push(BOLD_ON);
-  parts.push(escText(pad('TOTAL:','Rp '+fmtAmt(o.total))));
+
+  parts.push(dash,BOLD_ON);
+  parts.push(escText('Total Rp '+fmtAmt(o.total)+'\n'));
   parts.push(BOLD_OFF);
   parts.push(escText(pad('Metode:',o.payMethod||'')));
   parts.push(escText(pad('Status:',o.payStatus||'')));
@@ -1757,6 +1802,8 @@ const _origSetStModal = setStModal;
 setStModal = function(id, st, btn) { _origSetStModal(id, st, btn); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 const _origSetPayModal = setPayModal;
 setPayModal = function(id, ps, btn) { _origSetPayModal(id, ps, btn); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
+const _origSetPayStatus = setPayStatus;
+setPayStatus = function(id, ps) { _origSetPayStatus(id, ps); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 const _origUpdSt = updSt;
 updSt = function(id, st, role) { _origUpdSt(id, st, role); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 
