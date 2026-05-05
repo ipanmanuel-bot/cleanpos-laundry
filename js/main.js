@@ -1585,12 +1585,13 @@ function buildEscReceipt(o){
   };
 
   // Item rendered as two lines: name / indented detail + right-aligned total
+  // IMPORTANT: use concat() not + for Uint8Array joining
   var itemBlock=function(name,detail,total){
     var nameLine=String(name)+'\n';
     var det='  '+String(detail),tot=String(total);
     var gap=W-det.length-tot.length;
     var detLine=gap>0?det+' '.repeat(gap)+tot+'\n':det+'\n'+' '.repeat(Math.max(0,W-tot.length))+tot+'\n';
-    return escText(nameLine)+escText(detLine);
+    return concat(escText(nameLine),escText(detLine));
   };
 
   // Product lines
@@ -1611,8 +1612,9 @@ function buildEscReceipt(o){
     svcBlocks.push(itemBlock(svcLabel,String(o.qty||0)+svcU,'Rp '+fmtAmt(baseDisplay)));
   }
 
-  // Build header — store name word-wrapped, centered
-  var nameLines=wrapWords(String(storeName||''),W);
+  // Build header — store name word-wrapped at half-width because FONT_LARGE doubles char width
+  var nameWrapW=Math.floor(W/2);
+  var nameLines=wrapWords(String(storeName||''),nameWrapW);
   var parts=[INIT,ALIGN_C,FONT_LARGE,BOLD_ON];
   for(var _ni=0;_ni<nameLines.length;_ni++)parts.push(escText(nameLines[_ni]+'\n'));
   parts.push(BOLD_OFF,FONT_NORM);
@@ -1641,11 +1643,13 @@ function buildEscReceipt(o){
     for(var _di=0;_di<addons.length;_di++){if(addons[_di].id===_a.id){_ad=addons[_di];break;}}
     if(_ad){var _v=_ad.unit==='per_qty'?_ad.price*(o.qty||0):_ad.price;parts.push(escText(pad(String(_a.name||''),'Rp '+fmtAmt(_v))));}
   }
+
+  // Dash then discounts then Total (discount lines sit between dash and Total)
+  parts.push(dash);
   if(Number(o.promoAmt)>0)parts.push(escText(pad('Diskon Promo:','-Rp '+fmtAmt(o.promoAmt))));
   if(Number(o.discAmt)>0)parts.push(escText(pad('Diskon Manual:','-Rp '+fmtAmt(o.discAmt))));
-
-  parts.push(dash,BOLD_ON);
-  parts.push(escText('Total Rp '+fmtAmt(o.total)+'\n'));
+  parts.push(BOLD_ON);
+  parts.push(escText(pad('Total:','Rp '+fmtAmt(o.total))));
   parts.push(BOLD_OFF);
   parts.push(escText(pad('Metode:',o.payMethod||'')));
   parts.push(escText(pad('Status:',o.payStatus||'')));
