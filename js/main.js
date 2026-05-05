@@ -1035,6 +1035,72 @@ function renderCusts(){
   wrap.innerHTML=`<div class="tw"><table><thead>${hdrCols}</thead><tbody>${rows}</tbody></table></div>`;
 }
 
+// ===== IMPORT CONTACTS =====
+async function importContacts(){
+  // Try Contact Picker API (Android Chrome 80+)
+  if(navigator.contacts&&navigator.contacts.select){
+    try{
+      const raw=await navigator.contacts.select(['name','tel'],{multiple:true});
+      _importContactList(raw.map(function(c){return{name:(c.name&&c.name[0])||'',phone:(c.tel&&c.tel[0])||''};}));
+      return;
+    }catch(e){
+      if(e.name==='AbortError')return; // user cancelled
+      // other error: fall through to file picker
+    }
+  }
+  // Fallback: VCF file picker
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='.vcf,text/vcard';inp.multiple=true;
+  inp.onchange=async function(){
+    var contacts=[];
+    for(var i=0;i<inp.files.length;i++){
+      var text=await inp.files[i].text();
+      contacts=contacts.concat(_parseVcf(text));
+    }
+    _importContactList(contacts);
+  };
+  inp.click();
+}
+
+function _parseVcf(text){
+  var contacts=[];
+  var blocks=text.replace(/\r\n|\r/g,'\n').split(/BEGIN:VCARD/i).slice(1);
+  for(var b=0;b<blocks.length;b++){
+    var name='',phone='';
+    var lines=blocks[b].split('\n');
+    for(var l=0;l<lines.length;l++){
+      var line=lines[l],up=line.toUpperCase();
+      if(up.startsWith('FN:')){name=line.slice(3).trim();}
+      else if(!name&&up.startsWith('N:')){
+        var parts=line.slice(2).split(';');
+        name=([parts[1],parts[0]].filter(Boolean).join(' ')).trim();
+      }else if(!phone&&(up.startsWith('TEL')||up.indexOf('TEL;')!==-1)){
+        var colon=line.indexOf(':');
+        if(colon!==-1){phone=line.slice(colon+1).replace(/[\s\-\(\)\.]/g,'').trim();}
+      }
+    }
+    if(name&&phone)contacts.push({name:name,phone:phone});
+  }
+  return contacts;
+}
+
+function _importContactList(list){
+  var added=0,skipped=0;
+  for(var i=0;i<list.length;i++){
+    var c=list[i];
+    if(!c.name||!c.phone){skipped++;continue;}
+    var phone=c.phone.replace(/[^\d+]/g,'');
+    if(!phone){skipped++;continue;}
+    if(customers[phone]){skipped++;continue;}
+    customers[phone]={name:c.name,phone:phone,orders:0,total:0,balance:0,lastDate:TODAY_STR};
+    syncCustomer(customers[phone]);
+    added++;
+  }
+  renderCusts();
+  if(curRole==='staff')renderMembership();
+  toast(added>0?'✅ '+added+' kontak ditambahkan'+(skipped>0?', '+skipped+' dilewati':''):'⚠️ Tidak ada kontak baru'+(skipped>0?' ('+skipped+' sudah terdaftar)':''));
+}
+
 // ===== ADD CUSTOMER =====
 function openAddCust(){
   if(g('ac-name'))g('ac-name').value='';
