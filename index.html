@@ -85,7 +85,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .fab:hover{background:var(--pd)}.fab:active{transform:scale(.97)}
 .mc{margin-left:230px;flex:1;min-height:100vh;overflow-y:auto;padding:20px;background:var(--bg)}
 .bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dk);z-index:50;padding-bottom:env(safe-area-inset-bottom,4px)}
-.bnav-inner{display:flex;align-items:flex-end;justify-content:space-around;padding:6px 8px 2px}
+.bnav-inner{display:flex;align-items:flex-end;justify-content:space-around;padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px))}
 .bni{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 8px;font-size:10px;color:#555;min-width:52px;border:none;background:none;font-family:inherit;transition:color .15s}
 .bni.on{color:var(--p)}.bni .bn-ic{display:flex;align-items:center;justify-content:center;height:26px}
 .bn-ic svg{width:22px;height:22px;stroke-width:1.75;display:block}
@@ -672,7 +672,7 @@ tr:hover td{background:#FAFAF7}
 
 <!-- CUSTOMERS -->
 <div class="page" id="o-p-customers">
-  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Tambah</button><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div></div>
+  <div class="sh"><div class="pt" style="margin-bottom:0">Pelanggan</div><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Tambah</button><button class="btn bsm" onclick="importContacts()"><i data-lucide="contact" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Impor</button><button class="btn bbl bsm" onclick="exportCustomers()"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Export</button></div></div>
   <div class="card">
     <input id="cust-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderCusts()">
     <div id="cust-table-wrap"></div>
@@ -818,6 +818,7 @@ tr:hover td{background:#FAFAF7}
     <button class="ni" onclick="sGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
     <button class="ni" onclick="sGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
     <button class="ni" id="s-nav-membership" onclick="sGo('membership',this)"><span class="nic"><i data-lucide="credit-card"></i></span>Membership</button>
+    <button class="ni" onclick="sGo('printer',this)"><span class="nic"><i data-lucide="printer"></i></span>Printer</button>
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
 </nav>
@@ -928,13 +929,21 @@ tr:hover td{background:#FAFAF7}
     <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="s-wa-pend-cnt" class="badge gam">0</span></div><div id="s-wa-pend-list"></div></div>
   </div>
   <div class="page" id="s-p-membership">
-    <div class="sh"><div class="pt" style="margin-bottom:0">Membership</div><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Tambah</button></div>
+    <div class="sh"><div class="pt" style="margin-bottom:0">Membership</div><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Tambah</button><button class="btn bsm" onclick="importContacts()"><i data-lucide="contact" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Impor</button></div></div>
+
     <div id="s-mbr-disabled" style="display:none;background:var(--amb);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;font-size:13px;color:#5d2f00">
       ⚠️ Fitur membership belum diaktifkan oleh owner. Hubungi owner untuk mengaktifkannya di menu Pengaturan.
     </div>
     <div id="s-mbr-content">
       <input id="s-mbr-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderMembership()">
       <div id="s-mbr-list"></div>
+    </div>
+  </div>
+  <div class="page" id="s-p-printer">
+    <div class="sh"><div class="pt" style="margin-bottom:0">Printer</div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>
+    <div class="card">
+      <div id="s-bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
+      <div id="s-printer-list"></div>
     </div>
   </div>
 </div>
@@ -945,7 +954,6 @@ tr:hover td{background:#FAFAF7}
     <div class="bfab" onclick="sGo('new-order',null)">+</div>
     <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
     <button class="bni" onclick="sGoB('membership',this)"><span class="bn-ic"><i data-lucide="credit-card"></i></span>Member</button>
-    <button class="bni" onclick="sGoB('wa',this)"><span class="bn-ic"><i data-lucide="message-circle"></i></span>WA</button>
   </div>
 </nav>
 </div><!-- end staff-app -->
