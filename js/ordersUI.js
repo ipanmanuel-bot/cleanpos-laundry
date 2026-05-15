@@ -551,6 +551,11 @@ function deleteOrder(id) {
 function showDetail(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
   g('m-detail-title').textContent = o.id;
+  const _custBal = membershipEnabled && o.phone && o.phone !== '—' ? (customers[o.phone]?.balance || 0) : 0;
+  const _custBalExpired = membershipEnabled && o.phone && o.phone !== '—' ? isBalanceExpired(customers[o.phone]) : false;
+  const _showWallet = membershipEnabled && (_custBal > 0 && !_custBalExpired || o.payMethod === 'Dompet Member');
+  const _walletLabel = _custBal > 0 && !_custBalExpired ? `💳 Dompet Member (${fmt(_custBal + (o.payMethod === 'Dompet Member' ? o.total : 0))})` : '💳 Dompet Member';
+  const _payMethods = ['Tunai', 'QRIS', 'Transfer', ...(_showWallet ? ['Dompet Member'] : [])];
   g('m-detail-body').innerHTML = `<div class="g2" style="margin-bottom:14px">
     <div class="mc2"><div class="ml">Status</div><div style="margin-top:6px"><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></div></div>
     <div class="mc2"><div class="ml">Pembayaran</div><div style="margin-top:6px"><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></div></div>
@@ -561,13 +566,17 @@ function showDetail(id) {
     <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${esc(go(o.outletId)?.name || '—')}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>
+    <div class="rrow"><span style="color:var(--t2)">Metode Bayar</span><span style="font-weight:600">${esc(o.payMethod || '—')}</span></div>
     <div class="rrow rb" style="border-top:1px dashed #ccc;padding-top:5px;margin-top:4px"><span>Total</span><span>${fmt(o.total)}</span></div>
   </div>
   ${o.status === 'Selesai' || o.status === 'Diambil' ? `<div style="padding:10px;background:${o.waSent ? 'var(--pl)' : 'var(--amb)'};border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:${o.waSent ? '#3d6b10' : 'var(--am)'}">${o.waSent ? '✓ Notif WA terkirim' : 'Notif WA belum dikirim'}</span>${!o.waSent ? `<button class="btn bp bsm bpill" onclick="cm('m-detail');openWaMod('${o.id}')">💬 Kirim WA</button>` : ''}</div>` : ''}
   <div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Update Status Pesanan</div>
   <div style="display:flex;flex-wrap:wrap;gap:5px">${STATUS_LIST.map(s => `<button class="btn bsm${s === o.status ? ' bp' : ''}" onclick="setStModal('${id}','${s}',this)">${s}</button>`).join('')}</div></div>
-  <div><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Update Status Bayar</div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap">${['Belum Bayar', 'DP', 'Lunas'].map(ps => `<button class="btn bsm${ps === o.payStatus ? ' bp' : ''}" onclick="setPayModal('${id}','${ps}',this)">${ps}</button>`).join('')}</div></div>`;
+  <div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Update Status Bayar</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">${['Belum Bayar', 'DP', 'Lunas'].map(ps => `<button class="btn bsm${ps === o.payStatus ? ' bp' : ''}" onclick="setPayModal('${id}','${ps}',this)">${ps}</button>`).join('')}</div></div>
+  <div><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Ganti Metode Bayar</div>
+  ${_custBalExpired && o.payMethod !== 'Dompet Member' ? `<div style="font-size:12px;color:var(--re,#c62828);margin-bottom:6px">⚠️ Saldo member kadaluarsa</div>` : ''}
+  <div style="display:flex;gap:6px;flex-wrap:wrap">${_payMethods.map(pm => `<button class="btn bsm${pm === o.payMethod ? ' bp' : ''}" onclick="changePayMethod('${id}','${pm}')">${pm === 'Dompet Member' ? _walletLabel : pm}</button>`).join('')}</div></div>`;
   g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button><button class="btn bp" onclick="cm('m-detail');showRcpt('${id}')">Struk</button>`;
   openModal('m-detail');
 }
@@ -584,11 +593,18 @@ function setStModal(id, st, btn) {
 
 function setPayModal(id, ps, btn) {
   const o = orders.find(x => x.id === id); if (!o) return;
+  const prev = o.payStatus;
+  if (prev === ps) { btn.classList.add('bp'); return; }
   o.payStatus = ps;
   btn.closest('div').querySelectorAll('.btn').forEach(b => { if (b.onclick && b.onclick.toString().includes('setPayModal')) b.classList.remove('bp'); });
   btn.classList.add('bp');
-  if (ps === 'Lunas' && o.payMethod === 'Tunai')
-    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash (diperbarui)', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId });
+  if (ps === 'Lunas' && o.payMethod === 'Tunai') {
+    const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    kasLog.push(entry); syncKas(entry);
+  } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
+    const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    kasLog.push(entry); syncKas(entry);
+  }
   renderOrders();
   if (curRole === 'owner') refreshODash(); else refreshSDash();
   toast('✓ Status bayar: ' + ps);
@@ -597,9 +613,15 @@ function setPayModal(id, ps, btn) {
 function setPayStatus(id, ps) {
   const o = orders.find(x => x.id === id); if (!o) return;
   if (o.payStatus === ps) return;
+  const prev = o.payStatus;
   o.payStatus = ps;
-  if (ps === 'Lunas' && o.payMethod === 'Tunai')
-    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash (diperbarui)', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId });
+  if (ps === 'Lunas' && o.payMethod === 'Tunai') {
+    const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    kasLog.push(entry); syncKas(entry);
+  } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
+    const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    kasLog.push(entry); syncKas(entry);
+  }
   renderOrders();
   if (curRole === 'owner') refreshODash(); else refreshSDash();
   toast('✓ Status bayar: ' + ps);
@@ -630,6 +652,66 @@ function openPayPicker(id, el) {
       if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', h); }
     });
   }, 0);
+}
+
+// ===== CHANGE PAYMENT METHOD =====
+function changePayMethod(id, newMethod) {
+  const o = orders.find(x => x.id === id); if (!o) return;
+  if (o.payMethod === newMethod) return;
+  const oldMethod = o.payMethod;
+  const wasLunas = o.payStatus === 'Lunas';
+
+  // Reverse Tunai kas entry if switching away from Tunai while Lunas
+  if (oldMethod === 'Tunai' && wasLunas) {
+    const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    kasLog.push(entry); syncKas(entry);
+  }
+
+  // Reverse Dompet Member deduction if switching away from it
+  if (oldMethod === 'Dompet Member') {
+    const cust = o.phone && o.phone !== '—' ? customers[o.phone] : null;
+    if (cust) {
+      cust.balance = (cust.balance || 0) + o.total;
+      const deductIdx = memberTxns.findIndex(t => t.orderId === o.id && t.type === 'deduct');
+      if (deductIdx !== -1) {
+        const removed = memberTxns.splice(deductIdx, 1)[0];
+        deleteMemberTxn(removed.id);
+        syncCustomer(cust);
+      }
+    }
+    o.payStatus = 'Belum Bayar';
+  }
+
+  // Setup Dompet Member if switching to it
+  if (newMethod === 'Dompet Member') {
+    if (!membershipEnabled) { toast('⚠️ Fitur membership tidak aktif'); return; }
+    const phone = o.phone;
+    const cust = phone && phone !== '—' ? customers[phone] : null;
+    if (!cust) { toast('⚠️ Pelanggan tidak terdaftar sebagai member'); return; }
+    if (isBalanceExpired(cust)) { toast('⚠️ Saldo member telah kadaluarsa!'); return; }
+    const bal = Number(cust.balance || 0);
+    if (bal < o.total) { toast('⚠️ Saldo tidak cukup! Saldo: ' + fmt(bal) + ' | Total: ' + fmt(o.total)); return; }
+    cust.balance = bal - o.total;
+    const txnId = 'MBR-' + String(memberTxnCtr++).padStart(5, '0');
+    const txn = { id: txnId, phone, type: 'deduct', amount: o.total, baseAmount: null, bonusAmount: null, note: 'Ganti metode bayar', orderId: o.id, time: NOW() };
+    memberTxns.push(txn);
+    syncMemberTxn(txn);
+    syncCustomer(cust);
+    o.payStatus = 'Lunas';
+  }
+
+  // Add Tunai kas entry if switching to Tunai while Lunas
+  if (newMethod === 'Tunai' && o.payStatus === 'Lunas') {
+    const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    kasLog.push(entry); syncKas(entry);
+  }
+
+  o.payMethod = newMethod;
+  renderOrders();
+  if (curRole === 'owner') refreshODash(); else refreshSDash();
+  // Refresh detail modal if open for this order
+  if (g('m-detail')?.className?.includes('on') && g('m-detail-title')?.textContent === id) showDetail(id);
+  toast('✓ Metode bayar diubah: ' + newMethod);
 }
 
 // ===== WA NOTIFICATIONS =====

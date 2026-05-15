@@ -1887,6 +1887,10 @@ submitO = function(role) {
     const deductTxn = memberTxns.find(t => t.orderId === o.id);
     if (deductTxn) syncMemberTxn(deductTxn);
   }
+  if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas') {
+    const kasEntry = kasLog[kasLog.length - 1];
+    if (kasEntry && String(kasEntry.note).includes(o.id)) syncKas(kasEntry);
+  }
   renderOrders();
   showRcpt(o.id);
   if (role === 'o') refreshODash(); else refreshSDash();
@@ -1899,6 +1903,8 @@ const _origSetPayModal = setPayModal;
 setPayModal = function(id, ps, btn) { _origSetPayModal(id, ps, btn); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 const _origSetPayStatus = setPayStatus;
 setPayStatus = function(id, ps) { _origSetPayStatus(id, ps); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
+const _origChangePayMethod = changePayMethod;
+changePayMethod = function(id, newMethod) { _origChangePayMethod(id, newMethod); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 const _origUpdSt = updSt;
 updSt = function(id, st, role) { _origUpdSt(id, st, role); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 
