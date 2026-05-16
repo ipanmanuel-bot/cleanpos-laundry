@@ -595,36 +595,52 @@ function setPayModal(id, ps, btn) {
   const o = orders.find(x => x.id === id); if (!o) return;
   const prev = o.payStatus;
   if (prev === ps) { btn.classList.add('bp'); return; }
-  o.payStatus = ps;
-  btn.closest('div').querySelectorAll('.btn').forEach(b => { if (b.onclick && b.onclick.toString().includes('setPayModal')) b.classList.remove('bp'); });
-  btn.classList.add('bp');
-  if (ps === 'Lunas' && o.payMethod === 'Tunai') {
-    const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
-    kasLog.push(entry); syncKas(entry);
-  } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
-    const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
-    kasLog.push(entry); syncKas(entry);
+  const willKoreksi = prev === 'Lunas' && o.payMethod === 'Tunai';
+  function _applyPayModal() {
+    o.payStatus = ps;
+    btn.closest('div').querySelectorAll('.btn').forEach(b => { if (b.onclick && b.onclick.toString().includes('setPayModal')) b.classList.remove('bp'); });
+    btn.classList.add('bp');
+    if (ps === 'Lunas' && o.payMethod === 'Tunai') {
+      const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+      kasLog.push(entry); syncKas(entry);
+    } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
+      const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+      kasLog.push(entry); syncKas(entry);
+    }
+    renderOrders();
+    if (curRole === 'owner') refreshODash(); else refreshSDash();
+    toast('✓ Status bayar: ' + ps);
   }
-  renderOrders();
-  if (curRole === 'owner') refreshODash(); else refreshSDash();
-  toast('✓ Status bayar: ' + ps);
+  if (willKoreksi) {
+    confirm_('Batalkan Pembayaran Tunai?', 'Ini akan membuat Koreksi Kas –' + fmt(o.total) + ' di kas kasir. Lanjutkan?', () => { _applyPayModal(); if (typeof syncOrder === 'function') syncOrder(o); });
+  } else {
+    _applyPayModal();
+  }
 }
 
 function setPayStatus(id, ps) {
   const o = orders.find(x => x.id === id); if (!o) return;
   if (o.payStatus === ps) return;
   const prev = o.payStatus;
-  o.payStatus = ps;
-  if (ps === 'Lunas' && o.payMethod === 'Tunai') {
-    const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
-    kasLog.push(entry); syncKas(entry);
-  } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
-    const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
-    kasLog.push(entry); syncKas(entry);
+  const willKoreksi = prev === 'Lunas' && o.payMethod === 'Tunai';
+  function _applyPayStatus() {
+    o.payStatus = ps;
+    if (ps === 'Lunas' && o.payMethod === 'Tunai') {
+      const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+      kasLog.push(entry); syncKas(entry);
+    } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
+      const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+      kasLog.push(entry); syncKas(entry);
+    }
+    renderOrders();
+    if (curRole === 'owner') refreshODash(); else refreshSDash();
+    toast('✓ Status bayar: ' + ps);
   }
-  renderOrders();
-  if (curRole === 'owner') refreshODash(); else refreshSDash();
-  toast('✓ Status bayar: ' + ps);
+  if (willKoreksi) {
+    confirm_('Batalkan Pembayaran Tunai?', 'Ini akan membuat Koreksi Kas –' + fmt(o.total) + ' di kas kasir. Lanjutkan?', () => { _applyPayStatus(); if (typeof syncOrder === 'function') syncOrder(o); });
+  } else {
+    _applyPayStatus();
+  }
 }
 
 function openPayPicker(id, el) {
@@ -658,6 +674,18 @@ function openPayPicker(id, el) {
 function changePayMethod(id, newMethod) {
   const o = orders.find(x => x.id === id); if (!o) return;
   if (o.payMethod === newMethod) return;
+  const oldMethod = o.payMethod;
+  const wasLunas = o.payStatus === 'Lunas';
+
+  // Guard: confirm before creating Koreksi Kas when switching away from Tunai+Lunas
+  if (oldMethod === 'Tunai' && wasLunas) {
+    confirm_('Ganti Metode Bayar?', 'Order ini sudah Lunas (Tunai). Mengganti metode akan membuat Koreksi Kas –' + fmt(o.total) + '. Lanjutkan?', () => _doChangePayMethod(id, newMethod));
+    return;
+  }
+  _doChangePayMethod(id, newMethod);
+}
+function _doChangePayMethod(id, newMethod) {
+  const o = orders.find(x => x.id === id); if (!o) return;
   const oldMethod = o.payMethod;
   const wasLunas = o.payStatus === 'Lunas';
 
@@ -711,6 +739,7 @@ function changePayMethod(id, newMethod) {
   if (curRole === 'owner') refreshODash(); else refreshSDash();
   // Refresh detail modal if open for this order
   if (g('m-detail')?.className?.includes('on') && g('m-detail-title')?.textContent === id) showDetail(id);
+  if (typeof syncOrder === 'function') syncOrder(o);
   toast('✓ Metode bayar diubah: ' + newMethod);
 }
 

@@ -84,6 +84,19 @@ let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
 let editSvcId = null;
 
+// ===== MEMBER CARD TEMPLATE =====
+const _CARD_BG_KEY = 'cleanpos_mbr_card_bg';
+const _CARD_FIELDS_KEY = 'cleanpos_mbr_card_fields';
+let memberCardBg = null;
+let memberCardFields = [
+  { id:'name',    label:'Nama',   x:50, y:70, fontSize:48, color:'#ffffff', bold:true,  shadow:true, align:'center' },
+  { id:'phone',   label:'No. WA', x:50, y:81, fontSize:30, color:'#eeeeee', bold:false, shadow:true, align:'center' },
+  { id:'balance', label:'Saldo',  x:50, y:91, fontSize:40, color:'#ffd700', bold:true,  shadow:true, align:'center' }
+];
+let _cardActiveField = 'name';
+let _cardBgImg = null;
+let _cardSendCust = null;
+
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
 const STATUS_LIST = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
@@ -358,7 +371,233 @@ function renderSettings(){
   if(g('s-mbr-expiry-days'))g('s-mbr-expiry-days').value=membershipExpiryDays;
   // Package list
   if(isPkg)renderMbrPackages();
+  // Card designer preview
+  setTimeout(()=>{ drawMemberCardPreview(); selectCardField(_cardActiveField); },50);
 }
+function initMemberCard() {
+  try { const b=localStorage.getItem(_CARD_BG_KEY); if(b){memberCardBg=b;_cardBgImg=new Image();_cardBgImg.onload=()=>drawMemberCardPreview();_cardBgImg.src=b;} } catch(e){}
+  try { const f=localStorage.getItem(_CARD_FIELDS_KEY); if(f) memberCardFields=JSON.parse(f); } catch(e){}
+}
+
+function drawMemberCardPreview() {
+  const canvas=g('card-preview-canvas'); if(!canvas) return;
+  const wrap=g('card-canvas-wrap');
+  const maxW=wrap?Math.max(200,(wrap.clientWidth||400)-4):400;
+  const scale=maxW/1350;
+  const W=Math.round(1350*scale),H=Math.round(1080*scale);
+  canvas.width=W; canvas.height=H; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  _drawCardOnCanvas(canvas,{name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:75000},scale,true);
+  if(g('card-canvas-hint')) g('card-canvas-hint').style.display=memberCardBg?'none':'';
+  if(g('card-clear-btn')) g('card-clear-btn').style.display=memberCardBg?'':'none';
+}
+
+function _drawCardOnCanvas(canvas,cust,scale,showHandles) {
+  const ctx=canvas.getContext('2d'); const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(_cardBgImg&&_cardBgImg.complete&&_cardBgImg.naturalWidth>0) {
+    const iW=_cardBgImg.naturalWidth,iH=_cardBgImg.naturalHeight,r=Math.max(W/iW,H/iH);
+    ctx.drawImage(_cardBgImg,(W-iW*r)/2,(H-iH*r)/2,iW*r,iH*r);
+  } else {
+    const gr=ctx.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#1a237e'); gr.addColorStop(1,'#4a148c');
+    ctx.fillStyle=gr; ctx.fillRect(0,0,W,H);
+  }
+  const vals={name:cust.name||'—',phone:cust.phone||'—',balance:'Saldo: '+fmt(cust.balance||0)};
+  memberCardFields.forEach(f=>{
+    const text=vals[f.id]||''; const x=f.x/100*W,y=f.y/100*H;
+    const fs=Math.max(8,Math.round(f.fontSize*scale));
+    ctx.save();
+    ctx.font=(f.bold?'bold ':'')+fs+'px "Segoe UI",Arial,sans-serif';
+    ctx.textAlign=f.align; ctx.textBaseline='middle';
+    if(f.shadow){ctx.shadowColor='rgba(0,0,0,0.75)';ctx.shadowBlur=Math.max(3,fs*.25);ctx.shadowOffsetX=ctx.shadowOffsetY=Math.max(1,Math.round(fs*.04));}
+    ctx.fillStyle=f.color; ctx.fillText(text,x,y); ctx.restore();
+    if(showHandles){
+      const isActive=f.id===_cardActiveField;
+      ctx.save();
+      ctx.font=(f.bold?'bold ':'')+fs+'px "Segoe UI",Arial,sans-serif'; ctx.textAlign=f.align; ctx.textBaseline='middle';
+      const mW=ctx.measureText(text).width+Math.round(16*scale),mH=fs+Math.round(10*scale);
+      let bx=x; if(f.align==='center') bx-=mW/2; else if(f.align==='right') bx-=mW;
+      ctx.strokeStyle=isActive?'#4caf50':'rgba(255,255,255,0.5)';
+      ctx.lineWidth=isActive?Math.max(1.5,1.5*scale):Math.max(1,scale);
+      ctx.setLineDash([Math.round(4*scale),Math.round(3*scale)]);
+      ctx.strokeRect(bx,y-mH/2,mW,mH);
+      const tfs=Math.max(8,Math.round(10*scale));
+      ctx.font='bold '+tfs+'px Arial'; ctx.setLineDash([]); ctx.textAlign='left'; ctx.textBaseline='bottom';
+      ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0;
+      ctx.fillStyle=isActive?'#4caf50':'rgba(255,255,255,0.75)';
+      ctx.fillText(f.label,bx,y-mH/2-2);
+      ctx.restore();
+    }
+  });
+}
+
+function loadMemberCardBg(input) {
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{memberCardBg=e.target.result;_cardBgImg=new Image();_cardBgImg.onload=drawMemberCardPreview;_cardBgImg.src=memberCardBg;};
+  reader.readAsDataURL(file); input.value='';
+}
+function clearMemberCardBg(){memberCardBg=null;_cardBgImg=null;drawMemberCardPreview();}
+
+function selectCardField(id) {
+  _cardActiveField=id;
+  const f=memberCardFields.find(x=>x.id===id); if(!f) return;
+  memberCardFields.forEach(x=>{const b=g('card-field-btn-'+x.id);if(b)b.classList.toggle('bp',x.id===id);});
+  if(g('card-fs')) g('card-fs').value=f.fontSize;
+  if(g('card-color')) g('card-color').value=f.color;
+  if(g('card-bold')) g('card-bold').checked=f.bold;
+  if(g('card-shadow')) g('card-shadow').checked=f.shadow;
+  if(g('card-field-label')) g('card-field-label').textContent=f.label.toUpperCase();
+  ['left','center','right'].forEach(a=>{const b=g('card-align-'+a);if(b)b.classList.toggle('bp',f.align===a);});
+  drawMemberCardPreview();
+}
+
+function updateCardFieldStyle() {
+  const f=memberCardFields.find(x=>x.id===_cardActiveField); if(!f) return;
+  const fsV=parseInt(g('card-fs')?.value); if(!isNaN(fsV)&&fsV>0) f.fontSize=fsV;
+  f.color=g('card-color')?.value||f.color;
+  f.bold=!!g('card-bold')?.checked;
+  f.shadow=!!g('card-shadow')?.checked;
+  drawMemberCardPreview();
+}
+
+function setCardAlign(align) {
+  const f=memberCardFields.find(x=>x.id===_cardActiveField); if(!f) return;
+  f.align=align;
+  ['left','center','right'].forEach(a=>{const b=g('card-align-'+a);if(b)b.classList.toggle('bp',a===align);});
+  drawMemberCardPreview();
+}
+
+function _onCardCanvasClick(e) {
+  const canvas=g('card-preview-canvas'); if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  const f=memberCardFields.find(x=>x.id===_cardActiveField); if(!f) return;
+  f.x=Math.round((e.clientX-rect.left)/rect.width*100);
+  f.y=Math.round((e.clientY-rect.top)/rect.height*100);
+  drawMemberCardPreview();
+}
+
+function saveMemberCardTemplate() {
+  try {
+    if(memberCardBg) localStorage.setItem(_CARD_BG_KEY,memberCardBg); else localStorage.removeItem(_CARD_BG_KEY);
+    localStorage.setItem(_CARD_FIELDS_KEY,JSON.stringify(memberCardFields));
+    toast('✅ Template kartu disimpan!');
+  } catch(e){ toast('⚠️ Gagal menyimpan. Kompres gambar terlebih dahulu (ukuran besar = localStorage penuh).'); }
+}
+
+function downloadCardGuide() {
+  const c=document.createElement('canvas'); c.width=1350; c.height=1080;
+  const ctx=c.getContext('2d');
+  const gr=ctx.createLinearGradient(0,0,1350,1080); gr.addColorStop(0,'#e8eaf6'); gr.addColorStop(1,'#fce4ec');
+  ctx.fillStyle=gr; ctx.fillRect(0,0,1350,1080);
+  ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.lineWidth=1;
+  for(let x=0;x<=1350;x+=135){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,1080);ctx.stroke();}
+  for(let y=0;y<=1080;y+=108){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(1350,y);ctx.stroke();}
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.setLineDash([10,6]);
+  ctx.beginPath();ctx.moveTo(675,0);ctx.lineTo(675,1080);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,540);ctx.lineTo(1350,540);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#283593'; ctx.font='bold 52px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('PANDUAN TEMPLATE KARTU MEMBER',675,86);
+  ctx.fillStyle='#555'; ctx.font='26px Arial';
+  ctx.fillText('Ukuran: 1350 × 1080 px  ·  Buat background Anda, lalu upload ke aplikasi',675,140);
+  const pad=70; ctx.strokeStyle='#e91e63'; ctx.lineWidth=3; ctx.setLineDash([14,7]);
+  ctx.strokeRect(pad,pad,1350-pad*2,1080-pad*2); ctx.setLineDash([]);
+  ctx.fillStyle='#e91e63'; ctx.font='bold 18px Arial'; ctx.textAlign='left';
+  ctx.fillText('◄ Safe zone — jangan taruh elemen penting di luar garis merah ini',pad+6,pad-18);
+  const zones=[
+    {y:756,h:74,c:'#1976d2',txt:'[ NAMA PELANGGAN ]',hint:'default: 50%, 70%'},
+    {y:874,h:58,c:'#388e3c',txt:'[ NOMOR WHATSAPP ]',hint:'default: 50%, 81%'},
+    {y:978,h:68,c:'#e65100',txt:'[ SALDO MEMBER ]',  hint:'default: 50%, 91%'},
+  ];
+  zones.forEach(z=>{
+    ctx.fillStyle=z.c+'1a'; ctx.strokeStyle=z.c; ctx.lineWidth=2.5; ctx.setLineDash([12,6]);
+    ctx.fillRect(180,z.y-z.h/2,990,z.h); ctx.strokeRect(180,z.y-z.h/2,990,z.h); ctx.setLineDash([]);
+    ctx.fillStyle=z.c; ctx.font='bold 28px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(z.txt,675,z.y);
+    ctx.fillStyle='#aaa'; ctx.font='16px Arial'; ctx.textAlign='right';
+    ctx.fillText(z.hint,1172,z.y);
+  });
+  ctx.fillStyle='#aaa'; ctx.font='20px Arial'; ctx.textAlign='center';
+  ctx.fillText('Posisi & style teks bisa diubah di Pengaturan → Kartu Member Digital',675,1042);
+  const lnk=document.createElement('a'); lnk.download='panduan-kartu-member.jpg';
+  lnk.href=c.toDataURL('image/jpeg',0.92); lnk.click(); toast('✅ Panduan template diunduh!');
+}
+
+function _buildCardWaMsg(cu) {
+  return 'Halo *'+cu.name+'*! 🎉\n\nSaldo member kamu saat ini: *'+fmt(cu.balance||0)+'*\n\nTerima kasih telah menjadi pelanggan setia kami! 🙏\n— '+(storeName||'CleanPOS Laundry');
+}
+
+function openSendMemberCard(phone) {
+  const c=customers[phone]; if(!c) return;
+  _cardSendCust=c;
+  if(g('m-send-card-title')) g('m-send-card-title').textContent=c.name;
+  // Pre-fill WA message textarea
+  if(g('card-wa-msg')) g('card-wa-msg').value=_buildCardWaMsg(c);
+  // Show/hide card preview section
+  const hasCard=!!memberCardBg;
+  if(g('card-send-preview-wrap')) g('card-send-preview-wrap').style.display=hasCard?'':'none';
+  if(g('card-send-no-tmpl')) g('card-send-no-tmpl').style.display=hasCard?'none':'';
+  if(g('card-send-with-img-btn')) g('card-send-with-img-btn').style.display=hasCard?'':'none';
+  if(g('card-download-btn')) g('card-download-btn').style.display=hasCard?'':'none';
+  if(hasCard){
+    const canvas=g('card-send-canvas');
+    if(canvas){
+      const maxW=Math.min((window.innerWidth||400)-80,480);
+      const scale=maxW/1350;
+      canvas.width=Math.round(1350*scale); canvas.height=Math.round(1080*scale);
+      canvas.style.width=canvas.width+'px'; canvas.style.height=canvas.height+'px';
+      if(_cardBgImg&&_cardBgImg.complete&&_cardBgImg.naturalWidth>0){
+        _drawCardOnCanvas(canvas,c,scale,false);
+      } else {
+        _cardBgImg=new Image(); _cardBgImg.onload=()=>_drawCardOnCanvas(canvas,c,scale,false); _cardBgImg.src=memberCardBg;
+      }
+    }
+    const hasShare=typeof navigator.share!=='undefined';
+    if(g('card-send-hint')) g('card-send-hint').textContent=hasShare
+      ?'Di HP: tap tombol hijau → pilih WhatsApp dari menu share yang muncul'
+      :'Gambar akan didownload otomatis, lalu lampirkan manual di WhatsApp';
+  } else {
+    if(g('card-send-hint')) g('card-send-hint').textContent='';
+  }
+  openModal('m-send-card');
+}
+
+function sendTextOnlyWA() {
+  if(!_cardSendCust) return;
+  const msg=g('card-wa-msg')?.value||_buildCardWaMsg(_cardSendCust);
+  window.open('https://wa.me/'+fmtPh(_cardSendCust.phone)+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+function downloadMemberCard() {
+  if(!_cardSendCust) return;
+  const c=document.createElement('canvas'); c.width=1350; c.height=1080;
+  _drawCardOnCanvas(c,_cardSendCust,1,false);
+  const lnk=document.createElement('a');
+  lnk.download='kartu-member-'+(_cardSendCust.name||'member').toLowerCase().replace(/\s+/g,'-')+'.jpg';
+  lnk.href=c.toDataURL('image/jpeg',0.92); lnk.click(); toast('✅ Kartu diunduh!');
+}
+
+async function sendCardViaWA() {
+  if(!_cardSendCust) return;
+  const cu=_cardSendCust;
+  const msg=g('card-wa-msg')?.value||_buildCardWaMsg(cu);
+  const fc=document.createElement('canvas'); fc.width=1350; fc.height=1080;
+  _drawCardOnCanvas(fc,cu,1,false);
+  if(navigator.share&&navigator.canShare){
+    try{
+      const blob=await new Promise(res=>fc.toBlob(res,'image/jpeg',0.92));
+      const file=new File([blob],'kartu-member.jpg',{type:'image/jpeg'});
+      if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Kartu Member '+cu.name,text:msg});return;}
+    }catch(e){if(e.name==='AbortError')return;}
+  }
+  const lnk=document.createElement('a'); lnk.download='kartu-member.jpg';
+  lnk.href=fc.toDataURL('image/jpeg',0.92); lnk.click();
+  setTimeout(()=>{
+    window.open('https://wa.me/'+fmtPh(cu.phone)+'?text='+encodeURIComponent(msg),'_blank');
+    if(g('card-send-hint')) g('card-send-hint').textContent='📎 Gambar diunduh — di WhatsApp tap ikon lampiran dan pilih gambar yang baru diunduh.';
+  },600);
+}
+
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
   storeAddr=(g('s-addr')?.value||'').trim();
@@ -1027,8 +1266,9 @@ function renderCusts(){
       }
       mbrTd=`<td>${balHtml}</td>`;
     }
+    const _kartuBtn=membershipEnabled?`<button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Kirim Saldo / Kartu Member" style="padding-left:7px;padding-right:7px">🎫</button>`:'';
     const aksiTd=membershipEnabled
-      ?`<td><div style="display:flex;gap:4px"><button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openMemberTxnHistory('${esc(c.phone)}')">Riwayat</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></td>`
+      ?`<td><div style="display:flex;gap:4px">${_kartuBtn}<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openMemberTxnHistory('${esc(c.phone)}')">Riwayat</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></td>`
       :`<td><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></td>`;
     return `<tr><td style="font-weight:600">${esc(c.name)}</td><td style="color:var(--p)">${esc(c.phone)}</td><td>${c.orders}x</td><td style="font-weight:700">${fmt(c.total)}</td>${mbrTd}<td style="font-size:12px;color:var(--t2)">${esc(c.lastDate)}</td>${aksiTd}</tr>`;
   }).join(''):`<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pelanggan</td></tr>`;
@@ -1321,7 +1561,7 @@ function renderMembership(){
       let exColor=daysLeft<0?'var(--re,#c62828)':daysLeft<=7?'var(--amb,#e65100)':'var(--gr,#2e7d32)';
       exHtml=`<div style="font-size:10px;color:${exColor};margin-top:1px">${daysLeft<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
     }
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(bal)}</div>${exHtml}</div><div style="display:flex;flex-direction:column;gap:4px"><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></div>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(bal)}</div>${exHtml}</div><div style="display:flex;flex-direction:column;gap:4px"><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Kirim Saldo / Kartu" style="padding-left:6px;padding-right:6px">🎫</button><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></div>`;
   }).join('');
 }
 
@@ -1903,8 +2143,8 @@ const _origSetPayModal = setPayModal;
 setPayModal = function(id, ps, btn) { _origSetPayModal(id, ps, btn); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 const _origSetPayStatus = setPayStatus;
 setPayStatus = function(id, ps) { _origSetPayStatus(id, ps); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
-const _origChangePayMethod = changePayMethod;
-changePayMethod = function(id, newMethod) { _origChangePayMethod(id, newMethod); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
+// changePayMethod now delegates to _doChangePayMethod (which calls syncOrder internally)
+// No additional wrapping needed — syncOrder is called at the end of _doChangePayMethod
 const _origUpdSt = updSt;
 updSt = function(id, st, role) { _origUpdSt(id, st, role); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 
@@ -2013,12 +2253,14 @@ function _showNewPasswordModal() {
         } else if (event === 'SIGNED_IN') {
           if (curRole) return; // token refresh while already in a session — ignore
           supaLoadAll().then(() => {
+            initMemberCard();
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
           });
         } else if (event === 'INITIAL_SESSION') {
           showReturningUser(user.email);
           supaLoadAll().then(() => {
+            initMemberCard();
             if (ownerPwd === 'owner123') showScr('scr-setup');
           });
         }
