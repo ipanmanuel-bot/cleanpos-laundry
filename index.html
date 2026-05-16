@@ -12,6 +12,9 @@
 <title>CleanPOS - Laundry Management System</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Raleway:wght@400;700&family=Nunito:wght@400;700&family=Lato:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Dancing+Script:wght@400;700&family=Pacifico&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -825,7 +828,21 @@ tr:hover td{background:#FAFAF7}
     <div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:12px;margin-bottom:14px">
       <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:10px">STYLE TEKS: <span id="card-field-label">NAMA</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Ukuran Font</label><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Font</label>
+          <select id="card-font" onchange="updateCardFieldStyle()" style="font-size:13px;border-radius:6px;padding:6px 8px;border:1px solid var(--b1);background:var(--bg);color:var(--t1);min-width:140px">
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+            <option value="Raleway">Raleway</option>
+            <option value="Nunito">Nunito</option>
+            <option value="Lato">Lato</option>
+            <option value="Open Sans">Open Sans</option>
+            <option value="Roboto">Roboto</option>
+            <option value="Playfair Display">Playfair Display</option>
+            <option value="Dancing Script">Dancing Script</option>
+            <option value="Pacifico">Pacifico</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Ukuran</label><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"></div>
         <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Warna</label><input type="color" id="card-color" value="#ffffff" oninput="updateCardFieldStyle()" style="width:50px;height:36px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--b1)"></div>
         <div style="display:flex;gap:10px;align-items:center;padding-bottom:4px">
           <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-bold" onchange="updateCardFieldStyle()"> Bold</label>

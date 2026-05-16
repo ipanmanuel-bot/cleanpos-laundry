@@ -87,11 +87,12 @@ let editSvcId = null;
 // ===== MEMBER CARD TEMPLATE =====
 const _CARD_BG_KEY = 'cleanpos_mbr_card_bg';
 const _CARD_FIELDS_KEY = 'cleanpos_mbr_card_fields';
+const CARD_FONTS = ['Poppins','Montserrat','Raleway','Nunito','Lato','Open Sans','Roboto','Playfair Display','Dancing Script','Pacifico'];
 let memberCardBg = null;
 let memberCardFields = [
-  { id:'name',    label:'Nama',   x:50, y:70, fontSize:48, color:'#ffffff', bold:true,  shadow:true, align:'center' },
-  { id:'phone',   label:'No. WA', x:50, y:81, fontSize:30, color:'#eeeeee', bold:false, shadow:true, align:'center' },
-  { id:'balance', label:'Saldo',  x:50, y:91, fontSize:40, color:'#ffd700', bold:true,  shadow:true, align:'center' }
+  { id:'name',    label:'Nama',   x:50, y:70, fontSize:48, color:'#ffffff', bold:true,  shadow:true, align:'center', fontFamily:'Poppins' },
+  { id:'phone',   label:'No. WA', x:50, y:81, fontSize:30, color:'#eeeeee', bold:false, shadow:true, align:'center', fontFamily:'Poppins' },
+  { id:'balance', label:'Saldo',  x:50, y:91, fontSize:40, color:'#ffd700', bold:true,  shadow:true, align:'center', fontFamily:'Poppins' }
 ];
 let _cardActiveField = 'name';
 let _cardBgImg = null;
@@ -377,6 +378,11 @@ function renderSettings(){
 function initMemberCard() {
   try { const b=localStorage.getItem(_CARD_BG_KEY); if(b){memberCardBg=b;_cardBgImg=new Image();_cardBgImg.onload=()=>drawMemberCardPreview();_cardBgImg.src=b;} } catch(e){}
   try { const f=localStorage.getItem(_CARD_FIELDS_KEY); if(f) memberCardFields=JSON.parse(f); } catch(e){}
+  // Preload all card fonts so canvas renders them correctly
+  CARD_FONTS.forEach(fam=>{
+    document.fonts.load('400 48px "'+fam+'"');
+    document.fonts.load('700 48px "'+fam+'"');
+  });
 }
 
 function drawMemberCardPreview() {
@@ -386,9 +392,16 @@ function drawMemberCardPreview() {
   const scale=maxW/1350;
   const W=Math.round(1350*scale),H=Math.round(1080*scale);
   canvas.width=W; canvas.height=H; canvas.style.width=W+'px'; canvas.style.height=H+'px';
-  _drawCardOnCanvas(canvas,{name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:75000},scale,true);
+  const _previewCust={name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:75000};
+  _drawCardOnCanvas(canvas,_previewCust,scale,true);
   if(g('card-canvas-hint')) g('card-canvas-hint').style.display=memberCardBg?'none':'';
   if(g('card-clear-btn')) g('card-clear-btn').style.display=memberCardBg?'':'none';
+  // Re-draw once fonts are confirmed loaded (ensures Google Fonts render in canvas)
+  const usedFonts=[...new Set(memberCardFields.map(f=>f.fontFamily||'Poppins'))];
+  Promise.all(usedFonts.flatMap(fam=>[
+    document.fonts.load('400 48px "'+fam+'"'),
+    document.fonts.load('700 48px "'+fam+'"')
+  ])).then(()=>{ if(g('card-preview-canvas')===canvas) _drawCardOnCanvas(canvas,_previewCust,scale,true); });
 }
 
 function _drawCardOnCanvas(canvas,cust,scale,showHandles) {
@@ -405,15 +418,16 @@ function _drawCardOnCanvas(canvas,cust,scale,showHandles) {
   memberCardFields.forEach(f=>{
     const text=vals[f.id]||''; const x=f.x/100*W,y=f.y/100*H;
     const fs=Math.max(8,Math.round(f.fontSize*scale));
+    const ff='"'+(f.fontFamily||'Poppins')+'",sans-serif';
     ctx.save();
-    ctx.font=(f.bold?'bold ':'')+fs+'px "Segoe UI",Arial,sans-serif';
+    ctx.font=(f.bold?'bold ':'')+fs+'px '+ff;
     ctx.textAlign=f.align; ctx.textBaseline='middle';
     if(f.shadow){ctx.shadowColor='rgba(0,0,0,0.75)';ctx.shadowBlur=Math.max(3,fs*.25);ctx.shadowOffsetX=ctx.shadowOffsetY=Math.max(1,Math.round(fs*.04));}
     ctx.fillStyle=f.color; ctx.fillText(text,x,y); ctx.restore();
     if(showHandles){
       const isActive=f.id===_cardActiveField;
       ctx.save();
-      ctx.font=(f.bold?'bold ':'')+fs+'px "Segoe UI",Arial,sans-serif'; ctx.textAlign=f.align; ctx.textBaseline='middle';
+      ctx.font=(f.bold?'bold ':'')+fs+'px '+ff; ctx.textAlign=f.align; ctx.textBaseline='middle';
       const mW=ctx.measureText(text).width+Math.round(16*scale),mH=fs+Math.round(10*scale);
       let bx=x; if(f.align==='center') bx-=mW/2; else if(f.align==='right') bx-=mW;
       ctx.strokeStyle=isActive?'#4caf50':'rgba(255,255,255,0.5)';
@@ -442,6 +456,7 @@ function selectCardField(id) {
   _cardActiveField=id;
   const f=memberCardFields.find(x=>x.id===id); if(!f) return;
   memberCardFields.forEach(x=>{const b=g('card-field-btn-'+x.id);if(b)b.classList.toggle('bp',x.id===id);});
+  if(g('card-font')) g('card-font').value=f.fontFamily||'Poppins';
   if(g('card-fs')) g('card-fs').value=f.fontSize;
   if(g('card-color')) g('card-color').value=f.color;
   if(g('card-bold')) g('card-bold').checked=f.bold;
@@ -453,6 +468,7 @@ function selectCardField(id) {
 
 function updateCardFieldStyle() {
   const f=memberCardFields.find(x=>x.id===_cardActiveField); if(!f) return;
+  if(g('card-font')?.value) f.fontFamily=g('card-font').value;
   const fsV=parseInt(g('card-fs')?.value); if(!isNaN(fsV)&&fsV>0) f.fontSize=fsV;
   f.color=g('card-color')?.value||f.color;
   f.bold=!!g('card-bold')?.checked;
