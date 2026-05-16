@@ -97,6 +97,7 @@ let memberCardFields = [
 let _cardActiveField = 'name';
 let _cardBgImg = null;
 let _cardSendCust = null;
+let _cardInteract = null; // { mode:'drag'|'resize', fieldId, startX, startY, origX, origY, origFontSize }
 
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
@@ -396,6 +397,7 @@ function drawMemberCardPreview() {
   _drawCardOnCanvas(canvas,_previewCust,scale,true);
   if(g('card-canvas-hint')) g('card-canvas-hint').style.display=memberCardBg?'none':'';
   if(g('card-clear-btn')) g('card-clear-btn').style.display=memberCardBg?'':'none';
+  _attachCardCanvasListeners();
   // Re-draw once fonts are confirmed loaded (ensures Google Fonts render in canvas)
   const usedFonts=[...new Set(memberCardFields.map(f=>f.fontFamily||'Poppins'))];
   Promise.all(usedFonts.flatMap(fam=>[
@@ -434,11 +436,21 @@ function _drawCardOnCanvas(canvas,cust,scale,showHandles) {
       ctx.lineWidth=isActive?Math.max(1.5,1.5*scale):Math.max(1,scale);
       ctx.setLineDash([Math.round(4*scale),Math.round(3*scale)]);
       ctx.strokeRect(bx,y-mH/2,mW,mH);
+      ctx.setLineDash([]);
+      // Label tag
       const tfs=Math.max(8,Math.round(10*scale));
-      ctx.font='bold '+tfs+'px Arial'; ctx.setLineDash([]); ctx.textAlign='left'; ctx.textBaseline='bottom';
+      ctx.font='bold '+tfs+'px Arial'; ctx.textAlign='left'; ctx.textBaseline='bottom';
       ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0;
       ctx.fillStyle=isActive?'#4caf50':'rgba(255,255,255,0.75)';
       ctx.fillText(f.label,bx,y-mH/2-2);
+      // Resize handle: filled square at bottom-right corner
+      const HS=Math.max(5,Math.round(8*scale));
+      ctx.fillStyle=isActive?'#4caf50':'rgba(255,255,255,0.75)';
+      ctx.fillRect(bx+mW-HS,y+mH/2-HS,HS*2,HS*2);
+      if(isActive){
+        ctx.strokeStyle='#fff'; ctx.lineWidth=Math.max(1,scale*0.8);
+        ctx.strokeRect(bx+mW-HS,y+mH/2-HS,HS*2,HS*2);
+      }
       ctx.restore();
     }
   });
@@ -483,13 +495,105 @@ function setCardAlign(align) {
   drawMemberCardPreview();
 }
 
-function _onCardCanvasClick(e) {
-  const canvas=g('card-preview-canvas'); if(!canvas) return;
+// ===== CARD CANVAS DRAG / RESIZE =====
+function _getCardEventPos(e, canvas) {
   const rect=canvas.getBoundingClientRect();
-  const f=memberCardFields.find(x=>x.id===_cardActiveField); if(!f) return;
-  f.x=Math.round((e.clientX-rect.left)/rect.width*100);
-  f.y=Math.round((e.clientY-rect.top)/rect.height*100);
-  drawMemberCardPreview();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const src=e.touches?e.touches[0]:e;
+  return { x:(src.clientX-rect.left)*sx, y:(src.clientY-rect.top)*sy };
+}
+
+function _getFieldBBoxPx(f, canvas) {
+  const W=canvas.width,H=canvas.height,scale=W/1350;
+  const fs=Math.max(8,Math.round(f.fontSize*scale));
+  const ff='"'+(f.fontFamily||'Poppins')+'",sans-serif';
+  const ctx=canvas.getContext('2d');
+  ctx.font=(f.bold?'bold ':'')+fs+'px '+ff;
+  const vals={name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:'Saldo: '+fmt(75000)};
+  const text=vals[f.id]||f.label;
+  const mW=ctx.measureText(text).width+Math.round(16*scale);
+  const mH=fs+Math.round(10*scale);
+  const x=f.x/100*W, y=f.y/100*H;
+  let bx=x;
+  if(f.align==='center') bx-=mW/2; else if(f.align==='right') bx-=mW;
+  return { x:bx, y:y-mH/2, w:mW, h:mH, scale };
+}
+
+function _cardHitTest(px, py, canvas) {
+  const scale=canvas.width/1350;
+  const HS=Math.max(5,Math.round(8*scale))*2; // hit area for resize handle
+  for(let i=memberCardFields.length-1;i>=0;i--){
+    const f=memberCardFields[i];
+    const bb=_getFieldBBoxPx(f,canvas);
+    // Resize handle at bottom-right corner
+    if(px>=bb.x+bb.w-HS&&px<=bb.x+bb.w+HS&&py>=bb.y+bb.h-HS&&py<=bb.y+bb.h+HS){
+      return { mode:'resize', fieldId:f.id };
+    }
+    // Drag: anywhere inside bounding box
+    if(px>=bb.x&&px<=bb.x+bb.w&&py>=bb.y&&py<=bb.y+bb.h){
+      return { mode:'drag', fieldId:f.id };
+    }
+  }
+  return null;
+}
+
+function _startCardInteract(e) {
+  const canvas=g('card-preview-canvas'); if(!canvas) return;
+  e.preventDefault();
+  const pos=_getCardEventPos(e,canvas);
+  const hit=_cardHitTest(pos.x,pos.y,canvas);
+  if(hit){
+    if(hit.fieldId!==_cardActiveField) selectCardField(hit.fieldId);
+    const f=memberCardFields.find(x=>x.id===hit.fieldId);
+    _cardInteract={ mode:hit.mode, fieldId:hit.fieldId, startX:pos.x, startY:pos.y, origX:f.x, origY:f.y, origFontSize:f.fontSize };
+  }
+}
+
+function _moveCardInteract(e) {
+  const canvas=g('card-preview-canvas'); if(!canvas) return;
+  e.preventDefault();
+  const pos=_getCardEventPos(e,canvas);
+  const _prev={name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:75000};
+  const sc=canvas.width/1350;
+  if(_cardInteract){
+    const f=memberCardFields.find(x=>x.id===_cardInteract.fieldId); if(!f) return;
+    const dx=pos.x-_cardInteract.startX, dy=pos.y-_cardInteract.startY;
+    if(_cardInteract.mode==='drag'){
+      f.x=Math.max(0,Math.min(100,_cardInteract.origX+dx/canvas.width*100));
+      f.y=Math.max(0,Math.min(100,_cardInteract.origY+dy/canvas.height*100));
+    } else {
+      // Resize: horizontal drag scales fontSize
+      const newFs=Math.max(8,Math.round(_cardInteract.origFontSize+dx/sc));
+      f.fontSize=newFs;
+      if(g('card-fs')) g('card-fs').value=newFs;
+    }
+    _drawCardOnCanvas(canvas,_prev,sc,true);
+  } else {
+    // Hover cursor
+    const hit=_cardHitTest(pos.x,pos.y,canvas);
+    canvas.style.cursor=hit?(hit.mode==='resize'?'nwse-resize':'grab'):'crosshair';
+  }
+}
+
+function _endCardInteract(e) {
+  if(_cardInteract){
+    _cardInteract=null;
+    const f=memberCardFields.find(x=>x.id===_cardActiveField);
+    if(f&&g('card-fs')) g('card-fs').value=f.fontSize;
+    drawMemberCardPreview();
+  }
+}
+
+function _attachCardCanvasListeners() {
+  const canvas=g('card-preview-canvas'); if(!canvas||canvas._cardListeners) return;
+  canvas._cardListeners=true;
+  canvas.addEventListener('mousedown',_startCardInteract);
+  canvas.addEventListener('mousemove',_moveCardInteract);
+  canvas.addEventListener('mouseup',_endCardInteract);
+  canvas.addEventListener('mouseleave',_endCardInteract);
+  canvas.addEventListener('touchstart',_startCardInteract,{passive:false});
+  canvas.addEventListener('touchmove',_moveCardInteract,{passive:false});
+  canvas.addEventListener('touchend',_endCardInteract);
 }
 
 function saveMemberCardTemplate() {
