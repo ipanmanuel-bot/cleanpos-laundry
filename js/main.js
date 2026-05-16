@@ -382,7 +382,7 @@ function initMemberCard() {
 function drawMemberCardPreview() {
   const canvas=g('card-preview-canvas'); if(!canvas) return;
   const wrap=g('card-canvas-wrap');
-  const maxW=Math.min(wrap?Math.max(160,(wrap.clientWidth||400)-4):400, 320);
+  const maxW=Math.min(wrap?Math.max(200,(wrap.clientWidth||400)-4):400, 400);
   const scale=maxW/1350;
   const W=Math.round(1350*scale),H=Math.round(1080*scale);
   canvas.width=W; canvas.height=H; canvas.style.width=W+'px'; canvas.style.height=H+'px';
