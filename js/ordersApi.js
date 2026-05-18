@@ -18,7 +18,9 @@ function orderToRow(o) {
     date: o.date, iso_date: o.isoDate,
     wa_sent: o.waSent, handled_by: o.handledBy,
     outlet_id: o.outletId,
-    pickup_date: o.pickupDate || null
+    pickup_date: o.pickupDate || null,
+    tracking_token: o.tracking_token || null,
+    picked_up_at: o.pickedUpAt || null
   };
 }
 function rowToOrder(r) {
@@ -37,7 +39,9 @@ function rowToOrder(r) {
     date: r.date, isoDate: r.iso_date,
     waSent: r.wa_sent, handledBy: r.handled_by,
     outletId: r.outlet_id,
-    pickupDate: r.pickup_date || null
+    pickupDate: r.pickup_date || null,
+    tracking_token: r.tracking_token || null,
+    pickedUpAt: r.picked_up_at || null
   };
 }
 

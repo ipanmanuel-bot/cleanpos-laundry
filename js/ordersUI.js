@@ -437,6 +437,7 @@ function updSt(id, st, role) {
   const o = orders.find(x => x.id === id); if (!o) return;
   o.status = st;
   if (st === 'Diambil' && !o.pickupDate) o.pickupDate = TODAY_STR;
+  if (st === 'Diambil' && !o.pickedUpAt) o.pickedUpAt = new Date().toISOString();
   if (st === 'Selesai' && !o.waSent) setTimeout(() => openWaMod(id), 300);
   renderKanban(role); renderOrders();
   if (role === 'o') refreshODash(); else refreshSDash();
@@ -584,6 +585,7 @@ function showDetail(id) {
 function setStModal(id, st, btn) {
   const o = orders.find(x => x.id === id); if (!o) return;
   o.status = st;
+  if (st === 'Diambil' && !o.pickedUpAt) o.pickedUpAt = new Date().toISOString();
   btn.closest('div').querySelectorAll('.btn').forEach(b => { if (b.onclick && b.onclick.toString().includes('setStModal')) b.classList.remove('bp'); });
   btn.classList.add('bp');
   if (st === 'Selesai' && !o.waSent) setTimeout(() => { cm('m-detail'); openWaMod(id); }, 400);
@@ -745,12 +747,16 @@ function _doChangePayMethod(id, newMethod) {
 
 // ===== WA NOTIFICATIONS =====
 function buildMsg(tpl, o) {
+  const trackingUrl = o.tracking_token
+    ? (window.location.origin + window.location.pathname + '?track=' + o.tracking_token)
+    : '';
   return tpl
     .replace(/{nama}/g, o.name)
     .replace(/{id}/g, o.id)
     .replace(/{total}/g, fmt(o.total))
     .replace(/{layanan}/g, o.svcType + ' ' + o.svcCat)
-    .replace(/{est}/g, { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[o.svcCat] || '');
+    .replace(/{est}/g, { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[o.svcCat] || '')
+    .replace(/{link}/g, trackingUrl);
 }
 
 function fmtPh(p) {

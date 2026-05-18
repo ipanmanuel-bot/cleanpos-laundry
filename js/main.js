@@ -99,6 +99,122 @@ let _cardBgImg = null;
 let _cardSendCust = null;
 let _cardInteract = null; // { mode:'drag'|'resize', fieldId, startX, startY, origX, origY, origFontSize }
 
+// ===== ORDER TRACKING =====
+const _TRACKING_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+let _trkRefreshTimer = null;
+
+function genTrackingToken() {
+  // 8-char URL-safe alphanumeric (no ambiguous chars like 0/O, 1/l/I)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let t = '';
+  for (let i = 0; i < 8; i++) t += chars[Math.floor(Math.random() * chars.length)];
+  return t;
+}
+
+function _cleanExpiredTokens() {
+  if (!supaEnabled || !currentUserId) return;
+  const now = Date.now();
+  orders.forEach(o => {
+    if (o.tracking_token && o.pickedUpAt && (now - new Date(o.pickedUpAt).getTime()) > _TRACKING_EXPIRY_MS) {
+      o.tracking_token = null;
+      syncOrder(o);
+    }
+  });
+}
+
+async function renderTrackingPage(token) {
+  clearTimeout(_trkRefreshTimer);
+  const STATUS_ICONS = {Diterima:'📥',Mencuci:'🫧',Mengeringkan:'💨',Menyetrika:'👔',Selesai:'✅',Diambil:'🎉'};
+  const PAY_CLS = {'Belum Bayar':'gr_','DP':'gam','Lunas':'gg'};
+
+  function _trkShow(id) {
+    ['trk-loading','trk-expired','trk-notfound','trk-card'].forEach(k => {
+      const el = g(k); if (el) el.style.display = k === id ? '' : 'none';
+    });
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,name,status,svc_type,svc_cat,qty,satuan_lines,add_ons,add_on_amt,total,pay_status,iso_date,picked_up_at,tracking_token')
+    .eq('tracking_token', token)
+    .single();
+
+  if (error || !data) { _trkShow('trk-notfound'); return; }
+
+  // Check expiry: 24h after picked_up_at
+  if (data.status === 'Diambil' && data.picked_up_at) {
+    const age = Date.now() - new Date(data.picked_up_at).getTime();
+    if (age > _TRACKING_EXPIRY_MS) {
+      // Lazy cleanup — null the token so the link stops working
+      supabase.from('orders').update({ tracking_token: null }).eq('tracking_token', token).then(() => {});
+      _trkShow('trk-expired'); return;
+    }
+  }
+
+  _trkShow('trk-card');
+
+  let satuanLines = []; try { satuanLines = JSON.parse(data.satuan_lines || '[]'); } catch(e) {}
+  let addOns = []; try { addOns = JSON.parse(data.add_ons || '[]'); } catch(e) {}
+
+  if (g('trk-id'))   g('trk-id').textContent   = data.id;
+  if (g('trk-name')) g('trk-name').textContent  = data.name;
+  if (g('trk-svc'))  g('trk-svc').textContent   = (data.svc_type === 'satuan' ? 'Satuan' : (data.svc_type||'')) + ' · ' + (data.svc_cat||'');
+  if (g('trk-total'))g('trk-total').textContent = fmt(data.total);
+  if (g('trk-date')) {
+    const d = new Date(data.iso_date);
+    g('trk-date').textContent = 'Masuk: ' + d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  }
+
+  const pb = g('trk-pay-badge');
+  if (pb) { pb.className = 'badge ' + (PAY_CLS[data.pay_status]||'gy'); pb.textContent = data.pay_status; }
+
+  // Progress steps
+  const SL = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
+  const curIdx = SL.indexOf(data.status);
+  const trkP = g('trk-progress');
+  if (trkP) {
+    const steps = SL.map((s, i) => {
+      const done = i < curIdx, active = i === curIdx;
+      const circleStyle = done || active
+        ? `background:var(--p);${active ? 'box-shadow:0 0 0 3px var(--pl);' : ''}`
+        : 'background:var(--b1);';
+      const icon = done || active ? STATUS_ICONS[s] : '';
+      const dot = done || active ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--b2);display:block"></span>';
+      const connector = i < SL.length - 1
+        ? `<div style="height:2px;flex:1;background:${i < curIdx ? 'var(--p)' : 'var(--b1)'};margin-top:14px;border-radius:2px;flex-shrink:0;min-width:4px"></div>`
+        : '';
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0"><div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;${circleStyle}">${icon||dot}</div><div style="font-size:9px;text-align:center;color:${active?'var(--p)':done?'var(--t1)':'var(--t3)'};font-weight:${active?'700':'400'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40px">${s}</div></div>${connector}`;
+    }).join('');
+    trkP.innerHTML = `<div style="display:flex;align-items:flex-start;margin-bottom:10px">${steps}</div><div style="text-align:center;font-size:13px;font-weight:700;color:var(--p);padding:7px 12px;background:var(--pl);border-radius:8px">Status: ${esc(data.status)}</div>`;
+  }
+
+  // Items list
+  const trkI = g('trk-items');
+  if (trkI) {
+    let html = '';
+    if (data.svc_type === 'satuan' && satuanLines.length) {
+      html = satuanLines.map(l => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${esc(l.name||'')} ×${l.qty}</span><span>${fmt(l.lineTotal||0)}</span></div>`).join('');
+    } else {
+      const svcLabel = (data.svc_type||'') + ' ' + (data.svc_cat||'');
+      const unit = data.svc_type === 'kiloan' ? 'kg' : 'pcs';
+      html = `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${esc(svcLabel)} · ${data.qty} ${unit}</span><span>${fmt((data.total||0)-(data.add_on_amt||0))}</span></div>`;
+    }
+    if (addOns.length) {
+      html += addOns.map(a => `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--t2)"><span>+ ${esc(a.name||'')}</span><span>${fmt(a.amount||0)}</span></div>`).join('');
+    }
+    trkI.innerHTML = html;
+  }
+
+  // Auto-refresh every 30s while order isn't final
+  const ri = g('trk-refresh-info');
+  if (data.status !== 'Diambil') {
+    _trkRefreshTimer = setTimeout(() => renderTrackingPage(token), 30000);
+    if (ri) ri.textContent = 'Halaman diperbarui otomatis setiap 30 detik';
+  } else {
+    if (ri) ri.textContent = '🎉 Pesanan sudah diambil — terima kasih!';
+  }
+}
+
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
 const STATUS_LIST = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
@@ -2241,6 +2357,7 @@ function exportReport(){
 submitO = function(role) {
   const pre = role === 'o' ? 'no' : 'sno';
   const o = buildOrder(pre); if (!o) return;
+  if (!o.tracking_token) o.tracking_token = genTrackingToken();
   syncOrder(o);
   syncCustomer(customers[o.phone] || { name: o.name, phone: o.phone, orders: 1, total: o.total, balance: 0, lastDate: o.date });
   if (membershipEnabled && o.payMethod === 'Dompet Member') {
@@ -2361,6 +2478,14 @@ function _showNewPasswordModal() {
     const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
     if (!initSupabase(createClient)) return;
 
+    // ── Tracking page: intercept before auth, no login required ──
+    const _trackToken = new URLSearchParams(location.search).get('track');
+    if (_trackToken) {
+      showScr('scr-track');
+      renderTrackingPage(_trackToken);
+      return; // skip all POS auth setup
+    }
+
     supabase.auth.onAuthStateChange((event, session) => {
       // Only treat as logged-in if there is a real (non-anonymous) user
       const user = session?.user;
@@ -2374,6 +2499,7 @@ function _showNewPasswordModal() {
           if (curRole) return; // token refresh while already in a session — ignore
           supaLoadAll().then(() => {
             initMemberCard();
+            _cleanExpiredTokens();
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
           });
@@ -2381,6 +2507,7 @@ function _showNewPasswordModal() {
           showReturningUser(user.email);
           supaLoadAll().then(() => {
             initMemberCard();
+            _cleanExpiredTokens();
             if (ownerPwd === 'owner123') showScr('scr-setup');
           });
         }
