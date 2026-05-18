@@ -122,6 +122,13 @@ function _cleanExpiredTokens() {
   });
 }
 
+function _backfillTrackingOrders() {
+  // Backfill store_name on order rows that have a tracking token but were created
+  // before the store_name column was added. Runs silently on owner login.
+  if (!supaEnabled || !currentUserId || !storeName) return;
+  orders.filter(o => o.tracking_token && !o.storeName).forEach(o => syncOrder(o));
+}
+
 async function renderTrackingPage(token) {
   clearTimeout(_trkRefreshTimer);
 
@@ -2546,6 +2553,7 @@ function _showNewPasswordModal() {
           supaLoadAll().then(() => {
             initMemberCard();
             _cleanExpiredTokens();
+            _backfillTrackingOrders();
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
           });
@@ -2554,6 +2562,7 @@ function _showNewPasswordModal() {
           supaLoadAll().then(() => {
             initMemberCard();
             _cleanExpiredTokens();
+            _backfillTrackingOrders();
             if (ownerPwd === 'owner123') showScr('scr-setup');
           });
         }
