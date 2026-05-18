@@ -124,28 +124,42 @@ function _cleanExpiredTokens() {
 
 async function renderTrackingPage(token) {
   clearTimeout(_trkRefreshTimer);
-  const STATUS_ICONS = {Diterima:'📥',Mencuci:'🫧',Mengeringkan:'💨',Menyetrika:'👔',Selesai:'✅',Diambil:'🎉'};
-  const PAY_CLS = {'Belum Bayar':'gr_','DP':'gam','Lunas':'gg'};
+
+  const PAY_CLS    = {'Belum Bayar':'gr_','DP':'gam','Lunas':'gg'};
+  const SL         = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
+  const SL_ICONS   = {Diterima:'📥',Mencuci:'🫧',Mengeringkan:'💨',Menyetrika:'👔',Selesai:'✅',Diambil:'🎉'};
+  const SL_SUB     = {
+    Diterima:    'Pesanan diterima di laundry',
+    Mencuci:     'Sedang dalam proses cuci',
+    Mengeringkan:'Sedang dalam proses pengeringan',
+    Menyetrika:  'Sedang dalam proses setrika',
+    Selesai:     'Cucian siap diambil',
+    Diambil:     'Pesanan telah diambil'
+  };
 
   function _trkShow(id) {
     ['trk-loading','trk-expired','trk-notfound','trk-card'].forEach(k => {
       const el = g(k); if (el) el.style.display = k === id ? '' : 'none';
     });
   }
+  function _fmtTs(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'}) + ', '
+         + d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  }
 
   const { data, error } = await supabase
     .from('orders')
-    .select('id,name,status,svc_type,svc_cat,qty,satuan_lines,add_ons,add_on_amt,total,pay_status,iso_date,picked_up_at,tracking_token')
+    .select('id,name,status,svc_type,svc_cat,qty,satuan_lines,add_ons,add_on_amt,total,pay_status,iso_date,picked_up_at,tracking_token,store_name')
     .eq('tracking_token', token)
     .single();
 
   if (error || !data) { _trkShow('trk-notfound'); return; }
 
-  // Check expiry: 24h after picked_up_at
+  // Expiry: 24h after picked_up_at
   if (data.status === 'Diambil' && data.picked_up_at) {
-    const age = Date.now() - new Date(data.picked_up_at).getTime();
-    if (age > _TRACKING_EXPIRY_MS) {
-      // Lazy cleanup — null the token so the link stops working
+    if (Date.now() - new Date(data.picked_up_at).getTime() > _TRACKING_EXPIRY_MS) {
       supabase.from('orders').update({ tracking_token: null }).eq('tracking_token', token).then(() => {});
       _trkShow('trk-expired'); return;
     }
@@ -153,63 +167,87 @@ async function renderTrackingPage(token) {
 
   _trkShow('trk-card');
 
+  // Store name in header
+  const sn = g('trk-store-name');
+  if (sn) sn.textContent = data.store_name || 'Laundry';
+
+  // Order date subtitle
+  const od = g('trk-order-date');
+  if (od) od.textContent = 'Masuk ' + _fmtTs(data.iso_date);
+
+  // Status pill
+  const isDone = data.status === 'Diambil';
+  const pill = g('trk-status-pill');
+  if (pill) {
+    const pillColor = isDone ? 'var(--p)' : '#1976D2';
+    const pillBg    = isDone ? 'var(--pl)' : '#E3F2FD';
+    pill.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:100px;background:${pillBg};color:${pillColor};font-weight:700;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:${pillColor};display:block;flex-shrink:0"></span>${isDone ? 'Selesai' : 'Sedang Diproses'}</span>`;
+  }
+
+  // Vertical timeline
+  const tl = g('trk-timeline');
+  if (tl) {
+    const curIdx = SL.indexOf(data.status);
+    tl.innerHTML = SL.map((s, i) => {
+      const done   = i < curIdx;
+      const active = i === curIdx;
+      const future = i > curIdx;
+      const isLast = i === SL.length - 1;
+      const ts     = i === 0 ? _fmtTs(data.iso_date) : (s === 'Diambil' && done ? _fmtTs(data.picked_up_at) : '');
+      const circBorder = done || active ? 'var(--p)' : '#D8D8D3';
+      const circBg     = done ? 'var(--p)' : active ? 'var(--pl)' : '#F4F5F0';
+      const iconOpacity= future ? '.3' : '1';
+      const nameWeight = active ? '700' : done ? '600' : '500';
+      const nameColor  = future ? '#ABABAB' : '#1A1A1A';
+      const subColor   = active ? 'var(--p)' : future ? '#CECECE' : '#6B6B65';
+      const connector  = !isLast
+        ? `<div style="width:2px;height:24px;background:${done ? 'var(--p)' : '#E8E8E4'};border-radius:2px;margin:3px 0 3px 17px"></div>`
+        : '';
+      return `<div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${circBorder};background:${circBg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;${active ? 'box-shadow:0 0 0 4px var(--p20)' : ''}"><span style="opacity:${iconOpacity}">${SL_ICONS[s]}</span></div>
+          <div style="flex:1;padding-top:5px;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <div style="font-weight:${nameWeight};font-size:14px;color:${nameColor}">${s}</div>
+              ${ts ? `<div style="font-size:11px;color:#ABABAB;white-space:nowrap;flex-shrink:0">${ts}</div>` : ''}
+            </div>
+            <div style="font-size:12px;color:${subColor};margin-top:1px">${SL_SUB[s]}</div>
+          </div>
+        </div>
+        ${connector}
+      </div>`;
+    }).join('');
+  }
+
+  // Order details row
   let satuanLines = []; try { satuanLines = JSON.parse(data.satuan_lines || '[]'); } catch(e) {}
   let addOns = []; try { addOns = JSON.parse(data.add_ons || '[]'); } catch(e) {}
 
-  if (g('trk-id'))   g('trk-id').textContent   = data.id;
-  if (g('trk-name')) g('trk-name').textContent  = data.name;
-  if (g('trk-svc'))  g('trk-svc').textContent   = (data.svc_type === 'satuan' ? 'Satuan' : (data.svc_type||'')) + ' · ' + (data.svc_cat||'');
-  if (g('trk-total'))g('trk-total').textContent = fmt(data.total);
-  if (g('trk-date')) {
-    const d = new Date(data.iso_date);
-    g('trk-date').textContent = 'Masuk: ' + d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  const od2 = g('trk-order-details');
+  if (od2) {
+    const svcLabel = data.svc_type === 'satuan'
+      ? 'Satuan · ' + (data.svc_cat||'')
+      : (data.svc_type||'') + ' · ' + (data.svc_cat||'') + ' · ' + data.qty + (data.svc_type === 'kiloan' ? ' kg' : ' pcs');
+    const payBadge = `<span class="badge ${PAY_CLS[data.pay_status]||'gy'}">${esc(data.pay_status)}</span>`;
+    od2.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;font-size:15px">${esc(data.name)}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${esc(data.id)} · ${esc(svcLabel)}</div>
+        </div>
+        ${payBadge}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <span style="font-size:12px;color:var(--t2)">Total</span>
+        <span style="font-weight:700;font-size:15px;color:var(--p)">${fmt(data.total)}</span>
+      </div>`;
   }
 
-  const pb = g('trk-pay-badge');
-  if (pb) { pb.className = 'badge ' + (PAY_CLS[data.pay_status]||'gy'); pb.textContent = data.pay_status; }
-
-  // Progress steps
-  const SL = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
-  const curIdx = SL.indexOf(data.status);
-  const trkP = g('trk-progress');
-  if (trkP) {
-    const steps = SL.map((s, i) => {
-      const done = i < curIdx, active = i === curIdx;
-      const circleStyle = done || active
-        ? `background:var(--p);${active ? 'box-shadow:0 0 0 3px var(--pl);' : ''}`
-        : 'background:var(--b1);';
-      const icon = done || active ? STATUS_ICONS[s] : '';
-      const dot = done || active ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--b2);display:block"></span>';
-      const connector = i < SL.length - 1
-        ? `<div style="height:2px;flex:1;background:${i < curIdx ? 'var(--p)' : 'var(--b1)'};margin-top:14px;border-radius:2px;flex-shrink:0;min-width:4px"></div>`
-        : '';
-      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0"><div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;${circleStyle}">${icon||dot}</div><div style="font-size:9px;text-align:center;color:${active?'var(--p)':done?'var(--t1)':'var(--t3)'};font-weight:${active?'700':'400'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40px">${s}</div></div>${connector}`;
-    }).join('');
-    trkP.innerHTML = `<div style="display:flex;align-items:flex-start;margin-bottom:10px">${steps}</div><div style="text-align:center;font-size:13px;font-weight:700;color:var(--p);padding:7px 12px;background:var(--pl);border-radius:8px">Status: ${esc(data.status)}</div>`;
-  }
-
-  // Items list
-  const trkI = g('trk-items');
-  if (trkI) {
-    let html = '';
-    if (data.svc_type === 'satuan' && satuanLines.length) {
-      html = satuanLines.map(l => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${esc(l.name||'')} ×${l.qty}</span><span>${fmt(l.lineTotal||0)}</span></div>`).join('');
-    } else {
-      const svcLabel = (data.svc_type||'') + ' ' + (data.svc_cat||'');
-      const unit = data.svc_type === 'kiloan' ? 'kg' : 'pcs';
-      html = `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${esc(svcLabel)} · ${data.qty} ${unit}</span><span>${fmt((data.total||0)-(data.add_on_amt||0))}</span></div>`;
-    }
-    if (addOns.length) {
-      html += addOns.map(a => `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--t2)"><span>+ ${esc(a.name||'')}</span><span>${fmt(a.amount||0)}</span></div>`).join('');
-    }
-    trkI.innerHTML = html;
-  }
-
-  // Auto-refresh every 30s while order isn't final
+  // Auto-refresh
   const ri = g('trk-refresh-info');
-  if (data.status !== 'Diambil') {
+  if (!isDone) {
     _trkRefreshTimer = setTimeout(() => renderTrackingPage(token), 30000);
-    if (ri) ri.textContent = 'Halaman diperbarui otomatis setiap 30 detik';
+    if (ri) ri.textContent = 'Diperbarui otomatis setiap 30 detik';
   } else {
     if (ri) ri.textContent = '🎉 Pesanan sudah diambil — terima kasih!';
   }
