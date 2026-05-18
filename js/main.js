@@ -127,7 +127,15 @@ async function renderTrackingPage(token) {
 
   const PAY_CLS    = {'Belum Bayar':'gr_','DP':'gam','Lunas':'gg'};
   const SL         = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
-  const SL_ICONS   = {Diterima:'📥',Mencuci:'🫧',Mengeringkan:'💨',Menyetrika:'👔',Selesai:'✅',Diambil:'🎉'};
+  const _s = 'width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  const SL_SVGS = {
+    Diterima:    `<svg ${_s}><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`,
+    Mencuci:     `<svg ${_s}><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>`,
+    Mengeringkan:`<svg ${_s}><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>`,
+    Menyetrika:  `<svg ${_s}><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg>`,
+    Selesai:     `<svg ${_s}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    Diambil:     `<svg ${_s}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`
+  };
   const SL_SUB     = {
     Diterima:    'Pesanan diterima di laundry',
     Mencuci:     'Sedang dalam proses cuci',
@@ -194,18 +202,18 @@ async function renderTrackingPage(token) {
       const future = i > curIdx;
       const isLast = i === SL.length - 1;
       const ts     = i === 0 ? _fmtTs(data.iso_date) : (s === 'Diambil' && done ? _fmtTs(data.picked_up_at) : '');
-      const circBorder = done || active ? 'var(--p)' : '#D8D8D3';
-      const circBg     = done ? 'var(--p)' : active ? 'var(--pl)' : '#F4F5F0';
-      const iconOpacity= future ? '.3' : '1';
-      const nameWeight = active ? '700' : done ? '600' : '500';
-      const nameColor  = future ? '#ABABAB' : '#1A1A1A';
-      const subColor   = active ? 'var(--p)' : future ? '#CECECE' : '#6B6B65';
-      const connector  = !isLast
-        ? `<div style="width:2px;height:24px;background:${done ? 'var(--p)' : '#E8E8E4'};border-radius:2px;margin:3px 0 3px 17px"></div>`
+      const circBorder  = done || active ? 'var(--p)' : '#D8D8D3';
+      const circBg      = done ? 'var(--p)' : active ? 'var(--pl)' : '#F4F5F0';
+      const iconColor   = done ? '#fff' : active ? 'var(--p)' : '#C5C5BE';
+      const nameWeight  = active ? '700' : done ? '600' : '500';
+      const nameColor   = future ? '#ABABAB' : '#1A1A1A';
+      const subColor    = active ? 'var(--p)' : future ? '#CECECE' : '#6B6B65';
+      const connector   = !isLast
+        ? `<div style="width:2px;height:22px;background:${done ? 'var(--p)' : '#E8E8E4'};border-radius:2px;margin:3px 0 3px 17px"></div>`
         : '';
       return `<div>
         <div style="display:flex;align-items:flex-start;gap:14px">
-          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${circBorder};background:${circBg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;${active ? 'box-shadow:0 0 0 4px var(--p20)' : ''}"><span style="opacity:${iconOpacity}">${SL_ICONS[s]}</span></div>
+          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${circBorder};background:${circBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${iconColor};${active ? 'box-shadow:0 0 0 4px var(--p20)' : ''}">${SL_SVGS[s]}</div>
           <div style="flex:1;padding-top:5px;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
               <div style="font-weight:${nameWeight};font-size:14px;color:${nameColor}">${s}</div>
