@@ -12,6 +12,9 @@
 <title>CleanPOS - Laundry Management System</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Raleway:wght@400;700&family=Nunito:wght@400;700&family=Lato:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Dancing+Script:wght@400;700&family=Pacifico&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -788,6 +791,75 @@ tr:hover td{background:#FAFAF7}
       <button class="btn bp bfull bpill" onclick="saveMembershipSettings()">Simpan Pengaturan Membership</button>
     </div>
   </div>
+  <!-- KARTU MEMBER DIGITAL -->
+  <div class="card" id="member-card-designer-card">
+    <div class="ct"><i data-lucide="image" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kartu Member Digital</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.55">Desain kartu member <strong>1350 × 1080 px</strong> untuk dikirim ke pelanggan via WhatsApp. Upload background image lalu klik preview untuk mengatur posisi teks Nama, No. WA, dan Saldo.</div>
+
+    <!-- Upload & guide buttons -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <label class="btn bp bsm" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+        <i data-lucide="upload" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Upload Background
+        <input type="file" accept="image/*" id="card-bg-upload" style="display:none" onchange="loadMemberCardBg(this)">
+      </label>
+      <button class="btn bsm" onclick="downloadCardGuide()" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Panduan Template</button>
+      <button class="btn bsm" id="card-clear-btn" onclick="clearMemberCardBg()" style="display:none">Hapus BG</button>
+    </div>
+
+    <!-- Field selector -->
+    <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PILIH TEKS UNTUK DIPOSISIKAN</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn bsm bp" id="card-field-btn-name" onclick="selectCardField('name')">Nama</button>
+      <button class="btn bsm" id="card-field-btn-phone" onclick="selectCardField('phone')">No. WA</button>
+      <button class="btn bsm" id="card-field-btn-balance" onclick="selectCardField('balance')">Saldo</button>
+    </div>
+
+    <!-- Canvas preview -->
+    <div id="card-canvas-wrap" style="position:relative;background:var(--bg);border:2px dashed var(--b1);border-radius:10px;overflow:hidden;margin-bottom:12px;cursor:crosshair;user-select:none;min-height:120px">
+      <canvas id="card-preview-canvas" style="display:block;touch-action:none;cursor:crosshair"></canvas>
+      <div id="card-canvas-hint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);pointer-events:none;white-space:nowrap">
+        <div style="font-size:28px;margin-bottom:6px">🖼️</div>
+        <div style="font-weight:700;font-size:13px">Upload background image</div>
+        <div style="font-size:11px;margin-top:3px">lalu klik untuk mengatur posisi teks</div>
+      </div>
+    </div>
+
+    <!-- Field style controls -->
+    <div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:10px">STYLE TEKS: <span id="card-field-label">NAMA</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Font</label>
+          <select id="card-font" onchange="updateCardFieldStyle()" style="font-size:13px;border-radius:6px;padding:6px 8px;border:1px solid var(--b1);background:var(--bg);color:var(--t1);min-width:140px">
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+            <option value="Raleway">Raleway</option>
+            <option value="Nunito">Nunito</option>
+            <option value="Lato">Lato</option>
+            <option value="Open Sans">Open Sans</option>
+            <option value="Roboto">Roboto</option>
+            <option value="Playfair Display">Playfair Display</option>
+            <option value="Dancing Script">Dancing Script</option>
+            <option value="Pacifico">Pacifico</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Ukuran</label><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Warna</label><input type="color" id="card-color" value="#ffffff" oninput="updateCardFieldStyle()" style="width:50px;height:36px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--b1)"></div>
+        <div style="display:flex;gap:10px;align-items:center;padding-bottom:4px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-bold" onchange="updateCardFieldStyle()"> Bold</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-shadow" checked onchange="updateCardFieldStyle()"> Bayangan</label>
+        </div>
+        <div style="display:flex;gap:4px;padding-bottom:4px">
+          <button class="btn bsm" id="card-align-left" onclick="setCardAlign('left')">⬛ Kiri</button>
+          <button class="btn bsm bp" id="card-align-center" onclick="setCardAlign('center')">⬛ Tengah</button>
+          <button class="btn bsm" id="card-align-right" onclick="setCardAlign('right')">⬛ Kanan</button>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--t2);margin-top:8px;line-height:1.5">💡 Klik pada preview di atas untuk memindahkan posisi teks yang dipilih (hijau = aktif)</div>
+    </div>
+
+    <button class="btn bp bfull bpill" onclick="saveMemberCardTemplate()">Simpan Template Kartu</button>
+  </div>
+
   <div class="card" id="printer-card">
     <div class="sh"><div><div class="ct" style="margin-bottom:0"><i data-lucide="printer" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Printer</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Struk (80mm) · Label (58mm) · Bluetooth / USB / LAN</div></div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>
     <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
@@ -1251,6 +1323,42 @@ tr:hover td{background:#FAFAF7}
       <div id="mt-list"></div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-member-txn')">Tutup</button></div>
+  </div>
+</div>
+<!-- MEMBER CARD: Send Modal -->
+<div class="mbg" id="m-send-card">
+  <div class="mbox" style="max-width:540px">
+    <div class="mhd"><span class="mht" id="m-send-card-title">Kartu Member</span><button class="xb" onclick="cm('m-send-card')">×</button></div>
+    <div class="mbd" style="padding-top:12px">
+      <!-- Card preview — shown only when template exists -->
+      <div id="card-send-preview-wrap" style="display:none;margin-bottom:14px">
+        <canvas id="card-send-canvas" style="display:block;width:100%;border-radius:10px;background:var(--bg)"></canvas>
+      </div>
+      <!-- No template notice -->
+      <div id="card-send-no-tmpl" style="display:none;background:var(--amb);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px;line-height:1.5">
+        Belum ada template kartu. <span onclick="cm('m-send-card');oGo('settings',null)" style="font-weight:700;cursor:pointer;text-decoration:underline">Buat di Pengaturan →</span><br>
+        <span style="font-size:11px;color:var(--t2)">Kamu tetap bisa kirim teks saldo di bawah.</span>
+      </div>
+      <!-- WA message -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PESAN WHATSAPP</div>
+        <textarea id="card-wa-msg" rows="5" style="width:100%;font-size:13px;border-radius:8px;padding:10px;border:1px solid var(--b1);background:var(--bg);color:var(--t1);resize:vertical;line-height:1.5;box-sizing:border-box"></textarea>
+      </div>
+      <!-- Action buttons -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn bfull bpill" id="card-send-with-img-btn" style="display:none;background:#25d366;border-color:#25d366;color:#fff;font-weight:700" onclick="sendCardViaWA()">
+          🖼️&nbsp; Kirim Kartu + Teks via WhatsApp
+        </button>
+        <button class="btn bfull bpill" onclick="sendTextOnlyWA()" style="background:var(--p);border-color:var(--p);color:#fff;font-weight:700">
+          💬&nbsp; Kirim Teks Saldo via WhatsApp
+        </button>
+        <button class="btn bfull bpill" id="card-download-btn" style="display:none" onclick="downloadMemberCard()">
+          ⬇️&nbsp; Download Gambar Kartu
+        </button>
+      </div>
+      <div id="card-send-hint" style="font-size:11px;color:var(--t2);text-align:center;margin-top:10px;line-height:1.5"></div>
+    </div>
+    <div class="mft"><button class="btn" onclick="cm('m-send-card')">Tutup</button></div>
   </div>
 </div>
 <div id="toast"></div>
