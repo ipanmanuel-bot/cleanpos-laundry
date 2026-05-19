@@ -99,6 +99,175 @@ let _cardBgImg = null;
 let _cardSendCust = null;
 let _cardInteract = null; // { mode:'drag'|'resize', fieldId, startX, startY, origX, origY, origFontSize }
 
+// ===== ORDER TRACKING =====
+const _TRACKING_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+let _trkRefreshTimer = null;
+
+function genTrackingToken() {
+  // 8-char URL-safe alphanumeric (no ambiguous chars like 0/O, 1/l/I)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let t = '';
+  for (let i = 0; i < 8; i++) t += chars[Math.floor(Math.random() * chars.length)];
+  return t;
+}
+
+function _cleanExpiredTokens() {
+  if (!supaEnabled || !currentUserId) return;
+  const now = Date.now();
+  orders.forEach(o => {
+    if (o.tracking_token && o.pickedUpAt && (now - new Date(o.pickedUpAt).getTime()) > _TRACKING_EXPIRY_MS) {
+      o.tracking_token = null;
+      syncOrder(o);
+    }
+  });
+}
+
+function _backfillTrackingOrders() {
+  // Backfill store_name on order rows that have a tracking token but were created
+  // before the store_name column was added. Runs silently on owner login.
+  if (!supaEnabled || !currentUserId || !storeName) return;
+  orders.filter(o => o.tracking_token && !o.storeName).forEach(o => syncOrder(o));
+}
+
+async function renderTrackingPage(token) {
+  clearTimeout(_trkRefreshTimer);
+
+  const PAY_CLS    = {'Belum Bayar':'gr_','DP':'gam','Lunas':'gg'};
+  const SL         = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
+  const _s = 'width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  const SL_SVGS = {
+    Diterima:    `<svg ${_s}><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`,
+    Mencuci:     `<svg ${_s}><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>`,
+    Mengeringkan:`<svg ${_s}><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>`,
+    Menyetrika:  `<svg ${_s}><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg>`,
+    Selesai:     `<svg ${_s}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    Diambil:     `<svg ${_s}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`
+  };
+  const SL_SUB     = {
+    Diterima:    'Pesanan diterima di laundry',
+    Mencuci:     'Sedang dalam proses cuci',
+    Mengeringkan:'Sedang dalam proses pengeringan',
+    Menyetrika:  'Sedang dalam proses setrika',
+    Selesai:     'Cucian siap diambil',
+    Diambil:     'Pesanan telah diambil'
+  };
+
+  function _trkShow(id) {
+    ['trk-loading','trk-expired','trk-notfound','trk-card'].forEach(k => {
+      const el = g(k); if (el) el.style.display = k === id ? '' : 'none';
+    });
+  }
+  function _fmtTs(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'}) + ', '
+         + d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,name,status,svc_type,svc_cat,qty,satuan_lines,add_ons,add_on_amt,total,pay_status,iso_date,picked_up_at,tracking_token,store_name')
+    .eq('tracking_token', token)
+    .single();
+
+  if (error || !data) { _trkShow('trk-notfound'); return; }
+
+  // Expiry: 24h after picked_up_at
+  if (data.status === 'Diambil' && data.picked_up_at) {
+    if (Date.now() - new Date(data.picked_up_at).getTime() > _TRACKING_EXPIRY_MS) {
+      supabase.from('orders').update({ tracking_token: null }).eq('tracking_token', token).then(() => {});
+      _trkShow('trk-expired'); return;
+    }
+  }
+
+  _trkShow('trk-card');
+
+  // Store name in header
+  const sn = g('trk-store-name');
+  if (sn) sn.textContent = data.store_name || 'Laundry';
+
+  // Order date subtitle
+  const od = g('trk-order-date');
+  if (od) od.textContent = 'Masuk ' + _fmtTs(data.iso_date);
+
+  // Status pill
+  const isDone = data.status === 'Diambil';
+  const pill = g('trk-status-pill');
+  if (pill) {
+    const pillColor = isDone ? 'var(--p)' : '#1976D2';
+    const pillBg    = isDone ? 'var(--pl)' : '#E3F2FD';
+    pill.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:100px;background:${pillBg};color:${pillColor};font-weight:700;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:${pillColor};display:block;flex-shrink:0"></span>${isDone ? 'Selesai' : 'Sedang Diproses'}</span>`;
+  }
+
+  // Vertical timeline
+  const tl = g('trk-timeline');
+  if (tl) {
+    const curIdx = SL.indexOf(data.status);
+    tl.innerHTML = SL.map((s, i) => {
+      const done   = i < curIdx;
+      const active = i === curIdx;
+      const future = i > curIdx;
+      const isLast = i === SL.length - 1;
+      const ts     = i === 0 ? _fmtTs(data.iso_date) : (s === 'Diambil' && done ? _fmtTs(data.picked_up_at) : '');
+      const circBorder  = done || active ? 'var(--p)' : '#D8D8D3';
+      const circBg      = done ? 'var(--p)' : active ? 'var(--pl)' : '#F4F5F0';
+      const iconColor   = done ? '#fff' : active ? 'var(--p)' : '#C5C5BE';
+      const nameWeight  = active ? '700' : done ? '600' : '500';
+      const nameColor   = future ? '#ABABAB' : '#1A1A1A';
+      const subColor    = active ? 'var(--p)' : future ? '#CECECE' : '#6B6B65';
+      const connector   = !isLast
+        ? `<div style="width:2px;height:22px;background:${done ? 'var(--p)' : '#E8E8E4'};border-radius:2px;margin:3px 0 3px 17px"></div>`
+        : '';
+      return `<div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${circBorder};background:${circBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${iconColor};${active ? 'box-shadow:0 0 0 4px var(--p20)' : ''}">${SL_SVGS[s]}</div>
+          <div style="flex:1;padding-top:5px;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <div style="font-weight:${nameWeight};font-size:14px;color:${nameColor}">${s}</div>
+              ${ts ? `<div style="font-size:11px;color:#ABABAB;white-space:nowrap;flex-shrink:0">${ts}</div>` : ''}
+            </div>
+            <div style="font-size:12px;color:${subColor};margin-top:1px">${SL_SUB[s]}</div>
+          </div>
+        </div>
+        ${connector}
+      </div>`;
+    }).join('');
+  }
+
+  // Order details row
+  let satuanLines = []; try { satuanLines = JSON.parse(data.satuan_lines || '[]'); } catch(e) {}
+  let addOns = []; try { addOns = JSON.parse(data.add_ons || '[]'); } catch(e) {}
+
+  const od2 = g('trk-order-details');
+  if (od2) {
+    const svcLabel = data.svc_type === 'satuan'
+      ? 'Satuan · ' + (data.svc_cat||'')
+      : (data.svc_type||'') + ' · ' + (data.svc_cat||'') + ' · ' + data.qty + (data.svc_type === 'kiloan' ? ' kg' : ' pcs');
+    const payBadge = `<span class="badge ${PAY_CLS[data.pay_status]||'gy'}">${esc(data.pay_status)}</span>`;
+    od2.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;font-size:15px">${esc(data.name)}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${esc(data.id)} · ${esc(svcLabel)}</div>
+        </div>
+        ${payBadge}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <span style="font-size:12px;color:var(--t2)">Total</span>
+        <span style="font-weight:700;font-size:15px;color:var(--p)">${fmt(data.total)}</span>
+      </div>`;
+  }
+
+  // Auto-refresh
+  const ri = g('trk-refresh-info');
+  if (!isDone) {
+    _trkRefreshTimer = setTimeout(() => renderTrackingPage(token), 30000);
+    if (ri) ri.textContent = 'Diperbarui otomatis setiap 30 detik';
+  } else {
+    if (ri) ri.textContent = '🎉 Pesanan sudah diambil — terima kasih!';
+  }
+}
+
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
 const STATUS_LIST = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
@@ -2241,6 +2410,7 @@ function exportReport(){
 submitO = function(role) {
   const pre = role === 'o' ? 'no' : 'sno';
   const o = buildOrder(pre); if (!o) return;
+  if (!o.tracking_token) o.tracking_token = genTrackingToken();
   syncOrder(o);
   syncCustomer(customers[o.phone] || { name: o.name, phone: o.phone, orders: 1, total: o.total, balance: 0, lastDate: o.date });
   if (membershipEnabled && o.payMethod === 'Dompet Member') {
@@ -2361,6 +2531,14 @@ function _showNewPasswordModal() {
     const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
     if (!initSupabase(createClient)) return;
 
+    // ── Tracking page: intercept before auth, no login required ──
+    const _trackToken = new URLSearchParams(location.search).get('track');
+    if (_trackToken) {
+      showScr('scr-track');
+      renderTrackingPage(_trackToken);
+      return; // skip all POS auth setup
+    }
+
     supabase.auth.onAuthStateChange((event, session) => {
       // Only treat as logged-in if there is a real (non-anonymous) user
       const user = session?.user;
@@ -2374,6 +2552,8 @@ function _showNewPasswordModal() {
           if (curRole) return; // token refresh while already in a session — ignore
           supaLoadAll().then(() => {
             initMemberCard();
+            _cleanExpiredTokens();
+            _backfillTrackingOrders();
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
           });
@@ -2381,6 +2561,8 @@ function _showNewPasswordModal() {
           showReturningUser(user.email);
           supaLoadAll().then(() => {
             initMemberCard();
+            _cleanExpiredTokens();
+            _backfillTrackingOrders();
             if (ownerPwd === 'owner123') showScr('scr-setup');
           });
         }
