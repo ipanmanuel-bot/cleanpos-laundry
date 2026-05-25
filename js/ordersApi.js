@@ -152,11 +152,11 @@ async function supaLoadAll() {
   toast('☁️ Memuat data dari cloud...');
   const [
     ordersData, custsData, outletsData, empsData,
-    kasData, expData, printersData, settingsData, subData, memberTxnData
+    kasData, expData, settingsData, subData, memberTxnData
   ] = await Promise.all([
     sbFetch('orders'), sbFetch('customers'), sbFetch('outlets'),
     sbFetch('employees'), sbFetch('kas_log'), sbFetch('expenses'),
-    sbFetch('printers'), sbFetch('settings'), sbFetch('subscriptions'),
+    sbFetch('settings'), sbFetch('subscriptions'),
     sbFetch('member_txns')
   ]);
 
@@ -180,7 +180,6 @@ async function supaLoadAll() {
   }
   if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, outletId: r.outlet_id })); kasCtr = kasLog.reduce((mx,l)=>Math.max(mx,l.id||0),0)+1; }
   if (expData)      { expenses = expData.map(r => ({ id: Number(r.id), cat: r.cat, label: r.label, nominal: r.nominal, date: r.date, note: r.note, src: r.src, outletId: r.outlet_id })); expCtr = expenses.reduce((mx,e)=>Math.max(mx,e.id||0),0)+1; }
-  if (printersData) { printers = printersData.map(r => ({ id: r.id, name: r.name, conn: r.conn, ip: r.ip, width: r.width, role: r.role, status: r.status })); printerCtr = printers.length + 1; }
   if (settingsData && settingsData.length) {
     const s = settingsData[0];
     if (s.store_name)    storeName = s.store_name;

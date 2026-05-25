@@ -363,7 +363,7 @@ function renderOrders() {
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q);
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
-    const matchO = !isO || ordOutlet === 'all' || o.outletId === ordOutlet;
+    const matchO = isO ? (ordOutlet === 'all' || o.outletId === ordOutlet) : (curStaff ? o.outletId === curStaff.oid : true);
     const oDate = _orderDateISO(o);
     const matchD = !dateFrom || (oDate >= dateFrom && (!dateTo || oDate <= dateTo));
     return matchQ && matchS && matchP && matchO && matchD;
@@ -413,7 +413,9 @@ function renderKanban(role) {
   const aId = role === 'o' ? 'o-trk-alert' : 's-trk-alert';
   const kId = role === 'o' ? 'o-kanban' : 's-kanban';
   if (role === 'o') { const tc = g('trk-outlet-chips'); if (tc) tc.innerHTML = buildOutletFilterChips(trkOutlet, 'setTrkOutlet'); }
-  const filtOrders = role === 'o' && trkOutlet !== 'all' ? orders.filter(o => o.outletId === trkOutlet) : orders;
+  const filtOrders = role === 'o'
+    ? (trkOutlet !== 'all' ? orders.filter(o => o.outletId === trkOutlet) : orders)
+    : (curStaff ? orders.filter(o => o.outletId === curStaff.oid) : orders);
   const wp = filtOrders.filter(o => o.status === 'Selesai' && !o.waSent);
   const al = g(aId); if (al) al.innerHTML = wp.length ? `<div style="background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:11px 14px;font-size:13px;color:#3d6b10;margin-bottom:10px">💬 ${wp.length} cucian selesai belum dinotif WA</div>` : '';
   const kb = g(kId); if (!kb) return;
@@ -551,6 +553,7 @@ function deleteOrder(id) {
 
 function showDetail(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
+  if (curRole === 'staff' && curStaff && o.outletId !== curStaff.oid) return;
   g('m-detail-title').textContent = o.id;
   const _custBal = membershipEnabled && o.phone && o.phone !== '—' ? (customers[o.phone]?.balance || 0) : 0;
   const _custBalExpired = membershipEnabled && o.phone && o.phone !== '—' ? isBalanceExpired(customers[o.phone]) : false;
@@ -768,10 +771,11 @@ function fmtPh(p) {
 
 function openWaMod(id) {
   const o = orders.find(x => x.id === id); if (!o) return;
+  if (curRole === 'staff' && curStaff && o.outletId !== curStaff.oid) return;
   const msg = buildMsg(waTplSelesai, o);
   g('m-wa-body').innerHTML = `<div style="margin-bottom:12px"><div style="font-weight:600;font-size:14px">${esc(o.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(o.id)} · ${esc(o.phone)}</div></div><div class="wa-bg"><div class="wa-bbl">${esc(msg).replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div></div>`;
   g('m-wa-send').onclick = () => {
-    if (o.phone && o.phone !== '—') window.open('https://wa.me/' + fmtPh(o.phone) + '?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
+    if (o.phone && o.phone !== '—') openWa(o.phone, msg);
     o.waSent = true;
     waLog.unshift({ orderId: o.id, name: o.name, phone: o.phone, time: NOW() + ', ' + TODAY_STR });
     cm('m-wa'); toast('💬 WA terbuka untuk ' + o.name);
@@ -792,7 +796,7 @@ function setWaNewType(type, el) {
   const sb = g('m-wa-new-send');
   if (sb) sb.onclick = () => {
     if (curWaNewOrder?.phone && curWaNewOrder.phone !== '—')
-      window.open('https://wa.me/' + fmtPh(curWaNewOrder.phone) + '?text=' + encodeURIComponent(buildMsg(waTplNew[curWaNewType], curWaNewOrder)), '_blank', 'noopener,noreferrer');
+      openWa(curWaNewOrder.phone, buildMsg(waTplNew[curWaNewType], curWaNewOrder));
     waLog.unshift({ orderId: curWaNewOrder.id, name: curWaNewOrder.name, phone: curWaNewOrder.phone, time: NOW() + ', ' + TODAY_STR });
     cm('m-wa-new'); toast('💬 WA konfirmasi terkirim!');
   };
@@ -850,7 +854,8 @@ function renderWaCenter() {
 }
 
 function renderSWa() {
-  const pend = orders.filter(o => o.status === 'Selesai' && !o.waSent);
+  const myOrders = curStaff ? orders.filter(o => o.outletId === curStaff.oid) : orders;
+  const pend = myOrders.filter(o => o.status === 'Selesai' && !o.waSent);
   const cnt = g('s-wa-pend-cnt'); if (cnt) { cnt.textContent = pend.length; cnt.className = 'badge ' + (pend.length ? 'gam' : 'gg'); }
   const pl = g('s-wa-pend-list');
   if (pl) pl.innerHTML = pend.length

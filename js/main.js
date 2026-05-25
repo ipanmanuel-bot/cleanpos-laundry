@@ -71,11 +71,9 @@ let cutiPerBulan = 2;
 let curWaTplTab = 'selesai';
 let kasLog = []; let kasCtr = 1; let kasType = 'setor';
 let expenses = []; let expCtr = 1;
-let printers = [
-  {id:'p1',name:'Epson TM-T82 Kasir',conn:'usb',ip:'',width:'80',role:'receipt',status:'online'},
-  {id:'p2',name:'Zebra ZD220 Label',conn:'network',ip:'192.168.1.101',width:'58',role:'label',status:'online'}
-];
-let printerCtr = 3; let btDevice = null;
+let printers = [];
+let printerCtr = 1; let btDevice = null; let _editPrinterId = null;
+const _PRINTERS_KEY = 'cleanpos_printers';
 let rptFilter = 'today'; let empFilter = 'all';
 let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null;
 let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutlet = 'all'; let rptOutlet = 'all';
@@ -279,6 +277,17 @@ const CAT_LBL = {gaji:'Gaji Karyawan',bonus:'Bonus',listrik:'Listrik',air:'Air',
 // ===== HELPERS =====
 function fmt(n){return 'Rp '+Math.round(Math.abs(n||0)).toLocaleString('id-ID');}
 function g(id){return document.getElementById(id);}
+// Open WhatsApp without going through wa.me redirect servers.
+// Mobile: native app deep link. Desktop: WhatsApp Web direct URL.
+function openWa(phone, msg) {
+  const p = fmtPh(phone);
+  const t = encodeURIComponent(msg);
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    window.location.href = 'whatsapp://send?phone=' + p + '&text=' + t;
+  } else {
+    window.open('https://web.whatsapp.com/send?phone=' + p + '&text=' + t, '_blank', 'noopener,noreferrer');
+  }
+}
 function ini(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 function go(id){return outlets.find(o=>o.id===id);}
 function toast(m){const t=g('toast');t.textContent=m;t.style.display='block';clearTimeout(t._x);t._x=setTimeout(()=>t.style.display='none',2700);}
@@ -481,6 +490,7 @@ function seed(){
 
 // ===== INIT =====
 function initOwner(){
+  loadPrintersFromStorage();
   g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
   const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
   prevTpl();renderPricing();renderPromo();renderSettings();
@@ -493,7 +503,7 @@ function initOwner(){
   }
   _resetIdleTimer();
 }
-function initStaff(){g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
+function initStaff(){loadPrintersFromStorage();g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
 function renderSettings(){
   renderSubCard();
   renderPrinters();
@@ -854,7 +864,7 @@ function openSendMemberCard(phone) {
 function sendTextOnlyWA() {
   if(!_cardSendCust) return;
   const msg=g('card-wa-msg')?.value||_buildCardWaMsg(_cardSendCust);
-  window.open('https://wa.me/'+fmtPh(_cardSendCust.phone)+'?text='+encodeURIComponent(msg),'_blank');
+  openWa(_cardSendCust.phone, msg);
 }
 
 function downloadMemberCard() {
@@ -882,7 +892,7 @@ async function sendCardViaWA() {
   const lnk=document.createElement('a'); lnk.download='kartu-member.jpg';
   lnk.href=fc.toDataURL('image/jpeg',0.92); lnk.click();
   setTimeout(()=>{
-    window.open('https://wa.me/'+fmtPh(cu.phone)+'?text='+encodeURIComponent(msg),'_blank');
+    openWa(cu.phone, msg);
     if(g('card-send-hint')) g('card-send-hint').textContent='📎 Gambar diunduh — di WhatsApp tap ikon lampiran dan pilih gambar yang baru diunduh.';
   },600);
 }
@@ -1176,10 +1186,11 @@ function refreshODash(){
   if(wa)wa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:#3d6b10">${wp.length} cucian selesai belum dinotif WA</div><button class="btn bp bsm bpill" onclick="oGo('wa',null)">Kirim</button></div>`:'';
 }
 function refreshSDash(){
-  const wp=orders.filter(o=>o.status==='Selesai'&&!o.waSent);
-  const sm=g('s-metrics');if(sm)sm.innerHTML=`<div class="mc2 cam"><div class="ml">Pesanan Aktif</div><div class="mv">${orders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div><div class="mc2 cg"><div class="ml">Selesai</div><div class="mv">${orders.filter(o=>o.status==='Selesai').length}</div></div><div class="mc2 cr"><div class="ml">Belum WA</div><div class="mv">${wp.length}</div></div>`;
+  const myOrders=curStaff?orders.filter(o=>o.outletId===curStaff.oid):orders;
+  const wp=myOrders.filter(o=>o.status==='Selesai'&&!o.waSent);
+  const sm=g('s-metrics');if(sm)sm.innerHTML=`<div class="mc2 cam"><div class="ml">Pesanan Aktif</div><div class="mv">${myOrders.filter(o=>!['Selesai','Diambil'].includes(o.status)).length}</div></div><div class="mc2 cg"><div class="ml">Selesai</div><div class="mv">${myOrders.filter(o=>o.status==='Selesai').length}</div></div><div class="mc2 cr"><div class="ml">Belum WA</div><div class="mv">${wp.length}</div></div>`;
   const sa=g('s-wa-alert');if(sa)sa.innerHTML=wp.length?`<div style="background:var(--pl);border:2px solid var(--p);border-radius:var(--r);padding:12px 15px;display:flex;align-items:center;justify-content:space-between"><div style="font-size:13px;color:#3d6b10">\uD83D\uDCAC ${wp.length} cucian belum dinotif</div><button class="btn bp bsm bpill" onclick="sGo('wa',null)">Kirim</button></div>`:'';
-  const last=orders.slice(-5).reverse();
+  const last=myOrders.slice().sort((a,b)=>(b.isoDate||'').localeCompare(a.isoDate||'')).slice(0,5);
   const sr=g('s-recent');if(sr)sr.innerHTML=last.length?'<table><tbody>'+last.map(o=>`<tr><td style="font-size:11px;font-family:monospace;color:var(--t2)">${o.id}</td><td style="font-weight:600">${o.name}</td><td><span class="badge ${SL_STATUS[o.status]}">${o.status}</span></td><td><span class="badge ${SL_PAY[o.payStatus]}">${o.payStatus}</span></td></tr>`).join('')+'</tbody></table>':'<div style="text-align:center;padding:20px;color:var(--t2)">Belum ada pesanan</div>';
   updStaffClk();
 }
@@ -1200,17 +1211,18 @@ function empCard(e){
   const out=go(e.oid);const stB={in:'gg',off:'gy',cuti:'gpu',sakit:'gam'}[e.status]||'gy';
   const stL={in:'Masuk',off:'Off',cuti:'Cuti',sakit:'Sakit'}[e.status];
   const dots=Array.from({length:cutiPerBulan},(_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${i<e.cutiUsed?'var(--t3)':'var(--p)'};margin-right:3px"></span>`).join('');
-  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${esc(ini(e.name))}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(e.name)}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${esc(e.role)}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${esc(out.name)}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${esc(e.clockIn||'\u2014')}</div><div>Pulang: ${esc(e.clockOut||'\u2014')}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${cutiPerBulan-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<cutiPerBulan?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
+  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${esc(ini(e.name))}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(e.name)}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${esc(e.role)}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${esc(out.name)}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${esc(e.clockIn||'\u2014')}</div><div>Pulang: ${esc(e.clockOut||'\u2014')}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${cutiPerBulan-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<cutiPerBulan?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="openEditEmp(${e.id})">Edit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
 }
 function buildEmpChips(){const tabs=[{id:'all',label:'Semua',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];const el=g('emp-filter-chips');if(!el)return;el.innerHTML=tabs.map(t=>{const isOn=empFilter===t.id;const sc=t.color?safeColor(t.color):'';const colorStyle=isOn&&sc?`background:${sc}18;border-color:${sc};color:${sc}`:'';return `<span class="chip${isOn?' on':''}" style="${colorStyle}" onclick="setEmpFilter('${t.id}')">${sc?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc};margin-right:5px;vertical-align:middle"></span>`:''}${esc(t.label)}</span>`;}).join('');}
 function setEmpFilter(id){empFilter=id;renderEmployees();}
 function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act==='clkin'){e.status='in';e.clockIn=NOW();e.clockOut=null;}else if(act==='clkout'){e.status='off';e.clockOut=NOW();}else if(act==='cuti'&&e.cutiUsed<cutiPerBulan){e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;}else if(act==='sakit'){e.status='sakit';e.clockIn=null;e.clockOut=null;}renderEmployees();toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/'+cutiPerBulan+')',sakit:'Sakit'}[act]);if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}}
-let _pinResetEmpId=null;
+let _pinResetEmpId=null; let _editEmpId=null;
 function resetEmpPin(id){const e=employees.find(x=>x.id===id);if(!e)return;_pinResetEmpId=id;const t=g('m-pin-reset-title');if(t)t.textContent='Reset PIN – '+e.name;['pr-pin','pr-pin2'].forEach(id=>{const el=g(id);if(el)el.value='';});const err=g('pr-err');if(err)err.style.display='none';openModal('m-pin-reset');setTimeout(()=>g('pr-pin')?.focus(),100);}
 async function savePinReset(){const e=employees.find(x=>x.id===_pinResetEmpId);if(!e)return;const p=g('pr-pin')?.value||'',p2=g('pr-pin2')?.value||'';const err=g('pr-err');if(!/^\d{4}$/.test(p)){if(err){err.textContent='PIN harus 4 digit angka.';err.style.display='block';}return;}if(p!==p2){if(err){err.textContent='Konfirmasi PIN tidak cocok.';err.style.display='block';}return;}e.pin=await hashSecret(p);renderEmployees();syncEmployee(e);cm('m-pin-reset');toast('\u2713 PIN '+e.name+' diubah');}
 function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();deleteEmployee(id);toast('Karyawan dihapus');});}
-function openAddEmp(){g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');if(empFilter!=='all'){g('me-o').value=empFilter;}g('m-emp-title').textContent='Tambah Karyawan';openModal('m-emp');}
-async function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}const oid=g('me-o').value;if(!oid){toast('\u26A0\uFE0F Pilih outlet terlebih dahulu');return;}const newId=Date.now();const hashedPin=await hashSecret(pin);employees.push({id:newId,name,role:g('me-r').value,oid,pin:hashedPin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
+function openAddEmp(){_editEmpId=null;g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');if(empFilter!=='all'){g('me-o').value=empFilter;}const pw=g('me-pin-wrap');if(pw)pw.style.display='';const rr=g('me-role-pin-row');if(rr)rr.className='g2';g('m-emp-title').textContent='Tambah Karyawan';openModal('m-emp');}
+function openEditEmp(id){const e=employees.find(x=>x.id===id);if(!e)return;_editEmpId=id;g('me-n').value=e.name;g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');g('me-o').value=e.oid;g('me-r').value=e.role;const pw=g('me-pin-wrap');if(pw)pw.style.display='none';const rr=g('me-role-pin-row');if(rr)rr.className='fg';g('m-emp-title').textContent='Edit Karyawan';openModal('m-emp');}
+async function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const oid=g('me-o').value;if(!oid){toast('\u26A0\uFE0F Pilih outlet terlebih dahulu');return;}const role=g('me-r').value;if(_editEmpId){const e=employees.find(x=>x.id===_editEmpId);if(!e)return;e.name=name;e.oid=oid;e.role=role;_editEmpId=null;cm('m-emp');renderEmployees();buildStaffBtns();syncEmployee(e);toast('\u2713 Data '+name+' diperbarui');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}const newId=Date.now();const hashedPin=await hashSecret(pin);employees.push({id:newId,name,role,oid,pin:hashedPin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
 function updStaffClk(){if(!curStaff)return;const e=employees.find(x=>x.id===curStaff.id);if(!e)return;const stM={in:'Sedang bekerja \u00B7 Masuk: '+e.clockIn,off:'Belum clock in hari ini',cuti:'Cuti hari ini',sakit:'Sakit hari ini'};const cs=g('s-clk-st');if(cs)cs.textContent=stM[e.status]||'';const cb=g('s-clk-btns');if(!cb)return;cb.innerHTML=e.status==='in'?`<button class="btn bre bsm bpill" onclick="staffClk('clkout')">Clock Out</button>`:e.status==='off'?`<button class="btn bp bsm bpill" onclick="staffClk('clkin')">Clock In</button>`:`<span class="badge ${e.status==='cuti'?'gpu':'gam'}">${e.status==='cuti'?'Cuti':'Sakit'}</span>`;}
 function staffClk(act){if(!curStaff)return;empAct(curStaff.id,act);}
 
@@ -1556,12 +1568,27 @@ function renderCusts(){
       mbrTd=`<td>${balHtml}</td>`;
     }
     const _kartuBtn=membershipEnabled?`<button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Kirim Saldo / Kartu Member" style="padding-left:7px;padding-right:7px">🎫</button>`:'';
+    const _vcfBtn=`<button class="btn bsm" onclick="saveToContacts('${esc(c.phone)}','${esc(c.name).replace(/'/g,'&#39;')}')" title="Simpan ke Kontak">📥</button>`;
     const aksiTd=membershipEnabled
-      ?`<td><div style="display:flex;gap:4px">${_kartuBtn}<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openMemberTxnHistory('${esc(c.phone)}')">Riwayat</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></td>`
-      :`<td><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></td>`;
+      ?`<td><div style="display:flex;gap:4px">${_kartuBtn}<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openMemberTxnHistory('${esc(c.phone)}')">Riwayat</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>${_vcfBtn}</div></td>`
+      :`<td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>${_vcfBtn}</div></td>`;
     return `<tr><td style="font-weight:600">${esc(c.name)}</td><td style="color:var(--p)">${esc(c.phone)}</td><td>${c.orders}x</td><td style="font-weight:700">${fmt(c.total)}</td>${mbrTd}<td style="font-size:12px;color:var(--t2)">${esc(c.lastDate)}</td>${aksiTd}</tr>`;
   }).join(''):`<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pelanggan</td></tr>`;
   wrap.innerHTML=`<div class="tw"><table><thead>${hdrCols}</thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ===== EXPORT TO DEVICE CONTACT =====
+function saveToContacts(phone, name) {
+  const tel = '+' + fmtPh(phone);
+  const vcf = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:' + name + '\r\nTEL;TYPE=CELL:' + tel + '\r\nEND:VCARD';
+  const blob = new Blob([vcf], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name.replace(/\s+/g, '_') + '.vcf';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('📥 Buka file .vcf untuk simpan kontak');
 }
 
 // ===== IMPORT CONTACTS =====
@@ -2124,20 +2151,23 @@ function renderReports(){
 }
 
 // ===== PRINTER =====
+function savePrintersToStorage(){try{localStorage.setItem(_PRINTERS_KEY,JSON.stringify(printers));}catch(e){console.error('[storage] printers:',e);}}
+function loadPrintersFromStorage(){try{const raw=localStorage.getItem(_PRINTERS_KEY);if(raw){const d=JSON.parse(raw);if(Array.isArray(d)){printers=d;printerCtr=printers.reduce((mx,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?mx:Math.max(mx,n);},0)+1;}}}catch(e){console.error('[storage] load printers:',e);}}
 function renderPrinters(){
   const html=printers.length
-    ?printers.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:10px;margin-bottom:8px"><div style="width:40px;height:40px;border-radius:10px;background:var(--pl);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">\uD83D\uDDA8\uFE0F</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.name)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${{usb:'\uD83D\uDD0C USB',bluetooth:'\uD83D\uDCF6 Bluetooth',network:'\uD83C\uDF10 LAN/WiFi'}[p.conn]} \u00B7 ${esc(p.width)}mm \u00B7 ${p.role==='receipt'?'\uD83E\uDDFE Struk':p.role==='label'?'\uD83C\uDFF7\uFE0F Label':'\u2014'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${p.status==='online'?'var(--p)':'var(--re)'};display:inline-block"></span><span style="font-size:11px;color:var(--t2)">${p.status==='online'?'Online':'Offline'}</span></div><div style="display:flex;gap:5px">${p.conn==='bluetooth'?`<button class="btn bsm" onclick="testBtPrinter('${p.id}')">Test</button>`:''}<button class="btn bre bsm" onclick="delPrinter('${p.id}')">Hapus</button></div></div></div>`).join('')
+    ?printers.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:10px;margin-bottom:8px"><div style="width:40px;height:40px;border-radius:10px;background:var(--pl);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">\uD83D\uDDA8\uFE0F</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.name)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${{usb:'\uD83D\uDD0C USB',bluetooth:'\uD83D\uDCF6 Bluetooth',network:'\uD83C\uDF10 LAN/WiFi'}[p.conn]} \u00B7 ${esc(p.width)}mm \u00B7 ${p.role==='receipt'?'\uD83E\uDDFE Struk':p.role==='label'?'\uD83C\uDFF7\uFE0F Label':'\u2014'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${p.status==='online'?'var(--p)':'var(--re)'};display:inline-block"></span><span style="font-size:11px;color:var(--t2)">${p.status==='online'?'Online':'Offline'}</span></div><div style="display:flex;gap:5px">${p.conn==='bluetooth'?`<button class="btn bsm" onclick="testBtPrinter('${p.id}')">Test</button>`:''}<button class="btn bsm" onclick="editPrinter('${p.id}')">Edit</button><button class="btn bre bsm" onclick="delPrinter('${p.id}')">Hapus</button></div></div></div>`).join('')
     :'<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Belum ada printer. Klik + Tambah.</div>';
   const el=g('printer-list');if(el)el.innerHTML=html;
   const sel=g('s-printer-list');if(sel)sel.innerHTML=html;
 }
-function openAddPrinter(){btDevice=null;['mpr-n'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('mpr-c'))g('mpr-c').value='usb';if(g('mpr-w'))g('mpr-w').value='80';if(g('mpr-ip'))g('mpr-ip').value='';if(g('mpr-ip-w'))g('mpr-ip-w').style.display='none';if(g('mpr-r'))g('mpr-r').value='none';if(g('mpr-bt-section'))g('mpr-bt-section').style.display='none';if(g('mpr-manual-section'))g('mpr-manual-section').style.display='block';if(g('bt-found-wrap'))g('bt-found-wrap').style.display='none';if(g('bt-scan-status'))g('bt-scan-status').textContent='';const warn=g('bt-support-warn');if(warn)warn.style.display='none';openModal('m-printer');}
+function openAddPrinter(){_editPrinterId=null;btDevice=null;['mpr-n'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('mpr-c'))g('mpr-c').value='usb';if(g('mpr-w'))g('mpr-w').value='58';if(g('mpr-ip'))g('mpr-ip').value='';if(g('mpr-ip-w'))g('mpr-ip-w').style.display='none';if(g('mpr-r'))g('mpr-r').value='none';if(g('mpr-bt-section'))g('mpr-bt-section').style.display='none';if(g('mpr-manual-section'))g('mpr-manual-section').style.display='block';if(g('bt-found-wrap'))g('bt-found-wrap').style.display='none';if(g('bt-scan-status'))g('bt-scan-status').textContent='';const warn=g('bt-support-warn');if(warn)warn.style.display='none';const t=g('m-printer-title');if(t)t.textContent='Tambah Printer';openModal('m-printer');}
+function editPrinter(id){const p=printers.find(x=>x.id===id);if(!p)return;_editPrinterId=id;btDevice=null;if(g('mpr-n'))g('mpr-n').value=p.name;if(g('mpr-c')){g('mpr-c').value=p.conn;prConnChg();}if(g('mpr-w'))g('mpr-w').value=p.width;if(g('mpr-ip'))g('mpr-ip').value=p.ip||'';if(g('mpr-r'))g('mpr-r').value=p.role;if(g('bt-found-wrap'))g('bt-found-wrap').style.display='none';if(g('bt-scan-status'))g('bt-scan-status').textContent='';const t=g('m-printer-title');if(t)t.textContent='Edit Printer';openModal('m-printer');}
 function prConnChg(){const conn=g('mpr-c').value;if(g('mpr-ip-w'))g('mpr-ip-w').style.display=conn==='network'?'block':'none';const btSec=g('mpr-bt-section');const manSec=g('mpr-manual-section');if(conn==='bluetooth'){if(btSec)btSec.style.display='block';if(manSec)manSec.style.display='none';btDevice=null;if(g('bt-found-wrap'))g('bt-found-wrap').style.display='none';if(g('bt-scan-status'))g('bt-scan-status').textContent='';const warn=g('bt-support-warn');if(!navigator.bluetooth){if(warn){warn.style.display='block';warn.textContent='\u26A0\uFE0F Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome di Android/Desktop. iOS Safari tidak didukung.';}}else if(warn)warn.style.display='none';}else{if(btSec)btSec.style.display='none';if(manSec)manSec.style.display='block';}}
 async function scanBluetooth(){const btn=g('bt-scan-btn');const status=g('bt-scan-status');if(!navigator.bluetooth){status.textContent='\u274C Browser tidak mendukung Bluetooth.';status.style.color='var(--re)';return;}btn.disabled=true;btn.textContent='\uD83D\uDD0D Mencari...';status.textContent='Membuka dialog pemilihan perangkat...';status.style.color='var(--t2)';try{const device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb','battery_service','generic_access']});btDevice=device;status.textContent='\u2713 Perangkat dipilih!';status.style.color='var(--p)';const fw=g('bt-found-wrap');const dn=g('bt-device-name');if(fw)fw.style.display='block';if(dn)dn.textContent=device.name||'Printer Bluetooth';if(g('mpr-n'))g('mpr-n').value=device.name||'Printer Bluetooth';if(g('mpr-manual-section'))g('mpr-manual-section').style.display='block';toast('\u2713 Printer "'+(device.name||'Bluetooth')+'" ditemukan!');}catch(e){status.textContent=e.name==='NotFoundError'?'Pencarian dibatalkan.':'\u274C Gagal: '+e.message;status.style.color=e.name==='NotFoundError'?'var(--t2)':'var(--re)';}finally{btn.disabled=false;btn.textContent='\uD83D\uDD0D Cari Printer Bluetooth';}}
 function selectBtDevice(){if(!btDevice)return;if(g('mpr-n'))g('mpr-n').value=btDevice.name||'Printer Bluetooth';if(g('mpr-manual-section'))g('mpr-manual-section').style.display='block';toast('\u2713 Printer dipilih: '+(btDevice.name||'BT Printer'));}
 async function testBtPrinter(id){const p=printers.find(x=>x.id===id);if(!p)return;if(!navigator.bluetooth){toast('\u26A0\uFE0F Browser tidak mendukung Web Bluetooth');return;}toast('\uD83D\uDCF6 Menghubungi printer '+p.name+'...');try{const device=await navigator.bluetooth.requestDevice({filters:[{name:p.name}],optionalServices:['000018f0-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb']});const server=await device.gatt.connect();p.status='online';renderPrinters();toast('\u2713 '+p.name+' terhubung!');server.disconnect();}catch(e){p.status='offline';renderPrinters();toast('\u274C Gagal terhubung ke '+p.name);}}
-function savePrinter(){const name=g('mpr-n')?.value.trim();if(!name){toast('\u26A0\uFE0F Nama printer wajib diisi');return;}const conn=g('mpr-c').value;const role=g('mpr-r').value;if(role!=='none')printers.forEach(p=>{if(p.role===role)p.role='none';});printers.push({id:'p'+printerCtr++,name,conn,ip:g('mpr-ip')?.value||'',width:g('mpr-w').value,role,status:'online',btId:btDevice?.id||null});cm('m-printer');renderPrinters();toast('\u2713 Printer "'+name+'" ditambahkan!');btDevice=null;}
-function delPrinter(id){confirm_('Hapus Printer?','Printer ini akan dihapus dari daftar.',()=>{printers=printers.filter(x=>x.id!==id);renderPrinters();toast('Printer dihapus');});}
+function savePrinter(){const name=g('mpr-n')?.value.trim();if(!name){toast('\u26A0\uFE0F Nama printer wajib diisi');return;}const conn=g('mpr-c').value;const width=g('mpr-w').value;const role=g('mpr-r').value;const ip=g('mpr-ip')?.value||'';if(_editPrinterId){const p=printers.find(x=>x.id===_editPrinterId);if(!p)return;if(role!=='none')printers.forEach(q=>{if(q.id!==_editPrinterId&&q.role===role)q.role='none';});p.name=name;p.conn=conn;p.ip=ip;p.width=width;p.role=role;_editPrinterId=null;cm('m-printer');renderPrinters();savePrintersToStorage();toast('\u2713 Printer diperbarui!');}else{if(role!=='none')printers.forEach(p=>{if(p.role===role)p.role='none';});printers.push({id:'p'+printerCtr++,name,conn,ip,width,role,status:'online',btId:btDevice?.id||null});btDevice=null;cm('m-printer');renderPrinters();savePrintersToStorage();toast('\u2713 Printer "'+name+'" ditambahkan!');}}
+function delPrinter(id){confirm_('Hapus Printer?','Printer ini akan dihapus dari daftar.',()=>{printers=printers.filter(x=>x.id!==id);renderPrinters();savePrintersToStorage();toast('Printer dihapus');});}
 
 // ===== BLUETOOTH PRINT ENGINE =====
 const BT_SERVICES=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb'];
@@ -2458,11 +2488,7 @@ submitKas = function() { _origSubmitKas(); kasLog.slice(-1).forEach(l => syncKas
 const _origSubmitExpense = submitExpense;
 submitExpense = function() { _origSubmitExpense(); expenses.slice(-1).forEach(e => syncExpense(e)); };
 
-// Printers
-const _origSavePrinter = savePrinter;
-savePrinter = function() { _origSavePrinter(); printers.slice(-1).forEach(p => syncPrinter(p)); };
-const _origDelPrinter = delPrinter;
-delPrinter = function(id) { deletePrinter_sb(id); _origDelPrinter(id); };
+// Printers — saved to localStorage per-device, not cloud (see loadPrintersFromStorage)
 
 // Settings
 const _origSaveStoreInfo = saveStoreInfo;

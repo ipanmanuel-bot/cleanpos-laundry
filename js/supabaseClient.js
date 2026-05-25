@@ -53,25 +53,87 @@ function _supaErr(msg) {
   if (el) { el.style.color = 'var(--re)'; el.style.background = 'var(--reb)'; el.textContent = '❌ ' + msg; el.style.display = 'block'; }
 }
 
+// --- Sync status indicator ---
+let _syncPending = 0;
+let _syncHadError = false;
+let _syncChipTimer = null;
+
+function _syncStart() {
+  _syncPending++;
+  _refreshSyncUI();
+}
+
+function _syncDone(success) {
+  _syncPending = Math.max(0, _syncPending - 1);
+  if (!success) _syncHadError = true;
+  _refreshSyncUI();
+}
+
+function _refreshSyncUI() {
+  const bar = document.getElementById('sync-bar');
+  const chip = document.getElementById('sync-chip');
+  if (!bar || !chip) return;
+  clearTimeout(_syncChipTimer);
+  // Remove animation-end classes so re-triggering works
+  bar.style.animation = 'none'; chip.style.animation = 'none';
+  // Force reflow to restart CSS animations
+  void bar.offsetWidth; void chip.offsetWidth;
+  bar.style.animation = ''; chip.style.animation = '';
+
+  if (_syncPending > 0) {
+    bar.className = 'syncing';
+    chip.className = 'syncing';
+    chip.innerHTML = '<span class="sync-dot"></span>Menyimpan...';
+  } else if (_syncHadError) {
+    _syncHadError = false;
+    bar.className = 'sync-err';
+    chip.className = 'sync-err';
+    chip.innerHTML = '⚠️ Gagal simpan';
+    _syncChipTimer = setTimeout(() => {
+      bar.className = ''; bar.style.display = 'none';
+      chip.className = ''; chip.style.display = 'none';
+    }, 4100);
+  } else {
+    bar.className = 'sync-ok';
+    chip.className = 'sync-ok';
+    chip.innerHTML = '✓ Tersimpan';
+    _syncChipTimer = setTimeout(() => {
+      bar.className = ''; bar.style.display = 'none';
+      chip.className = ''; chip.style.display = 'none';
+    }, 2200);
+  }
+}
+
 // --- Base CRUD helpers ---
 // All tables use composite unique key (user_id, id) — see SQL migration
 async function sbUpsert(table, data, onConflict = 'user_id,id') {
   if (!supaEnabled || !supabase) return;
+  _syncStart();
   const { error } = await supabase.from(table).upsert(data, { onConflict });
   if (error) {
     // Log full detail to console only — never expose DB internals to the UI
     console.error(`[supa] upsert ${table}:`, error.message);
     if (error.message.includes('schema cache') || error.message.includes('column')) {
       console.warn(`[supa] Kolom belum ada di tabel "${table}". Jalankan SQL migration di Supabase Dashboard.`);
+      _syncDone(true); // schema issues are silent — don't alarm user
     } else {
+      _syncDone(false);
       toast(`⚠️ Gagal menyimpan data. Coba lagi atau refresh halaman.`);
     }
+  } else {
+    _syncDone(true);
   }
 }
 async function sbDelete(table, id) {
   if (!supaEnabled || !supabase) return;
+  _syncStart();
   const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', currentUserId);
-  if (error) console.error(`[supa] delete ${table}:`, error.message);
+  if (error) {
+    console.error(`[supa] delete ${table}:`, error.message);
+    _syncDone(false);
+  } else {
+    _syncDone(true);
+  }
 }
 async function sbFetch(table) {
   if (!supaEnabled || !supabase) return null;
