@@ -250,6 +250,52 @@ tr:hover td{background:#FAFAF7}
   .dsc-total .dsc-val{font-size:22px}
   #dash-chart-wrap{height:200px}
 }
+/* ===== ORDERS — FILTER CHIPS & MOBILE CARDS ===== */
+.ord-filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.ord-search{flex:1;min-width:0}
+.ord-badge{background:var(--p);color:#fff;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px;margin-left:2px;line-height:1.5}
+.ord-chips-row{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 8px}
+.ofc{display:inline-flex;align-items:center;gap:3px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.ofc-x{cursor:pointer;font-size:14px;line-height:1;background:none;border:none;padding:0 0 0 3px;color:inherit;opacity:.65;font-weight:400}
+.ofc-x:hover{opacity:1}
+.ofc-out{background:var(--blb);color:var(--bl)}
+.ofc-st{background:var(--amb);color:var(--am)}
+.ofc-pay-no{background:var(--reb);color:var(--re)}
+.ofc-pay-dp{background:var(--amb);color:var(--am)}
+.ofc-pay-ok{background:#E8F5E9;color:#2e7d32}
+.ofc-dt{background:#F0F0EC;color:#555}
+/* Mobile order cards */
+.ord-cards{display:none}
+.ord-tbl-wrap{display:block}
+.ocard{background:var(--ca);border-radius:14px;box-shadow:var(--sh);margin-bottom:8px;overflow:hidden}
+.ocard-hd{display:flex;align-items:flex-start;gap:10px;padding:12px 12px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.ocard-av{width:36px;height:36px;border-radius:50%;background:var(--p20);color:var(--pd);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ocard-info{flex:1;min-width:0}
+.ocard-name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ocard-id{font-size:10px;font-family:monospace;color:var(--t3);margin:1px 0 5px}
+.ocard-tags{display:flex;gap:4px;flex-wrap:wrap}
+.ocard-rhs{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.ocard-total{font-weight:800;font-size:14px;white-space:nowrap}
+.ocard-chev{color:var(--t3);transition:transform .2s;flex-shrink:0}
+.ocard-chev.open{transform:rotate(180deg)}
+.ocard-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:0 12px 10px;font-size:11px;color:var(--t2)}
+.ocard-body{padding:12px;border-top:1px solid var(--b1)}
+.ocard-dg{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;margin-bottom:12px}
+.ocard-dl{color:var(--t2);font-size:11px;margin-bottom:1px}
+.ocard-dv{font-weight:600}
+.ocard-acts{display:flex;gap:6px;align-items:center}
+.oib{width:38px;height:38px;border-radius:10px;border:2px solid var(--b1);background:var(--ca);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;flex-shrink:0}
+.oib:hover{background:var(--bg)}.oib:active{transform:scale(.9)}
+.oib.red{border-color:var(--reb);color:var(--re)}.oib.red:hover{background:var(--reb)}
+.oib.grn{border-color:#c8e6c9;color:#2e7d32}.oib.grn:hover{background:#E8F5E9}
+.oib.blu{border-color:var(--blb);color:var(--bl)}.oib.blu:hover{background:var(--blb)}
+/* Filter panel chips inside modal */
+.orf-chip{padding:6px 12px;border-radius:20px;border:2px solid var(--b1);cursor:pointer;font-size:12px;font-weight:500;color:var(--t2);background:var(--ca);white-space:nowrap;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center}
+.orf-chip:hover{background:var(--bg)}.orf-chip.on{background:var(--pl);border-color:var(--p);color:#3d6b10;font-weight:700}
+.orf-section{margin-bottom:18px}
+.orf-lbl{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.orf-row{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:768px){.ord-cards{display:block}.ord-tbl-wrap{display:none}}
 /* ── Tracking page ── */
 #scr-track{background:#EAECF0}
 @media(min-width:640px){
@@ -546,25 +592,15 @@ tr:hover td{background:#FAFAF7}
 <div class="page" id="o-p-orders">
   <div class="sh"><div class="pt" style="margin-bottom:0">Pesanan</div><button class="btn bp bsm" onclick="oGo('new-order',null)">+ Buat</button></div>
   <div class="card">
-    <div class="chips" id="ord-outlet-chips"></div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
-      <button id="odf-all"   class="btn bp bsm bpill" onclick="setOrdDateFilter('all')">Semua</button>
-      <button id="odf-today" class="btn bsm bpill" onclick="setOrdDateFilter('today')">Hari Ini</button>
-      <button id="odf-week"  class="btn bsm bpill" onclick="setOrdDateFilter('week')">Minggu Ini</button>
-      <button id="odf-month" class="btn bsm bpill" onclick="setOrdDateFilter('month')">Bulan Ini</button>
-      <button id="odf-custom" class="btn bsm bpill" onclick="setOrdDateFilter('custom')">Custom</button>
-      <div id="odf-custom-range" style="display:none;gap:5px;align-items:center">
-        <input type="date" id="o-date-from" style="width:130px;font-size:12px" onchange="renderOrders()">
-        <span style="font-size:11px;color:var(--t2)">–</span>
-        <input type="date" id="o-date-to" style="width:130px;font-size:12px" onchange="renderOrders()">
-      </div>
+    <div class="ord-filter-bar">
+      <input id="o-srch" class="ord-search" placeholder="Cari nama / ID / no. hp..." oninput="renderOrders()">
+      <button class="btn bsm" onclick="openOrdFilterPanel()" id="ord-filter-btn" style="flex-shrink:0;gap:5px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-1px"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg> Filter <span id="ord-filter-badge" class="ord-badge" style="display:none">0</span>
+      </button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <input id="o-srch" placeholder="Cari nama / ID..." style="width:180px;flex:none" oninput="renderOrders()">
-      <select id="o-fst" onchange="renderOrders()" style="width:140px;flex:none"><option value="">Semua Status</option><option>Diterima</option><option>Mencuci</option><option>Mengeringkan</option><option>Menyetrika</option><option>Selesai</option><option>Diambil</option></select>
-      <select id="o-fpy" onchange="renderOrders()" style="width:130px;flex:none"><option value="">Semua Bayar</option><option>Belum Bayar</option><option>DP</option><option>Lunas</option></select>
-    </div>
-    <div class="tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Outlet</th><th>Layanan</th><th>Total</th><th>Status</th><th>Bayar</th><th>Tgl Masuk</th><th>Tgl Diambil</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="ord-tb"></tbody></table></div>
+    <div id="ord-active-chips" class="ord-chips-row" style="display:none"></div>
+    <div id="ord-cards" class="ord-cards"></div>
+    <div class="ord-tbl-wrap tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Outlet</th><th>Layanan</th><th>Total</th><th>Status</th><th>Bayar</th><th>Tgl Masuk</th><th>Tgl Ambil</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="ord-tb"></tbody></table></div>
   </div>
 </div>
 
@@ -1137,6 +1173,22 @@ tr:hover td{background:#FAFAF7}
   </div>
 </div>
 <!-- MODALS -->
+<div class="mbg" id="m-ord-filter"><div class="mbox"><div class="mhd"><span class="mht">Filter Pesanan</span><button class="xb" onclick="cm('m-ord-filter')">×</button></div>
+  <div class="mbd">
+    <div class="orf-section"><div class="orf-lbl">Outlet</div><div class="orf-row" id="orf-outlet"></div></div>
+    <div class="orf-section"><div class="orf-lbl">Status Pesanan</div><div class="orf-row" id="orf-status"></div></div>
+    <div class="orf-section"><div class="orf-lbl">Status Bayar</div><div class="orf-row" id="orf-pay"></div></div>
+    <div class="orf-section" style="margin-bottom:0"><div class="orf-lbl">Periode</div>
+      <div class="orf-row" id="orf-date"></div>
+      <div id="orf-custom-range" style="display:none;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <input type="date" id="o-date-from" style="font-size:12px" onchange="renderOrders()">
+        <span style="font-size:11px;color:var(--t2)">–</span>
+        <input type="date" id="o-date-to" style="font-size:12px" onchange="renderOrders()">
+      </div>
+    </div>
+  </div>
+  <div class="mft"><button class="btn" onclick="resetOrdFilters()">Reset Semua</button><button class="btn bp" onclick="cm('m-ord-filter')">Selesai</button></div>
+</div></div>
 <div class="mbg" id="m-rcpt"><div class="mbox"><div class="mhd"><span class="mht"><i data-lucide="receipt" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Struk Pesanan</span><button class="xb" onclick="cm('m-rcpt')">×</button></div><div class="mbd" id="m-rcpt-body"></div><div class="mft"><button class="btn" onclick="cm('m-rcpt')">Tutup</button><button class="btn bbl bsm" onclick="printCurrentLabel()"><i data-lucide="tag" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Cetak Label</button><button class="btn bp bsm" onclick="printCurrentReceipt()"><i data-lucide="printer" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Cetak Struk</button><button class="btn bsm" style="background:#25d366;color:#fff;border-color:#25d366" onclick="rcptOpenWa()"><i data-lucide="message-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Kirim WA</button></div></div></div>
 <div class="mbg" id="m-detail"><div class="mbox"><div class="mhd"><span class="mht" id="m-detail-title">Detail Pesanan</span><button class="xb" onclick="cm('m-detail')">×</button></div><div class="mbd" id="m-detail-body"></div><div class="mft" id="m-detail-ft"></div></div></div>
 <div class="mbg" id="m-wa"><div class="mbox"><div class="mhd"><div class="mht"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kirim Notifikasi WA</div><button class="xb" onclick="cm('m-wa')">×</button></div><div class="mbd" id="m-wa-body"></div><div class="mft"><button class="btn" onclick="cm('m-wa')">Batal</button><button class="btn bwa" id="m-wa-send"><i data-lucide="send" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Buka WhatsApp &amp; Kirim</button></div></div></div>
