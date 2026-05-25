@@ -252,7 +252,7 @@ tr:hover td{background:#FAFAF7}
 }
 /* ===== ORDERS — FILTER CHIPS & MOBILE CARDS ===== */
 .ord-filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.ord-search{flex:1;min-width:0}
+.ord-search{flex:1;min-width:0;height:32px;font-size:12px;padding:5px 10px;box-sizing:border-box}
 .ord-badge{background:var(--p);color:#fff;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px;margin-left:2px;line-height:1.5}
 .ord-chips-row{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 8px}
 .ofc{display:inline-flex;align-items:center;gap:3px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
@@ -593,7 +593,7 @@ tr:hover td{background:#FAFAF7}
   <div class="sh"><div class="pt" style="margin-bottom:0">Pesanan</div><button class="btn bp bsm" onclick="oGo('new-order',null)">+ Buat</button></div>
   <div class="card">
     <div class="ord-filter-bar">
-      <input id="o-srch" class="ord-search" placeholder="Cari nama / ID / no. hp..." oninput="renderOrders()">
+      <input id="o-srch" class="ord-search" placeholder="Cari nama / ID / no. hp..." oninput="_ordPage=1;renderOrders()">
       <button class="btn bsm" onclick="openOrdFilterPanel()" id="ord-filter-btn" style="flex-shrink:0;gap:5px">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-1px"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg> Filter <span id="ord-filter-badge" class="ord-badge" style="display:none">0</span>
       </button>
@@ -601,6 +601,7 @@ tr:hover td{background:#FAFAF7}
     <div id="ord-active-chips" class="ord-chips-row" style="display:none"></div>
     <div id="ord-cards" class="ord-cards"></div>
     <div class="ord-tbl-wrap tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Outlet</th><th>Layanan</th><th>Total</th><th>Status</th><th>Bayar</th><th>Tgl Masuk</th><th>Tgl Ambil</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="ord-tb"></tbody></table></div>
+    <div id="ord-pager"></div>
   </div>
 </div>
 

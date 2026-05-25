@@ -321,12 +321,12 @@ function submitO(role) {
 }
 
 // ===== ORDERS LIST =====
-function setOrdOutlet(id) { ordOutlet = id; _renderOrdFilterChips(); renderOrders(); }
-function setOrdFst(v) { ordFst = v; _renderOrdFilterChips(); renderOrders(); }
-function setOrdFpy(v) { ordFpy = v; _renderOrdFilterChips(); renderOrders(); }
+function setOrdOutlet(id) { ordOutlet = id; _ordPage = 1; _renderOrdFilterChips(); renderOrders(); }
+function setOrdFst(v) { ordFst = v; _ordPage = 1; _renderOrdFilterChips(); renderOrders(); }
+function setOrdFpy(v) { ordFpy = v; _ordPage = 1; _renderOrdFilterChips(); renderOrders(); }
 
 function setOrdDateFilter(f) {
-  ordDateFilter = f;
+  ordDateFilter = f; _ordPage = 1;
   // Keep staff date buttons working
   ['all','today','week','month','custom'].forEach(k => {
     const sb = g('sodf-'+k); if (sb) sb.className = 'btn bsm bpill' + (f===k?' bp':'');
@@ -339,9 +339,14 @@ function setOrdDateFilter(f) {
 }
 
 function resetOrdFilters() {
-  ordOutlet = 'all'; ordFst = ''; ordFpy = ''; ordDateFilter = 'all';
+  ordOutlet = 'all'; ordFst = ''; ordFpy = ''; ordDateFilter = 'all'; _ordPage = 1;
   const ocr = g('orf-custom-range'); if (ocr) ocr.style.display = 'none';
   _renderOrdFilterChips();
+  renderOrders();
+}
+
+function setOrdPage(p) {
+  _ordPage = Math.max(1, p);
   renderOrders();
 }
 
@@ -413,7 +418,7 @@ function renderOrders() {
     dateTo   = g('o-date-to')?.value   || '';
   }
 
-  const list = orders.filter(o => {
+  const fullList = orders.filter(o => {
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q));
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
@@ -422,6 +427,11 @@ function renderOrders() {
     const matchD = !dateFrom || (oDate >= dateFrom && (!dateTo || oDate <= dateTo));
     return matchQ && matchS && matchP && matchO && matchD;
   }).slice().sort((a, b) => (b.isoDate || '').localeCompare(a.isoDate || ''));
+
+  const _PER_PAGE = 10;
+  const _totalPages = Math.max(1, Math.ceil(fullList.length / _PER_PAGE));
+  if (_ordPage > _totalPages) _ordPage = _totalPages;
+  const list = fullList.slice((_ordPage - 1) * _PER_PAGE, _ordPage * _PER_PAGE);
 
   if (isO) _renderOrdActiveChips();
 
@@ -433,8 +443,9 @@ function renderOrders() {
   const tbId = isO ? 'ord-tb' : 's-ord-tb';
   const tb = g(tbId); if (!tb) return;
   const colspan = isO ? 11 : 9;
-  if (!list.length) {
+  if (!fullList.length) {
     tb.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`;
+    if (isO) _renderOrdPager(0, 1);
     return;
   }
   const waBtn = o => (o.status === 'Selesai' || o.status === 'Diambil')
@@ -467,6 +478,27 @@ function renderOrders() {
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
     </tr>`).join('');
   }
+  if (isO) _renderOrdPager(fullList.length, _totalPages);
+}
+
+function _renderOrdPager(total, totalPages) {
+  const wrap = g('ord-pager'); if (!wrap) return;
+  if (totalPages <= 1) { wrap.innerHTML = ''; return; }
+  const p = _ordPage;
+  let btns = '';
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= p - 1 && i <= p + 1)) {
+      btns += `<button class="btn bsm${i === p ? ' bp' : ''}" onclick="setOrdPage(${i})" style="min-width:32px;padding:4px 8px">${i}</button>`;
+    } else if (i === p - 2 || i === p + 2) {
+      btns += `<span style="align-self:center;color:var(--t2);padding:0 2px;font-size:13px">…</span>`;
+    }
+  }
+  wrap.innerHTML = `<div style="display:flex;align-items:center;gap:5px;justify-content:center;padding:12px 0 4px;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--t2);margin-right:4px">${total} pesanan</span>
+    <button class="btn bsm" onclick="setOrdPage(${p - 1})" ${p === 1 ? 'disabled' : ''} style="min-width:32px;padding:4px 8px">‹</button>
+    ${btns}
+    <button class="btn bsm" onclick="setOrdPage(${p + 1})" ${p === totalPages ? 'disabled' : ''} style="min-width:32px;padding:4px 8px">›</button>
+  </div>`;
 }
 
 const _IC_EYE = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
