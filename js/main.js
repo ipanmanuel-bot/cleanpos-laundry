@@ -80,6 +80,7 @@ let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutl
 let ordDateFilter = 'all'; let ordDateFrom = ''; let ordDateTo = '';
 let ordFst = ''; let ordFpy = '';
 let _ordPage = 1;
+let _custFilter = 'all'; let _custPage = 1;
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
 let editSvcId = null;
@@ -831,9 +832,10 @@ function _buildCardWaMsg(cu) {
 function openSendMemberCard(phone) {
   const c=customers[phone]; if(!c) return;
   _cardSendCust=c;
-  if(g('m-send-card-title')) g('m-send-card-title').textContent=c.name;
+  // Customer info panel
+  if(g('sc-cust-info')) g('sc-cust-info').innerHTML=`<div style="font-weight:700;font-size:14px;color:var(--t1)">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2);margin-top:1px">${esc(c.phone||'—')}</div><div style="margin-top:8px;font-size:13px">Saldo: <span style="font-weight:700;color:var(--p)">${fmt(c.balance||0)}</span></div>`;
   // Pre-fill WA message textarea
-  if(g('card-wa-msg')) g('card-wa-msg').value=_buildCardWaMsg(c);
+  if(g('card-wa-msg')){g('card-wa-msg').value=_buildCardWaMsg(c);_scUpdateCharCount();}
   // Show/hide card preview section
   const hasCard=!!memberCardBg;
   if(g('card-send-preview-wrap')) g('card-send-preview-wrap').style.display=hasCard?'':'none';
@@ -1545,38 +1547,188 @@ function checkExpiredBalances(){
   });
 }
 
-function renderCusts(){
-  const q=(g('cust-srch')?.value||'').toLowerCase();
-  const list=Object.values(customers).filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q));
-  const wrap=g('cust-table-wrap');if(!wrap)return;
-  const hdrCols=membershipEnabled
-    ?`<tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th style="color:var(--p)">Saldo</th><th>Terakhir</th><th>Aksi</th></tr>`
-    :`<tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th>Terakhir</th><th>Aksi</th></tr>`;
-  const colspan=membershipEnabled?7:6;
-  const rows=list.length?list.map(c=>{
-    const bal=c.balance||0;
-    let mbrTd='';
-    if(membershipEnabled){
-      let balHtml=`<span style="font-weight:700;color:var(--p)">${fmt(bal)}</span>`;
-      if(membershipExpiryEnabled&&bal>0&&c.balanceExpiry){
-        const today=todayISO();
-        const daysLeft=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
-        let exColor='var(--gr,#2e7d32)';
-        if(daysLeft<0)exColor='var(--re,#c62828)';
-        else if(daysLeft<=7)exColor='var(--amb,#e65100)';
-        const exLabel=daysLeft<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry);
-        balHtml+=`<div style="font-size:10px;color:${exColor};margin-top:1px">${exLabel}</div>`;
+// ===== CUSTOMER PAGE — REDESIGN =====
+const _C_IC_WA = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+const _C_IC_CARD = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+const _C_IC_MORE = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
+
+function setCustFilter(f) {
+  _custFilter = f; _custPage = 1;
+  ['all','ada','nol'].forEach(k => { const b = g('cfb-'+k); if (b) b.className = 'cfb' + (f===k?' on':''); });
+  renderCusts();
+}
+function setCustPage(p) { _custPage = Math.max(1, p); renderCusts(); }
+
+function renderCusts() {
+  const q = (g('cust-srch')?.value||'').toLowerCase();
+  _renderCustSummary();
+  const all = Object.values(customers);
+  const list = all.filter(c => {
+    const matchQ = !q || c.name.toLowerCase().includes(q) || (c.phone||'').includes(q);
+    const bal = c.balance||0;
+    const matchF = _custFilter==='all' || (_custFilter==='ada'&&bal>0) || (_custFilter==='nol'&&bal<=0);
+    return matchQ && matchF;
+  }).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||'') || a.name.localeCompare(b.name));
+  const _PER = 10;
+  const _tp = Math.max(1, Math.ceil(list.length/_PER));
+  if (_custPage > _tp) _custPage = _tp;
+  const paged = list.slice((_custPage-1)*_PER, _custPage*_PER);
+  _renderCustTable(paged);
+  _renderCustCards(paged);
+  _renderCustPager(list.length, _tp);
+}
+
+function _renderCustSummary() {
+  const wrap = g('cust-summary'); if (!wrap) return;
+  if (!membershipEnabled) { wrap.style.display='none'; return; }
+  wrap.style.display = '';
+  const all = Object.values(customers);
+  const totalBal = all.reduce((s,c) => s+(c.balance||0), 0);
+  const withBal = all.filter(c => (c.balance||0)>0).length;
+  const zeroBal = all.length - withBal;
+  wrap.innerHTML = `
+    <div class="cust-sum-card">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Total Saldo</div>
+      <div style="font-size:20px;font-weight:800;color:var(--p)">${fmt(totalBal)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:2px">dari ${all.length} pelanggan</div>
+    </div>
+    <div class="cust-sum-card">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Ada Saldo</div>
+      <div style="font-size:20px;font-weight:800;color:var(--p)">${withBal}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(withBal/all.length*100):0}% dari total</div>
+    </div>
+    <div class="cust-sum-card">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Saldo 0</div>
+      <div style="font-size:20px;font-weight:800;color:var(--t2)">${zeroBal}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(zeroBal/all.length*100):0}% dari total</div>
+    </div>`;
+}
+
+function _renderCustTable(list) {
+  const tb = g('cust-tb'); if (!tb) return;
+  if (!list.length) { tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t2)">Tidak ada pelanggan ditemukan</td></tr>`; return; }
+  tb.innerHTML = list.map(c => {
+    const initials = c.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    const bal = c.balance||0;
+    let balCell = '—';
+    if (membershipEnabled) {
+      let bHtml = bal>0 ? `<span style="font-weight:700;color:var(--p);font-size:14px">${fmt(bal)}</span>` : `<span style="color:var(--t2);font-size:14px">Rp 0</span>`;
+      if (membershipExpiryEnabled&&bal>0&&c.balanceExpiry) {
+        const dl=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);
+        const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';
+        bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
       }
-      mbrTd=`<td>${balHtml}</td>`;
+      balCell = bHtml;
     }
-    const _kartuBtn=membershipEnabled?`<button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Kirim Saldo / Kartu Member" style="padding-left:7px;padding-right:7px">🎫</button>`:'';
-    const _vcfBtn=`<button class="btn bsm" onclick="saveToContacts('${esc(c.phone)}','${esc(c.name).replace(/'/g,'&#39;')}')" title="Simpan ke Kontak">📥</button>`;
-    const aksiTd=membershipEnabled
-      ?`<td><div style="display:flex;gap:4px">${_kartuBtn}<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openMemberTxnHistory('${esc(c.phone)}')">Riwayat</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>${_vcfBtn}</div></td>`
-      :`<td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>${_vcfBtn}</div></td>`;
-    return `<tr><td style="font-weight:600">${esc(c.name)}</td><td style="color:var(--p)">${esc(c.phone)}</td><td>${c.orders}x</td><td style="font-weight:700">${fmt(c.total)}</td>${mbrTd}<td style="font-size:12px;color:var(--t2)">${esc(c.lastDate)}</td>${aksiTd}</tr>`;
-  }).join(''):`<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pelanggan</td></tr>`;
-  wrap.innerHTML=`<div class="tw"><table><thead>${hdrCols}</thead><tbody>${rows}</tbody></table></div>`;
+    const acts = membershipEnabled
+      ? `<div style="display:flex;gap:5px;align-items:center">
+           <button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button>
+           <button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Membership Card" style="padding:5px 8px">${_C_IC_CARD}</button>
+           <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+         </div>`
+      : `<div style="display:flex;gap:5px;align-items:center">
+           <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
+           <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+         </div>`;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="cust-av">${initials}</div>
+        <div><div class="cust-name">${esc(c.name)}</div><div class="cust-ph">${esc(c.phone||'—')}</div></div>
+      </div></td>
+      <td><div style="font-weight:700;font-size:14px">${fmt(c.total||0)}</div><div style="font-size:11px;color:var(--t2);margin-top:1px">${c.orders||0} transaksi</div></td>
+      <td>${balCell}</td>
+      <td style="font-size:12px;color:var(--t2);white-space:nowrap">${esc(c.lastDate||'—')}</td>
+      <td>${acts}</td>
+    </tr>`;
+  }).join('');
+}
+
+function _renderCustCards(list) {
+  const wrap = g('cust-cards'); if (!wrap) return;
+  const IC_WA14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+  const IC_CARD14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+  const IC_MORE14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
+  if (!list.length) { wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">Tidak ada pelanggan ditemukan</div>`; return; }
+  wrap.innerHTML = list.map(c => {
+    const initials = c.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    const bal = c.balance||0;
+    const balBadge = membershipEnabled ? `<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>` : '';
+    return `<div class="cust-card">
+      <div class="cust-card-top">
+        <div class="cust-av">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div class="cust-name">${esc(c.name)}</div>
+          <div class="cust-ph">${esc(c.phone||'—')}</div>
+        </div>
+        ${membershipEnabled?`<div style="text-align:right">${balBadge}</div>`:''}
+      </div>
+      <div class="cust-card-meta">
+        <span>${fmt(c.total||0)}</span>
+        <span style="color:var(--b1)">•</span>
+        <span>${c.orders||0} transaksi</span>
+        <span style="color:var(--b1)">•</span>
+        <span>${esc(c.lastDate||'—')}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        ${membershipEnabled?`<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" style="gap:4px;padding:5px 9px">${IC_CARD14}</button>`:''}
+        <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" style="gap:4px;padding:5px 9px">${IC_WA14}</button>
+        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _renderCustPager(total, totalPages) {
+  const wrap = g('cust-pager'); if (!wrap) return;
+  if (totalPages <= 1) { wrap.innerHTML = ''; return; }
+  const p = _custPage;
+  let btns = '';
+  for (let i = 1; i <= totalPages; i++) {
+    if (i===1||i===totalPages||(i>=p-1&&i<=p+1)) btns+=`<button class="btn bsm${i===p?' bp':''}" onclick="setCustPage(${i})" style="min-width:32px;padding:4px 8px">${i}</button>`;
+    else if (i===p-2||i===p+2) btns+=`<span style="align-self:center;color:var(--t2);padding:0 2px;font-size:13px">…</span>`;
+  }
+  wrap.innerHTML = `<div style="display:flex;align-items:center;gap:5px;justify-content:center;padding:12px 16px;border-top:1px solid var(--b1);flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--t2);margin-right:4px">${total} pelanggan</span>
+    <button class="btn bsm" onclick="setCustPage(${p-1})" ${p===1?'disabled':''} style="min-width:32px;padding:4px 8px">‹</button>
+    ${btns}
+    <button class="btn bsm" onclick="setCustPage(${p+1})" ${p===totalPages?'disabled':''} style="min-width:32px;padding:4px 8px">›</button>
+  </div>`;
+}
+
+function _custMoreMenu(phone) {
+  document.querySelectorAll('.cust-dd').forEach(d => d.remove());
+  const anchor = g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
+  const c = customers[phone];
+  const items = [
+    {label:'Edit', fn:`openEditCust('${phone}')`},
+    ...(membershipEnabled?[{label:'Riwayat Saldo', fn:`openMemberTxnHistory('${phone}')`}]:[]),
+    {label:'Simpan Kontak', fn:`_custSaveContact('${phone}')`},
+  ];
+  const dd = document.createElement('div');
+  dd.className = 'cust-dd';
+  dd.style.cssText = 'position:absolute;right:0;top:calc(100% + 4px);background:var(--ca);border:1.5px solid var(--b1);border-radius:10px;box-shadow:var(--sh2);z-index:300;min-width:160px;overflow:hidden';
+  dd.innerHTML = items.map(it=>`<button style="display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--t1);transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''" onclick="document.querySelectorAll('.cust-dd').forEach(d=>d.remove());${it.fn}">${it.label}</button>`).join('');
+  anchor.appendChild(dd);
+  setTimeout(()=>document.addEventListener('click',function _cl(e){if(!anchor.contains(e.target)){dd.remove();document.removeEventListener('click',_cl);}},true),0);
+}
+function _custSaveContact(phone) { const c=customers[phone]; if(c) saveToContacts(c.phone,c.name); }
+
+// ===== MEMBERSHIP CARD SEND MODAL HELPERS =====
+function _setMsgPreset(type) {
+  if (!_cardSendCust) return;
+  const c=_cardSendCust; const bal=fmt(c.balance||0); const store=storeName||'CleanPOS Laundry';
+  const msgs = {
+    saldo:`Halo *${c.name}*!\n\nBerikut kartu membership kamu.\nSaldo saat ini: *${bal}*\n\nTerima kasih telah menjadi pelanggan setia kami!\n— ${store}`,
+    promo:`Halo *${c.name}*!\n\nKami punya promo spesial untuk kamu.\nSaldo kamu saat ini: *${bal}*\n\nYuk gunakan sekarang!\n— ${store}`,
+    reminder:`Halo *${c.name}*!\n\nSaldo laundry kamu saat ini: *${bal}*\n\nJangan lupa untuk melakukan laundry ya!\n— ${store}`,
+  };
+  const ta=g('card-wa-msg'); if(ta){ta.value=msgs[type]||'';_scUpdateCharCount();}
+}
+function _scUpdateCharCount() {
+  const ta=g('card-wa-msg'); const cc=g('sc-char-count');
+  if(ta&&cc) cc.textContent=(ta.value.length)+' / 500';
 }
 
 // ===== EXPORT TO DEVICE CONTACT =====
