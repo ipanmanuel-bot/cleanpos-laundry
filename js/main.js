@@ -1512,20 +1512,149 @@ function initMidtransPayment(plan, cycle){
 }
 
 // ===== OUTLETS =====
-function renderOutlets(){const el=g('outlet-list-ui');if(!el)return;el.innerHTML=outlets.map(o=>{const cnt=employees.filter(e=>e.oid===o.id).length;const sc=safeColor(o.color);return `<div class="card" style="border-left:5px solid ${sc}"><div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:12px;background:${sc}20;display:flex;align-items:center;justify-content:center;font-size:22px">\uD83C\uDFEA</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(o.name)}</div><div style="font-size:12px;color:var(--t2);margin-top:3px">${esc(o.addr)} \u00B7 ${cnt} karyawan</div></div><button class="btn bre bsm" onclick="delOutlet('${o.id}')">Hapus</button></div></div>`;}).join('');}
-function openAddOutlet(){g('mo-n').value='';g('mo-a').value='';selOutletColor='#8DC440';const cols=['#8DC440','#1976D2','#E53935','#F57C00','#7B1FA2','#4CAF50'];g('mo-colors').innerHTML=cols.map((c,i)=>`<div onclick="selOutletColor='${c}';document.querySelectorAll('.oc').forEach(x=>x.style.outline='none');this.style.outline='3px solid ${c}';this.style.outlineOffset='3px'" class="oc" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;${i===0?`outline:3px solid ${c};outline-offset:3px`:''}"></div>`).join('');openModal('m-outlet');}
-function saveOutlet(){
-  const max=PLAN_LIMITS[currentPlan]||1;
-  if(outlets.length>=max){
-    cm('m-outlet');
-    toast(`\u26A0\uFE0F Plan ${PLANS[currentPlan]?.name||'Basic'} maksimal ${max} outlet`);
-    showUpgradeModal();return;
-  }
-  const name=g('mo-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama outlet wajib diisi');return;}
-  outlets.push({id:'o'+Date.now(),name,addr:g('mo-a').value.trim()||'\u2014',color:selOutletColor});
-  cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('\u2713 Outlet "'+name+'" ditambahkan');
+let _editOutletId = null;
+const _OUT_COLORS=['#8DC440','#1976D2','#E53935','#F57C00','#7B1FA2','#4CAF50','#00897B','#F06292'];
+// Store icon SVG (Lucide-style)
+const _IC_STORE=`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0"/><path d="M5 9v11h14V9"/><path d="M9 21v-6h6v6"/></svg>`;
+
+function renderOutlets(){
+  const q=(g('out-srch')?.value||'').toLowerCase();
+  const sort=g('out-sort')?.value||'az';
+  let list=outlets.filter(o=>!q||(o.name||'').toLowerCase().includes(q)||(o.addr||'').toLowerCase().includes(q));
+  list=list.slice().sort((a,b)=>{
+    if(sort==='za')return (b.name||'').localeCompare(a.name||'');
+    if(sort==='txn')return orders.filter(o=>o.outletId===b.id).length-orders.filter(o=>o.outletId===a.id).length;
+    if(sort==='emp')return employees.filter(e=>e.oid===b.id).length-employees.filter(e=>e.oid===a.id).length;
+    return (a.name||'').localeCompare(b.name||'');
+  });
+  const st=g('out-status-txt');
+  if(st)st.textContent=`Menampilkan ${list.length} dari ${outlets.length} outlet`;
+  const grid=g('outlet-grid');
+  if(!grid)return;
+  grid.innerHTML=list.map(o=>{
+    const sc=safeColor(o.color||'#8DC440');
+    const empCnt=employees.filter(e=>e.oid===o.id).length;
+    const txnCnt=orders.filter(ord=>ord.outletId===o.id).length;
+    const hours=o.hours||'—';
+    const addr=o.addr||'—';
+    return `<div class="out-card">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+        <div class="out-icon-box" style="background:${sc}18;color:${sc}">${_IC_STORE}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#43a047;display:inline-block;flex-shrink:0"></span>
+            <span style="font-size:11px;font-weight:600;color:#43a047">Aktif</span>
+          </div>
+          <div style="font-size:16px;font-weight:800;color:var(--t1);line-height:1.2;margin-bottom:4px">${esc(o.name)}</div>
+          <div style="display:flex;align-items:flex-start;gap:5px;font-size:11px;color:var(--t2)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>${esc(addr)}</span>
+          </div>
+        </div>
+        <div style="position:relative" id="out-more-wrap-${o.id}">
+          <button onclick="_outMore('${o.id}')" style="background:none;border:1.5px solid var(--b1);border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:0;padding:12px 0;border-top:1.5px solid var(--b1);border-bottom:1.5px solid var(--b1);margin-bottom:14px">
+        <div class="out-stat" style="flex:1;padding-right:12px;border-right:1px solid var(--b1)">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <span class="out-stat-val">${empCnt}</span>
+          </div>
+          <span class="out-stat-lbl">Karyawan</span>
+        </div>
+        <div class="out-stat" style="flex:1;padding:0 12px;border-right:1px solid var(--b1)">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="out-stat-val">${txnCnt}</span>
+          </div>
+          <span class="out-stat-lbl">Transaksi</span>
+        </div>
+        <div class="out-stat" style="flex:1;padding-left:12px">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="out-stat-val" style="font-size:11px">${esc(hours)}</span>
+          </div>
+          <span class="out-stat-lbl">Buka hari ini</span>
+        </div>
+      </div>
+      <button class="btn bsm" onclick="manageOutlet('${o.id}')" style="width:100%;border:1.5px solid var(--p);color:var(--p);background:none;font-weight:600">Kelola Outlet</button>
+    </div>`;
+  }).join('')+`
+  <div class="out-card-add" onclick="openAddOutlet()">
+    <div style="width:44px;height:44px;border-radius:50%;background:var(--pl);display:flex;align-items:center;justify-content:center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--p)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div style="font-size:14px;font-weight:700;color:var(--t1)">Tambah Outlet Baru</div>
+    <div style="font-size:12px;color:var(--t2);text-align:center">Buat outlet / cabang baru<br>untuk bisnis Anda</div>
+  </div>`;
+  g('out-pager')&&(g('out-pager').innerHTML='');
 }
-function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
+function _outMore(id){
+  const wrap=g('out-more-wrap-'+id);if(!wrap)return;
+  const existing=wrap.querySelector('.out-dd');if(existing){existing.remove();return;}
+  const dd=document.createElement('div');dd.className='out-dd';
+  dd.innerHTML=`
+    <button onclick="_outMoreClose('${id}');editOutlet('${id}')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
+    </button>
+    <button onclick="_outMoreClose('${id}');manageOutlet('${id}')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Kelola
+    </button>
+    <button class="danger" onclick="_outMoreClose('${id}');delOutlet('${id}')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Hapus
+    </button>`;
+  wrap.appendChild(dd);
+  setTimeout(()=>document.addEventListener('click',function _cl(e){if(!wrap.contains(e.target)){dd.remove();document.removeEventListener('click',_cl,true);}},true),0);
+}
+function _outMoreClose(id){const dd=g('out-more-wrap-'+id)?.querySelector('.out-dd');if(dd)dd.remove();}
+function manageOutlet(id){
+  // Switch to the outlet context — navigate to orders filtered by this outlet
+  const o=outlets.find(x=>x.id===id);if(!o)return;
+  ordOutlet=id;oGo('orders',null);
+  toast('Mengelola outlet: '+esc(o.name));
+}
+function _openOutletModal(){
+  selOutletColor=_editOutletId?(outlets.find(x=>x.id===_editOutletId)?.color||'#8DC440'):'#8DC440';
+  const cols=_OUT_COLORS;
+  g('mo-colors').innerHTML=cols.map(c=>`<div onclick="selOutletColor='${c}';document.querySelectorAll('.oc').forEach(x=>{x.style.outline='none';x.style.outlineOffset='0'});this.style.outline='3px solid ${c}';this.style.outlineOffset='3px'" class="oc" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;${c===selOutletColor?`outline:3px solid ${c};outline-offset:3px`:''}"></div>`).join('');
+  openModal('m-outlet');
+}
+function openAddOutlet(){
+  _editOutletId=null;
+  g('mo-title').textContent='Tambah Outlet';
+  ['mo-n','mo-a','mo-h'].forEach(id=>{const el=g(id);if(el)el.value='';});
+  _openOutletModal();
+}
+function editOutlet(id){
+  const o=outlets.find(x=>x.id===id);if(!o)return;
+  _editOutletId=id;
+  g('mo-title').textContent='Edit Outlet';
+  if(g('mo-n'))g('mo-n').value=o.name||'';
+  if(g('mo-a'))g('mo-a').value=o.addr&&o.addr!=='—'?o.addr:'';
+  if(g('mo-h'))g('mo-h').value=o.hours||'';
+  _openOutletModal();
+}
+function saveOutlet(){
+  const name=g('mo-n').value.trim();
+  if(!name){toast('Nama outlet wajib diisi');return;}
+  const addr=g('mo-a').value.trim()||'—';
+  const hours=g('mo-h').value.trim()||'—';
+  if(_editOutletId){
+    const o=outlets.find(x=>x.id===_editOutletId);
+    if(o){o.name=name;o.addr=addr;o.hours=hours;o.color=selOutletColor;}
+    _editOutletId=null;
+    cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('Outlet diperbarui');
+    return;
+  }
+  const max=PLAN_LIMITS[currentPlan]||1;
+  if(outlets.length>=max){cm('m-outlet');toast('Plan '+( PLANS[currentPlan]?.name||'Basic')+' maksimal '+max+' outlet');showUpgradeModal();return;}
+  outlets.push({id:'o'+Date.now(),name,addr,hours,color:selOutletColor});
+  cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('Outlet "'+name+'" ditambahkan');
+}
+function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus permanen.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
 
 // ===== CUSTOMERS =====
 // ===== MEMBERSHIP EXPIRY HELPERS =====

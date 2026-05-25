@@ -341,6 +341,21 @@ tr:hover td{background:#FAFAF7}
 .rpt-pay-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--b1)}
 .rpt-svc-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--b1)}
 .rpt-exp-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:12px}
+/* ── Outlets page ── */
+.out-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px}
+@media(max-width:768px){.out-grid{grid-template-columns:1fr}}
+.out-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:0;transition:box-shadow .15s}
+.out-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.out-card-add{background:var(--ca);border:2px dashed var(--b1);border-radius:16px;padding:24px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;min-height:180px;transition:border-color .15s,background .15s}
+.out-card-add:hover{border-color:var(--p);background:var(--pl)}
+.out-icon-box{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.out-stat{display:flex;flex-direction:column;gap:2px}
+.out-stat-val{font-size:14px;font-weight:700;color:var(--t1)}
+.out-stat-lbl{font-size:10px;color:var(--t2);font-weight:500}
+.out-dd{position:absolute;right:0;top:calc(100% + 4px);background:var(--ca);border:1.5px solid var(--b1);border-radius:10px;box-shadow:var(--sh2);z-index:300;min-width:140px;overflow:hidden;padding:4px 0}
+.out-dd button{display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--t1)}
+.out-dd button:hover{background:var(--bg)}
+.out-dd button.danger{color:var(--re)}
 /* ── Tracking page ── */
 #scr-track{background:#EAECF0}
 @media(min-width:640px){
@@ -856,8 +871,31 @@ tr:hover td{background:#FAFAF7}
 
 <!-- OUTLETS -->
 <div class="page" id="o-p-outlets">
-  <div class="sh"><div class="pt" style="margin-bottom:0">Outlet</div><button class="btn bp bsm" onclick="openAddOutlet()">+ Tambah Outlet</button></div>
-  <div id="outlet-list-ui"></div>
+  <div class="sh" style="margin-bottom:14px">
+    <div>
+      <div class="pt" style="margin-bottom:2px">Outlet</div>
+      <div style="font-size:12px;color:var(--t2)">Kelola semua cabang bisnis Anda</div>
+    </div>
+    <button class="btn bp bsm" onclick="openAddOutlet()" style="gap:5px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Tambah Outlet
+    </button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <div style="position:relative;flex:1;min-width:160px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t2)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="out-srch" placeholder="Cari outlet..." oninput="renderOutlets()" style="width:100%;padding:8px 10px 8px 32px;border:1.5px solid var(--b1);border-radius:10px;font-size:13px;background:var(--ca);color:var(--t1);font-family:inherit;box-sizing:border-box">
+    </div>
+    <select id="out-sort" onchange="renderOutlets()" style="padding:8px 10px;border:1.5px solid var(--b1);border-radius:10px;font-size:13px;background:var(--ca);color:var(--t1);font-family:inherit;cursor:pointer">
+      <option value="az">Urutkan: A–Z</option>
+      <option value="za">Z–A</option>
+      <option value="txn">Transaksi Terbanyak</option>
+      <option value="emp">Karyawan Terbanyak</option>
+    </select>
+  </div>
+  <div style="font-size:12px;color:var(--t2);margin-bottom:12px" id="out-status-txt"></div>
+  <div class="out-grid" id="outlet-grid"></div>
+  <div id="out-pager"></div>
 </div>
 
 <!-- CUSTOMERS -->
@@ -1292,7 +1330,7 @@ tr:hover td{background:#FAFAF7}
 <div class="mbg" id="m-wa"><div class="mbox"><div class="mhd"><div class="mht"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kirim Notifikasi WA</div><button class="xb" onclick="cm('m-wa')">×</button></div><div class="mbd" id="m-wa-body"></div><div class="mft"><button class="btn" onclick="cm('m-wa')">Batal</button><button class="btn bwa" id="m-wa-send"><i data-lucide="send" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Buka WhatsApp &amp; Kirim</button></div></div></div>
 <div class="mbg" id="m-wa-new"><div class="mbox"><div class="mhd"><div class="mht"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kirim WA ke Pelanggan</div><button class="xb" onclick="cm('m-wa-new')">×</button></div><div class="mbd"><div class="chips" id="wa-new-chips"><span class="chip on" onclick="setWaNewType('konfirmasi',this)"><i data-lucide="check-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span><span class="chip" onclick="setWaNewType('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Minta DP</span><span class="chip" onclick="setWaNewType('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span></div><div class="wa-bg"><div class="wa-bbl" id="wa-new-preview">-</div></div></div><div class="mft"><button class="btn" onclick="cm('m-wa-new')">Lewati</button><button class="btn bwa" id="m-wa-new-send"><i data-lucide="send" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Kirim WA</button></div></div></div>
 <div class="mbg" id="m-emp"><div class="mbox"><div class="mhd"><span class="mht" id="m-emp-title">Tambah Karyawan</span><button class="xb" onclick="cm('m-emp')">×</button></div><div class="mbd"><div class="fg"><label>Nama *</label><input id="me-n" placeholder="Nama lengkap"></div><div id="me-role-pin-row" class="g2"><div class="fg" style="margin-bottom:0"><label>Role</label><select id="me-r"><option>Kasir</option><option>Staff</option></select></div><div class="fg" id="me-pin-wrap" style="margin-bottom:0"><label>PIN (4 digit)</label><input type="password" id="me-p" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"></div></div><div class="fg" style="margin-top:10px;margin-bottom:0"><label>Outlet</label><select id="me-o"></select></div></div><div class="mft"><button class="btn" onclick="cm('m-emp')">Batal</button><button class="btn bp" onclick="saveEmp()">Simpan</button></div></div></div>
-<div class="mbg" id="m-outlet"><div class="mbox"><div class="mhd"><span class="mht">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd"><div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div><div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Alamat lengkap outlet"></div><div class="fg"><label>Warna Penanda</label><div style="display:flex;gap:10px;margin-top:6px" id="mo-colors"></div></div></div><div class="mft"><button class="btn" onclick="cm('m-outlet')">Batal</button><button class="btn bp" onclick="saveOutlet()">Simpan Outlet</button></div></div></div>
+<div class="mbg" id="m-outlet"><div class="mbox"><div class="mhd"><span class="mht" id="mo-title">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd"><div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div><div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Jl. Contoh No.12, Kota"></div><div class="fg"><label>Jam Operasional</label><input id="mo-h" placeholder="08.00 – 22.00"></div><div class="fg"><label>Warna Penanda</label><div style="display:flex;gap:10px;margin-top:6px" id="mo-colors"></div></div></div><div class="mft"><button class="btn" onclick="cm('m-outlet')">Batal</button><button class="btn bp" onclick="saveOutlet()">Simpan</button></div></div></div>
 <div class="mbg" id="m-promo"><div class="mbox"><div class="mhd"><span class="mht" id="m-promo-title">Tambah Promo</span><button class="xb" onclick="cm('m-promo')">×</button></div>
   <div class="mbd">
     <div class="fg"><label>Nama Promo *</label><input id="mp-n" placeholder="Contoh: Promo Selasa Hemat"></div>
