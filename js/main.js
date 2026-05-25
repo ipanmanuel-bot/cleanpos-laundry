@@ -81,6 +81,7 @@ let ordDateFilter = 'all'; let ordDateFrom = ''; let ordDateTo = '';
 let ordFst = ''; let ordFpy = '';
 let _ordPage = 1;
 let _custFilter = 'all'; let _custPage = 1;
+let rptStatusFilter = ''; let rptPayFilter = ''; let _rptTxPage = 1;
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
 let editSvcId = null;
@@ -2260,26 +2261,96 @@ function exSrcChg(){const src=g('ex-src').value,nom=parseInt(g('ex-nom').value)|
 function submitExpense(){const cat=g('ex-cat').value,nom=parseInt(g('ex-nom').value)||0,date=g('ex-date').value,src=g('ex-src').value,note=g('ex-note').value;if(!nom||nom<=0){toast('\u26A0\uFE0F Masukkan nominal yang valid');return;}if(!date){toast('\u26A0\uFE0F Pilih tanggal');return;}if(cat==='lain'&&!g('ex-lain-n').value.trim()){toast('\u26A0\uFE0F Isi nama pengeluaran');return;}const expOut=g('ex-outlet')?.value||outlets[0]?.id||'o1';if(src==='cash'){const fl=kasLog.filter(l=>!l.outletId||l.outletId===expOut);const s=fl.filter(x=>x.type!=='out').reduce((s,x)=>s+x.amount,0)-fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);if(nom>s){toast('\u26A0\uFE0F Saldo kas tidak cukup!');return;}kasLog.push({id:kasCtr++,type:'out',desc:'Pengeluaran: '+(CAT_LBL[cat]||cat),note:note||'\u2014',amount:nom,time:NOW(),outletId:expOut});}const label=cat==='lain'?g('ex-lain-n').value.trim():CAT_LBL[cat];expenses.push({id:expCtr++,cat,label,nominal:nom,date,note,src,outletId:expOut});['ex-nom','ex-note','ex-lain-n'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('ex-kas-w'))g('ex-kas-w').style.display='none';renderExpenses();renderKas();toast(src==='cash'?'\u2713 Pengeluaran dicatat \u00B7 Kas berkurang '+fmt(nom):'\u2713 Pengeluaran dicatat via Transfer');}
 
 // ===== REPORTS =====
-function setRptOutlet(id){rptOutlet=id;renderReports();}
-function setRpt(f,el){rptFilter=f;document.querySelectorAll('#rpt-chips .chip').forEach(c=>c.classList.remove('on'));if(el)el.classList.add('on');const rc=g('rpt-custom');if(rc)rc.style.display=f==='custom'?'flex':'none';if(f!=='custom')renderReports();}
+const _RPT_PERIODS=[
+  {v:'today',l:'Hari Ini'},{v:'week',l:'7 Hari Terakhir'},{v:'month',l:'Bulan Ini'},
+  {v:'3month',l:'3 Bulan Terakhir'},{v:'year',l:'Tahun Ini'},{v:'custom',l:'Kustom'}
+];
+function toggleRptPeriodDd(){
+  const dd=g('rpt-period-dd');if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+  dd.innerHTML=_RPT_PERIODS.map(p=>`<button class="rpt-period-opt${rptFilter===p.v?' on':''}" onclick="setRpt('${p.v}');g('rpt-period-dd').style.display='none'">${p.l}</button>`).join('');
+  dd.style.display='block';
+  setTimeout(()=>document.addEventListener('click',function _cl(e){if(!g('rpt-period-wrap')?.contains(e.target)){dd.style.display='none';document.removeEventListener('click',_cl,true);}},true),0);
+}
+function setRptOutlet(id){rptOutlet=id;_rptTxPage=1;renderReports();}
+function setRpt(f){
+  rptFilter=f;_rptTxPage=1;
+  const lbl=_RPT_PERIODS.find(p=>p.v===f)?.l||'Hari Ini';
+  const el=g('rpt-period-lbl');if(el)el.textContent=lbl;
+  const rc=g('rpt-custom');if(rc)rc.style.display=f==='custom'?'flex':'none';
+  if(f!=='custom')renderReports();
+}
+function openRptFilter(){
+  // populate outlet chips
+  const oc=g('rpt-f-outlets');
+  if(oc){const all=[{id:'all',name:'Semua'},...outlets];oc.innerHTML=all.map(o=>`<button class="chip rft-o${rptOutlet===o.id?' on':''}" data-v="${o.id}" onclick="_rftChip(this,'o')">${esc(o.name)}</button>`).join('');}
+  // restore status/pay chips
+  document.querySelectorAll('.rft-s').forEach(b=>b.classList.toggle('on',b.dataset.v===rptStatusFilter));
+  document.querySelectorAll('.rft-p').forEach(b=>b.classList.toggle('on',b.dataset.v===rptPayFilter));
+  openModal('m-rpt-filter');
+}
+function _rftChip(el,group){
+  const cls='.rft-'+group;
+  document.querySelectorAll(cls).forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+}
+function applyRptFilter(){
+  const outletEl=document.querySelector('.rft-o.on');
+  const statusEl=document.querySelector('.rft-s.on');
+  const payEl=document.querySelector('.rft-p.on');
+  if(outletEl)rptOutlet=outletEl.dataset.v;
+  rptStatusFilter=statusEl?statusEl.dataset.v:'';
+  rptPayFilter=payEl?payEl.dataset.v:'';
+  _rptTxPage=1;
+  cm('m-rpt-filter');
+  renderReports();
+}
+function resetRptFilters(){
+  rptOutlet='all';rptStatusFilter='';rptPayFilter='';_rptTxPage=1;
+  cm('m-rpt-filter');
+  renderReports();
+}
+function _rptUpdatePeriodUI(){
+  const lbl=_RPT_PERIODS.find(p=>p.v===rptFilter)?.l||'Hari Ini';
+  const el=g('rpt-period-lbl');if(el)el.textContent=lbl;
+}
+function _rptUpdateSummary(filteredCount){
+  let parts=[];
+  if(rptOutlet!=='all'){const o=outlets.find(x=>x.id===rptOutlet);parts.push(o?.name||rptOutlet);}
+  else parts.push('Semua Outlet');
+  let activeFilters=0;
+  if(rptStatusFilter)activeFilters++;
+  if(rptPayFilter)activeFilters++;
+  const txt=g('rpt-summary-txt');
+  if(txt)txt.textContent=parts.join(' · ')+(activeFilters?` · ${activeFilters} filter aktif`:'')+(filteredCount!==undefined?` · ${filteredCount} transaksi`:'');
+  const rb=g('rpt-reset-btn');
+  if(rb)rb.style.display=(rptOutlet!=='all'||rptStatusFilter||rptPayFilter)?'inline':'none';
+  // update filter badge
+  const fb=g('rpt-filter-badge');
+  if(fb){const n=(rptOutlet!=='all'?1:0)+(rptStatusFilter?1:0)+(rptPayFilter?1:0);fb.textContent=n;fb.style.display=n?'inline-flex':'none';}
+}
 function filterOrdersByDate(){
   const today=TODAY_ISO,thisMonth=today.slice(0,7);
   const ld=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   let base=rptOutlet==='all'?orders:orders.filter(o=>o.outletId===rptOutlet);
-  if(rptFilter==='today')return base.filter(o=>_orderDateISO(o)===today);
-  if(rptFilter==='week'){const d=new Date(TODAY);d.setDate(d.getDate()-6);return base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
-  if(rptFilter==='month')return base.filter(o=>o.isoDate&&_orderDateISO(o).startsWith(thisMonth));
-  if(rptFilter==='3month'){const d=new Date(TODAY);d.setMonth(d.getMonth()-3);return base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
-  if(rptFilter==='year'){const d=new Date(TODAY);d.setFullYear(d.getFullYear()-1);return base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
-  if(rptFilter==='custom'){const fr=g('rpt-from')?.value,to=g('rpt-to')?.value;if(!fr||!to)return base;return base.filter(o=>o.isoDate&&_orderDateISO(o)>=fr&&_orderDateISO(o)<=to);}
+  if(rptFilter==='today')base=base.filter(o=>_orderDateISO(o)===today);
+  else if(rptFilter==='week'){const d=new Date(TODAY);d.setDate(d.getDate()-6);base=base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
+  else if(rptFilter==='month')base=base.filter(o=>o.isoDate&&_orderDateISO(o).startsWith(thisMonth));
+  else if(rptFilter==='3month'){const d=new Date(TODAY);d.setMonth(d.getMonth()-3);base=base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
+  else if(rptFilter==='year'){const d=new Date(TODAY);d.setFullYear(d.getFullYear()-1);base=base.filter(o=>o.isoDate&&_orderDateISO(o)>=ld(d));}
+  else if(rptFilter==='custom'){const fr=g('rpt-from')?.value,to=g('rpt-to')?.value;if(fr&&to)base=base.filter(o=>o.isoDate&&_orderDateISO(o)>=fr&&_orderDateISO(o)<=to);}
+  if(rptStatusFilter)base=base.filter(o=>o.status===rptStatusFilter);
+  if(rptPayFilter)base=base.filter(o=>o.payStatus===rptPayFilter);
   return base;
 }
+function _rptSetTxPage(p){_rptTxPage=p;renderReports();}
 function renderReports(){
-  const rc=g('rpt-outlet-chips');if(rc)rc.innerHTML=buildOutletFilterChips(rptOutlet,'setRptOutlet');
+  _rptUpdatePeriodUI();
   const filtered=filterOrdersByDate();
-  const rev=filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
-  const fr=rptFilter==='custom'?g('rpt-from')?.value:'';const to_=rptFilter==='custom'?g('rpt-to')?.value:'';
+  const fr=rptFilter==='custom'?g('rpt-from')?.value:'';
+  const to_=rptFilter==='custom'?g('rpt-to')?.value:'';
   const ld=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  // expenses filtered by same date/outlet range (not by status/pay)
   const baseExp=rptOutlet==='all'?expenses:expenses.filter(e=>!e.outletId||e.outletId===rptOutlet);
   const filtExp=baseExp.filter(e=>{
     if(rptFilter==='today')return e.date===TODAY_ISO;
@@ -2290,18 +2361,125 @@ function renderReports(){
     if(rptFilter==='custom'&&fr&&to_)return e.date>=fr&&e.date<=to_;
     return true;
   });
+  const rev=filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
   const totalExp=filtExp.reduce((s,e)=>s+e.nominal,0);
   const profit=rev-totalExp;
-  const outLbl=rptOutlet==='all'?'Semua Outlet':(outlets.find(o=>o.id===rptOutlet)?.name||'');
+  _rptUpdateSummary(filtered.length);
+
+  // --- KPI cards ---
+  const avgOrder=filtered.length?Math.round(rev/filtered.length):0;
+  const paidCount=filtered.filter(o=>o.payStatus==='Lunas').length;
   const rm=g('rpt-metrics');
-  if(rm)rm.innerHTML=`<div class="mc2 cp" style="grid-column:span 2"><div class="ml">\uD83D\uDCC8 Pendapatan${outLbl?' \u00B7 '+outLbl:''}</div><div class="mv">${fmt(rev)}</div><div class="ms">${filtered.length} pesanan</div></div><div class="mc2 cr"><div class="ml">\uD83D\uDCC9 Pengeluaran</div><div class="mv">${fmt(totalExp)}</div></div><div class="mc2 ${profit>=0?'cg':'cr'}"><div class="ml">\uD83D\uDCB0 Profit Bersih</div><div class="mv">${profit>=0?'+':'-'}${fmt(Math.abs(profit))}</div></div>`;
-  const pm={Tunai:0,QRIS:0,Transfer:0};filtered.filter(o=>o.payStatus==='Lunas').forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=o.total;});
-  const rp=g('rpt-pay');if(rp)rp.innerHTML=Object.entries(pm).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b1);font-size:13px"><span>${k}</span><span style="font-weight:700;color:var(--p)">${fmt(v)}</span></div>`).join('');
-  const sv={...Object.fromEntries(serviceTypes.map(s=>[s.id,0])),satuan:0};filtered.forEach(o=>{if(sv[o.svcType]!==undefined)sv[o.svcType]++;});
-  const rs=g('rpt-svc');if(rs)rs.innerHTML=Object.entries(sv).map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--b1);font-size:13px"><span style="text-transform:capitalize">${k}</span><div style="display:flex;align-items:center;gap:8px"><div style="width:${filtered.length?Math.max(4,v/filtered.length*80):0}px;height:8px;background:var(--pl);border-radius:4px"></div><span style="font-weight:700">${v}</span></div></div>`).join('');
-  const rexp=g('rpt-exp');if(rexp)rexp.innerHTML=`<div style="background:var(--bg);border-radius:var(--r);padding:14px;margin-bottom:10px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px"><div class="mc2 cg"><div class="ml">Pemasukan</div><div class="mv" style="font-size:16px">${fmt(rev)}</div></div><div class="mc2 cr"><div class="ml">Pengeluaran</div><div class="mv" style="font-size:16px">${fmt(totalExp)}</div></div><div class="mc2 ${profit>=0?'cp':'cr'}"><div class="ml">Profit Bersih</div><div class="mv" style="font-size:16px">${profit>=0?'+':''}${fmt(profit)}</div></div></div><div style="display:flex;height:10px;border-radius:20px;overflow:hidden;gap:2px"><div style="background:var(--p);flex:${rev||1}"></div><div style="background:var(--re);flex:${totalExp||0}"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-top:5px"><span>\uD83D\uDFE2 Pemasukan ${rev?Math.round(rev/(rev+totalExp||1)*100):0}%</span><span>\uD83D\uDD34 Pengeluaran ${totalExp?Math.round(totalExp/(rev+totalExp||1)*100):0}%</span></div></div>${filtExp.length?'<div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Detail Pengeluaran</div>'+filtExp.map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:12px"><span>${CAT_ICONS[e.cat]||'\uD83D\uDCE6'}</span><div style="flex:1"><span style="font-weight:600">${esc(e.label)}</span><span style="color:var(--t2);margin-left:6px">${e.note?'\u00B7 '+esc(e.note):''}</span></div><span style="font-weight:700;color:var(--re)">-${fmt(e.nominal)}</span><span style="font-size:10px;color:var(--t2);margin-left:4px">${esc(e.date.slice(5))}</span></div>`).join(''):'<div style="text-align:center;padding:16px;color:var(--t2);font-size:13px">Tidak ada pengeluaran</div>'}`;
-  const rt=g('rpt-tb');if(!rt)return;
-  rt.innerHTML=filtered.length?filtered.map(o=>`<tr><td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td><td>${esc(o.name)}</td><td style="text-transform:capitalize;white-space:nowrap">${esc(o.svcType)}\u00B7${esc(o.svcCat)}</td><td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td><td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td><td><span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span></td><td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date)}</td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t2)">Tidak ada data untuk periode ini</td></tr>';
+  if(rm)rm.innerHTML=`
+    <div class="rpt-kpi">
+      <div class="rpt-kpi-icon" style="background:#e8f5e9"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#43a047" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+      <div class="rpt-kpi-lbl">Pendapatan</div>
+      <div class="rpt-kpi-val">${fmt(rev)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:4px">${filtered.length} pesanan</div>
+    </div>
+    <div class="rpt-kpi">
+      <div class="rpt-kpi-icon" style="background:#fce4ec"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></div>
+      <div class="rpt-kpi-lbl">Pengeluaran</div>
+      <div class="rpt-kpi-val">${fmt(totalExp)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:4px">${filtExp.length} item</div>
+    </div>
+    <div class="rpt-kpi">
+      <div class="rpt-kpi-icon" style="background:${profit>=0?'#e8f5e9':'#fce4ec'}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${profit>=0?'#43a047':'#e53935'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div class="rpt-kpi-lbl">Profit Bersih</div>
+      <div class="rpt-kpi-val" style="color:${profit>=0?'var(--p)':'var(--re)'}">${profit>=0?'+':''}${fmt(profit)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:4px">Margin ${rev?Math.round(profit/rev*100):0}%</div>
+    </div>
+    <div class="rpt-kpi">
+      <div class="rpt-kpi-icon" style="background:#e3f2fd"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e88e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+      <div class="rpt-kpi-lbl">Rata-rata Order</div>
+      <div class="rpt-kpi-val">${fmt(avgOrder)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:4px">${paidCount} lunas</div>
+    </div>`;
+
+  // --- Income vs Expense bars ---
+  const maxBar=Math.max(rev,totalExp,1);
+  const revPct=Math.round(rev/maxBar*100);
+  const expPct=Math.round(totalExp/maxBar*100);
+  const rexp=g('rpt-exp');
+  if(rexp)rexp.innerHTML=`
+    <div class="rpt-bar-row" style="margin-bottom:10px">
+      <div class="rpt-bar-dot" style="background:#43a047"></div>
+      <div class="rpt-bar-lbl">Pemasukan</div>
+      <div class="rpt-bar-track"><div class="rpt-bar-fill" style="width:${revPct}%;background:#43a047"></div></div>
+      <div class="rpt-bar-amt">${fmt(rev)}</div>
+    </div>
+    <div class="rpt-bar-row">
+      <div class="rpt-bar-dot" style="background:#e53935"></div>
+      <div class="rpt-bar-lbl">Pengeluaran</div>
+      <div class="rpt-bar-track"><div class="rpt-bar-fill" style="width:${expPct}%;background:#e53935"></div></div>
+      <div class="rpt-bar-amt">${fmt(totalExp)}</div>
+    </div>
+    ${filtExp.length?`<div style="border-top:1.5px solid var(--b1);margin-top:14px;padding-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Detail Pengeluaran</div>
+      ${filtExp.map(e=>`<div class="rpt-exp-row"><div style="width:26px;height:26px;border-radius:7px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">${CAT_ICONS[e.cat]||'📦'}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px">${esc(e.label)}</div>${e.note?`<div style="font-size:11px;color:var(--t2)">${esc(e.note)}</div>`:''}</div><div style="text-align:right;flex-shrink:0"><div style="font-weight:700;font-size:12px;color:var(--re)">-${fmt(e.nominal)}</div><div style="font-size:10px;color:var(--t2)">${esc(e.date.slice(5))}</div></div></div>`).join('')}
+    </div>`:''}`;
+
+  // --- Payment breakdown ---
+  const pm={Tunai:0,QRIS:0,Transfer:0};
+  filtered.filter(o=>o.payStatus==='Lunas').forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=o.total;});
+  const pmTotal=Object.values(pm).reduce((s,v)=>s+v,0)||1;
+  const rp=g('rpt-pay');
+  if(rp)rp.innerHTML=Object.entries(pm).map(([k,v])=>`
+    <div class="rpt-pay-row">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="rpt-bar-dot" style="background:var(--p)"></div>
+        <span style="font-size:13px">${k}</span>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700;font-size:13px">${fmt(v)}</div>
+        <div style="font-size:10px;color:var(--t2)">${Math.round(v/pmTotal*100)}%</div>
+      </div>
+    </div>`).join('');
+
+  // --- Service types ---
+  const sv={...Object.fromEntries(serviceTypes.map(s=>[s.id,0])),satuan:0};
+  filtered.forEach(o=>{if(sv[o.svcType]!==undefined)sv[o.svcType]++;});
+  const maxSv=Math.max(...Object.values(sv),1);
+  const rs=g('rpt-svc');
+  if(rs)rs.innerHTML=Object.entries(sv).map(([k,v])=>`
+    <div class="rpt-svc-row">
+      <span style="font-size:12px;text-transform:capitalize;flex:1">${k}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:60px;height:5px;background:var(--b1);border-radius:4px;overflow:hidden"><div style="width:${Math.round(v/maxSv*100)}%;height:100%;background:var(--p);border-radius:4px"></div></div>
+        <span style="font-size:12px;font-weight:700;min-width:20px;text-align:right">${v}</span>
+      </div>
+    </div>`).join('');
+
+  // --- Paginated transaction table ---
+  const _PER=10;
+  const _tp=Math.max(1,Math.ceil(filtered.length/_PER));
+  if(_rptTxPage>_tp)_rptTxPage=_tp;
+  const paged=filtered.slice((_rptTxPage-1)*_PER,_rptTxPage*_PER);
+  const rt=g('rpt-tb');
+  if(rt)rt.innerHTML=paged.length?paged.map(o=>`<tr>
+    <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
+    <td>${esc(o.name||'—')}</td>
+    <td style="text-transform:capitalize;white-space:nowrap">${esc(o.svcType||'')}${o.svcCat?' · '+esc(o.svcCat):''}</td>
+    <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
+    <td><span class="badge ${SL_STATUS[o.status]||''}">${esc(o.status||'')}</span></td>
+    <td><span class="badge ${SL_PAY[o.payStatus]||''}">${esc(o.payStatus||'')}</span></td>
+    <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'')}</td>
+  </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t2)">Tidak ada data untuk periode ini</td></tr>';
+
+  // Pager
+  const rtp=g('rpt-tx-pager');
+  if(!rtp)return;
+  if(_tp<=1){rtp.innerHTML='';return;}
+  let pages=[];
+  for(let i=1;i<=_tp;i++){
+    if(i===1||i===_tp||Math.abs(i-_rptTxPage)<=1)pages.push(i);
+    else if(pages[pages.length-1]!=='…')pages.push('…');
+  }
+  rtp.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:12px 0">
+    <button class="btn bsm" ${_rptTxPage===1?'disabled':''} onclick="_rptSetTxPage(${_rptTxPage-1})" style="min-width:32px;padding:0 8px">‹</button>
+    ${pages.map(p=>p==='…'?`<span style="color:var(--t2);font-size:13px;padding:0 2px">…</span>`:`<button class="btn bsm${p===_rptTxPage?' bp':''}" onclick="_rptSetTxPage(${p})" style="min-width:32px;padding:0 8px">${p}</button>`).join('')}
+    <button class="btn bsm" ${_rptTxPage===_tp?'disabled':''} onclick="_rptSetTxPage(${_rptTxPage+1})" style="min-width:32px;padding:0 8px">›</button>
+  </div>`;
 }
 
 // ===== PRINTER =====
