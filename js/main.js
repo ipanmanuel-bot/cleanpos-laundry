@@ -1564,11 +1564,11 @@ function renderCusts() {
   _renderCustSummary();
   const all = Object.values(customers);
   const list = all.filter(c => {
-    const matchQ = !q || c.name.toLowerCase().includes(q) || (c.phone||'').includes(q);
+    const matchQ = !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
     const bal = c.balance||0;
     const matchF = _custFilter==='all' || (_custFilter==='ada'&&bal>0) || (_custFilter==='nol'&&bal<=0);
     return matchQ && matchF;
-  }).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||'') || a.name.localeCompare(b.name));
+  }).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||'') || (a.name||'').localeCompare(b.name||''));
   const _PER = 10;
   const _tp = Math.max(1, Math.ceil(list.length/_PER));
   if (_custPage > _tp) _custPage = _tp;
@@ -1607,8 +1607,8 @@ function _renderCustSummary() {
 function _renderCustTable(list) {
   const tb = g('cust-tb'); if (!tb) return;
   if (!list.length) { tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t2)">Tidak ada pelanggan ditemukan</td></tr>`; return; }
-  tb.innerHTML = list.map(c => {
-    const initials = c.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+  try { tb.innerHTML = list.map(c => {
+    const initials = (c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
     const bal = c.balance||0;
     let balCell = '—';
     if (membershipEnabled) {
@@ -1642,7 +1642,7 @@ function _renderCustTable(list) {
       <td style="font-size:12px;color:var(--t2);white-space:nowrap">${esc(c.lastDate||'—')}</td>
       <td>${acts}</td>
     </tr>`;
-  }).join('');
+  }).join(''); } catch(e) { console.error('[renderCusts table]', e); tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--re,#c62828)">Error rendering. Coba refresh halaman.</td></tr>`; }
 }
 
 function _renderCustCards(list) {
@@ -1651,8 +1651,8 @@ function _renderCustCards(list) {
   const IC_CARD14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
   const IC_MORE14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
   if (!list.length) { wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">Tidak ada pelanggan ditemukan</div>`; return; }
-  wrap.innerHTML = list.map(c => {
-    const initials = c.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+  try { wrap.innerHTML = list.map(c => {
+    const initials = (c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
     const bal = c.balance||0;
     const balBadge = membershipEnabled ? `<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>` : '';
     return `<div class="cust-card">
@@ -1677,7 +1677,7 @@ function _renderCustCards(list) {
         <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
       </div>
     </div>`;
-  }).join('');
+  }).join(''); } catch(e) { console.error('[renderCusts cards]', e); wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--re,#c62828);font-size:13px">Error rendering. Coba refresh halaman.</div>`; }
 }
 
 function _renderCustPager(total, totalPages) {
