@@ -380,10 +380,10 @@ tr:hover td{background:#F6F7F9}
 /* ── New Order page ─────────────────────────── */
 .no-layout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
 @media(max-width:960px){.no-layout{grid-template-columns:1fr}}
-.no-step-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:20px 24px;margin-bottom:16px}
-.no-step-hdr{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-.no-step-num{width:28px;height:28px;border-radius:50%;background:var(--p);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.no-step-title{font-size:14px;font-weight:700;color:var(--t1)}
+.no-step-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:16px 20px;margin-bottom:14px}
+.no-step-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.no-step-num{width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.no-step-title{font-size:13px;font-weight:700;color:var(--t1)}
 .no-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .no-type-card{border:2px solid var(--b1);border-radius:12px;padding:14px 16px;cursor:pointer;position:relative;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:12px}
 .no-type-card.on{border-color:var(--p);background:var(--pl)}
@@ -426,13 +426,15 @@ tr:hover td{background:#F6F7F9}
 .no-sum-av-phone{font-size:11px;color:var(--t2)}
 .no-sum-edit-btn{font-size:11px;color:var(--p);cursor:pointer;font-weight:600;white-space:nowrap}
 .no-sum-sect-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:12px}
-.no-sum-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:3px 0}
+.no-sum-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0;gap:8px}
+.no-sum-row>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.no-sum-row>span:last-child{flex-shrink:0}
 .no-sum-row.total{font-size:16px;font-weight:800;color:var(--p);padding:8px 0;border-top:2px solid var(--b1);margin-top:4px}
-.no-sum-item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--b1)}
+.no-sum-item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b1)}
 .no-sum-item-row:last-child{border-bottom:none}
-.no-sum-item-name{flex:1;min-width:0}
+.no-sum-item-name{flex:1;min-width:0;overflow:hidden}
 .no-sum-item-badge{font-size:10px;color:var(--t2);display:block;margin-top:1px}
-.no-sum-item-val{font-weight:600;text-align:right;white-space:nowrap}
+.no-sum-item-val{font-weight:600;text-align:right;white-space:nowrap;flex-shrink:0}
 .no-sum-discount{color:var(--p);font-size:12px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;margin:8px 0}
 .no-sum-pay{padding:16px 20px;border-top:1.5px solid var(--b1)}
 .no-sum-savebtn{width:100%;padding:14px;border:none;border-radius:10px;background:var(--p);color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-top:12px;font-family:inherit;transition:opacity .15s}
@@ -855,7 +857,7 @@ tr:hover td{background:#F6F7F9}
     <div>
       <div class="no-sum-card">
         <div class="no-sum-hdr">Ringkasan Pesanan</div>
-        <div id="no-sum-body">
+        <div id="no-sum-body" class="no-sum-body">
           <!-- Rendered by _noUpdateSummary() -->
           <div style="padding:20px;color:var(--t2);font-size:13px;text-align:center">Isi form di sebelah kiri untuk melihat ringkasan pesanan.</div>
         </div>
