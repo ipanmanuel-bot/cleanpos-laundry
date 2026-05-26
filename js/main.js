@@ -85,6 +85,14 @@ let rptStatusFilter = ''; let rptPayFilter = ''; let _rptTxPage = 1;
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
 let editSvcId = null;
+let editSatItemId = null;
+let _pricingTab = 'kiloan';
+let _editPoKey = null;
+let priceOptions = [
+  {key:'regular',label:'Reguler',est:'2-3 Hari',order:1,active:true},
+  {key:'sameday',label:'Same Day',est:'± 8 jam',order:2,active:true},
+  {key:'express',label:'Express',est:'Hari yang sama',order:3,active:true}
+];
 
 // ===== MEMBER CARD TEMPLATE =====
 const _CARD_BG_KEY = 'cleanpos_mbr_card_bg';
@@ -273,7 +281,7 @@ async function renderTrackingPage(token) {
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
 const STATUS_LIST = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
-function getSvcLbl(key){if(key==='all')return 'Semua Layanan';const parts=key.split('-');if(parts[0]==='satuan'){const cl={regular:'Regular',sameday:'Same-day',express:'Express'};return 'Satuan '+(cl[parts[1]]||parts[1]||'');}const svc=getSvcById(parts[0]);const cat=parts[1];return svc?(svc.name+' '+(cat||'')).trim():key;}
+function getSvcLbl(key){if(key==='all')return 'Semua Layanan';const parts=key.split('-');const catKey=parts[1];const catLbl=(typeof priceOptions!=='undefined'?priceOptions.find(po=>po.key===catKey)?.label:null)||{regular:'Regular',sameday:'Same-day',express:'Express'}[catKey]||catKey||'';if(parts[0]==='satuan')return 'Satuan '+catLbl;const svc=getSvcById(parts[0]);return svc?(svc.name+' '+catLbl).trim():key;}
 const SVC_LBL = new Proxy({},{get:(t,k)=>getSvcLbl(k)});
 const CAT_ICONS = {gaji:'\uD83D\uDC64',bonus:'\uD83C\uDF81',listrik:'\u26A1',air:'\uD83D\uDCA7',deterjen:'\uD83E\uDDF4',transport:'\uD83D\uDE97',makan:'\uD83C\uDF71',lain:'\uD83D\uDCE6'};
 const CAT_LBL = {gaji:'Gaji Karyawan',bonus:'Bonus',listrik:'Listrik',air:'Air',deterjen:'Deterjen/Sabun',transport:'Transport',makan:'Uang Makan',lain:'Lain-Lain'};
@@ -2260,28 +2268,125 @@ function toggleMembershipExpiry(){
 }
 
 // ===== PRICING & ADDONS =====
-function renderPricing(){renderSvcTypeList();renderSatuanItemsList();renderAddonList();buildOrderTypeDropdowns();rebuildPromoSvcSelect();}
+function _activePoOptions(){return priceOptions.filter(po=>po.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));}
+function _getPoLabel(key){return priceOptions.find(po=>po.key===key)?.label||key;}
+function _getPoEst(key){return priceOptions.find(po=>po.key===key)?.est||'';}
+
+function renderPricing(){
+  renderPriceOptionsList();
+  renderSvcTypeList();
+  renderSatuanItemsList();
+  renderAddonList();
+  buildOrderTypeDropdowns();
+  rebuildPromoSvcSelect();
+  _noRebuildSvcCards();
+  _noRebuildTierCards();
+}
+
+function setPricingTab(tab, btn){
+  _pricingTab=tab;
+  document.querySelectorAll('.ptab-btn').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  ['kiloan','satuan','tambahan'].forEach(t=>{const p=g('ptab-'+t);if(p)p.classList.toggle('on',t===tab);});
+}
+
+// ─── Price Options ───
+function renderPriceOptionsList(){
+  const el=g('price-options-list');if(!el)return;
+  const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  el.innerHTML=tiers.map(po=>{
+    const on=po.active!==false;
+    return `<div class="po-row${on?'':" style='opacity:.55'"}">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${esc(po.label)}</div>
+        <div style="font-size:12px;color:var(--t2)">Estimasi: ${esc(po.est||'—')}</div>
+      </div>
+      <button class="toggle ${on?'on':'off'}" onclick="togglePriceOptActive('${po.key}')"></button>
+      <button class="btn bsm" onclick="openEditPriceOpt('${po.key}')">Edit</button>
+    </div>`;
+  }).join('');
+}
+
+function togglePriceOptActive(key){
+  const po=priceOptions.find(x=>x.key===key);if(!po)return;
+  po.active=!po.active;
+  renderPriceOptionsList();
+  renderSvcTypeList();
+  renderSatuanItemsList();
+  _noRebuildTierCards();
+  syncSettings();
+  toast((po.active?'✓ Tier aktif: ':'Tier nonaktif: ')+po.label);
+}
+
+function openEditPriceOpt(key){
+  _editPoKey=key;
+  const po=priceOptions.find(x=>x.key===key);if(!po)return;
+  g('m-po-title').textContent='Edit Tier: '+po.label;
+  g('mpo-label').value=po.label;
+  g('mpo-est').value=po.est||'';
+  const active=po.active!==false;
+  g('mpo-active').value=active?'1':'0';
+  const btn=g('mpo-active-btn');if(btn){btn.classList.toggle('on',active);btn.classList.toggle('off',!active);}
+  openModal('m-price-opt');
+}
+
+function _toggleMpoActive(){
+  const cur=g('mpo-active').value==='1';
+  g('mpo-active').value=cur?'0':'1';
+  const btn=g('mpo-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+}
+
+function savePriceOpt(){
+  const label=(g('mpo-label')?.value||'').trim();if(!label){toast('⚠️ Nama tier wajib diisi');return;}
+  const po=priceOptions.find(x=>x.key===_editPoKey);if(!po)return;
+  po.label=label;po.est=g('mpo-est')?.value||'';po.active=g('mpo-active').value==='1';
+  cm('m-price-opt');renderPricing();syncSettings();toast('✓ Tier diperbarui: '+label);_editPoKey=null;
+}
+
+// ─── Kiloan service type list ───
+function _renderSvcPriceRows(containerId, prices){
+  const el=g(containerId);if(!el)return;
+  const activeOpts=_activePoOptions();
+  el.innerHTML=activeOpts.map(po=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b1)">
+      <div>
+        <div style="font-size:13px;font-weight:600">${esc(po.label)}</div>
+        ${po.est?`<div style="font-size:10px;color:var(--t2)">${esc(po.est)}</div>`:''}
+      </div>
+      <input type="number" id="${containerId}-${po.key}" value="${prices?.[po.key]||0}" min="0" placeholder="0"
+        style="width:100px;font-size:13px;padding:6px 8px;text-align:right">
+    </div>
+  `).join('');
+}
+
+function _readSvcPriceRows(containerId){
+  const prices={};
+  priceOptions.forEach(po=>{const el=g(containerId+'-'+po.key);if(el)prices[po.key]=parseInt(el.value)||0;});
+  return prices;
+}
+
 function renderSvcTypeList(){
   const el=g('svc-type-list');if(!el)return;
   if(!serviceTypes.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada layanan.</div>';return;}
-  const hdr=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Layanan</span><span>Regular</span><span>Same-day</span><span>Express</span><span></span></div>`;
+  const activeOpts=_activePoOptions();
+  const colHdr=activeOpts.map(po=>`<span>${esc(po.label)}</span>`).join('');
+  const cols='1fr '+activeOpts.map(()=>'88px').join(' ')+' 70px';
+  const hdr=`<div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Layanan</span>${colHdr}<span></span></div>`;
   let rows='';
   serviceTypes.forEach(s=>{
-    const isKg=s.unit==='kg';const ma=s.minKgApply||{regular:false,sameday:false,express:false};const mk=s.minKg||0;
-    rows+=`<div style="border:1px solid var(--b1);border-radius:10px;padding:10px;margin-bottom:8px">`;
-    rows+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;${isKg?'margin-bottom:10px':''}">`;
+    const isKg=s.unit==='kg';const ma=s.minKgApply||{};const mk=s.minKg||0;
+    rows+=`<div class="svc-card">`;
+    rows+=`<div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;${isKg?'margin-bottom:10px':''}" >`;
     rows+=`<div><div style="font-weight:600;font-size:13px">${esc(s.name)}</div><div style="font-size:10px;color:var(--t2)">per ${esc(s.unit)}</div></div>`;
-    rows+=`<input type="number" value="${s.prices.regular}" min="0" onchange="updSvcPrice('${s.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${s.prices.sameday}" min="0" onchange="updSvcPrice('${s.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${s.prices.express}" min="0" onchange="updSvcPrice('${s.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSvc('${s.id}')">Edit</button>${serviceTypes.length>1?`<button class="btn bre bsm" onclick="delSvc('${s.id}')">\u2715</button>`:''}</div>`;
+    activeOpts.forEach(po=>{rows+=`<input type="number" value="${s.prices?.[po.key]||0}" min="0" onchange="updSvcPrice('${s.id}','${po.key}',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;});
+    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSvc('${s.id}')">Edit</button>${serviceTypes.length>1?`<button class="btn bre bsm" onclick="delSvc('${s.id}')">✕</button>`:''}</div>`;
     rows+=`</div>`;
     if(isKg){
       rows+=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg);border-radius:8px">`;
       rows+=`<span style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em">Min. Berat:</span>`;
       rows+=`<input type="number" id="mkg-${s.id}" value="${mk}" min="0" max="20" step="0.5" style="width:64px;font-size:14px;font-weight:700;text-align:center">`;
       rows+=`<span style="font-size:13px;font-weight:600">kg &nbsp; Berlaku:</span>`;
-      ['regular','sameday','express'].forEach(c=>{const lbl={regular:'Regular',sameday:'Same-day',express:'Express'}[c];rows+=`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="mka-${s.id}-${c}" ${ma[c]?'checked':''} onchange="saveSvcMinKg('${s.id}')">&nbsp;${lbl}</label>`;});
+      activeOpts.forEach(po=>{rows+=`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="mka-${s.id}-${po.key}" ${ma[po.key]?'checked':''} onchange="saveSvcMinKg('${s.id}')">&nbsp;${esc(po.label)}</label>`;});
       rows+=`<button class="btn bp bsm bpill" onclick="saveSvcMinKg('${s.id}')">Simpan</button>`;
       rows+=`</div>`;
     }
@@ -2289,41 +2394,200 @@ function renderSvcTypeList(){
   });
   el.innerHTML=hdr+rows;
 }
-function saveSvcMinKg(id){const s=getSvcById(id);if(!s)return;const val=parseFloat(g('mkg-'+id)?.value)||0;s.minKg=val;s.minKgApply={regular:!!(g('mka-'+id+'-regular')?.checked),sameday:!!(g('mka-'+id+'-sameday')?.checked),express:!!(g('mka-'+id+'-express')?.checked)};calcO();calcS();syncSettings();toast('\u2713 Min. berat '+s.name+' diperbarui');}
+function saveSvcMinKg(id){const s=getSvcById(id);if(!s)return;const val=parseFloat(g('mkg-'+id)?.value)||0;s.minKg=val;const apply={};priceOptions.forEach(po=>{apply[po.key]=!!(g('mka-'+id+'-'+po.key)?.checked);});s.minKgApply=apply;calcO();calcS();syncSettings();toast('✓ Min. berat '+s.name+' diperbarui');}
 function renderSatuanItemsList(){
   const el=g('satuan-items-list');if(!el)return;
-  const hdr=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Item</span><span>Regular</span><span>Same-day</span><span>Express</span><span></span></div>`;
-  if(!satuanItems.length){el.innerHTML=hdr+'<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada item. Klik + Tambah Item.</div>';return;}
+  const activeOpts=_activePoOptions();
+  if(!satuanItems.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada item. Klik + Tambah Item.</div>';return;}
   let rows='';
   satuanItems.forEach(item=>{
-    rows+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--b1)">`;
-    rows+=`<div style="font-weight:600;font-size:13px">${esc(item.name)}</div>`;
-    rows+=`<input type="number" value="${item.prices.regular}" min="0" onchange="updSatuanItemPrice('${item.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${item.prices.sameday}" min="0" onchange="updSatuanItemPrice('${item.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${item.prices.express}" min="0" onchange="updSatuanItemPrice('${item.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSatuanItem('${item.id}')">Edit</button><button class="btn bre bsm" onclick="delSatuanItem('${item.id}')">\u2715</button></div>`;
+    const active=item.active!==false;
+    rows+=`<div class="svc-card${active?'':' off_'}">`;
+    rows+=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">`;
+    rows+=`<div><div style="font-weight:600;font-size:14px">${esc(item.name)}</div>`;
+    rows+=`<div style="font-size:11px;color:var(--t2)">per ${esc(item.unit||'pcs')}${item.desc?` · ${esc(item.desc)}`:''}</div></div>`;
+    rows+=`<div style="display:flex;gap:4px;flex-shrink:0"><button class="btn bsm" onclick="openEditSatuanItem('${item.id}')">Edit</button><button class="btn bre bsm" onclick="delSatuanItem('${item.id}')">✕</button></div>`;
     rows+=`</div>`;
+    rows+=`<div style="display:grid;grid-template-columns:repeat(${activeOpts.length},1fr);gap:8px">`;
+    activeOpts.forEach(po=>{
+      rows+=`<div style="background:var(--bg);border-radius:8px;padding:8px 10px;text-align:center">`;
+      rows+=`<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${esc(po.label)}</div>`;
+      rows+=`<input type="number" value="${item.prices?.[po.key]||0}" min="0" onchange="updSatuanItemPrice('${item.id}','${po.key}',this.value)" style="width:100%;font-size:14px;font-weight:700;text-align:center;padding:4px 6px">`;
+      rows+=`</div>`;
+    });
+    rows+=`</div></div>`;
   });
-  el.innerHTML=hdr+rows;
+  el.innerHTML=rows;
 }
 function updSatuanItemPrice(id,cat,val){const item=satuanItems.find(x=>x.id===id);if(!item)return;item.prices[cat]=parseInt(val)||0;buildSatuanOrderItems('no');calcO();buildSatuanOrderItems('sno');calcS();syncSettings();}
 function updSvcPrice(id,cat,val){const s=getSvcById(id);if(!s)return;s.prices[cat]=parseInt(val)||0;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();}
-function buildOrderTypeDropdowns(){['no-type','sno-type'].forEach(selId=>{const el=g(selId);if(!el)return;const curVal=el.value;el.innerHTML=serviceTypes.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+`<option value="satuan">Satuan</option>`;if(serviceTypes.find(s=>s.id===curVal)||curVal==='satuan')el.value=curVal;});}
-function rebuildPromoSvcSelect(){const el=g('mp-svc');if(!el)return;el.innerHTML='<option value="all">Semua Layanan</option>'+serviceTypes.map(s=>`<option value="${s.id}-regular">${s.name} Regular</option><option value="${s.id}-sameday">${s.name} Same-day</option><option value="${s.id}-express">${s.name} Express</option>`).join('')+'<option value="satuan-regular">Satuan Regular</option><option value="satuan-sameday">Satuan Same-day</option><option value="satuan-express">Satuan Express</option>';}
-function openAddSvc(){editSvcId=null;g('m-svc-title').textContent='Tambah Jenis Layanan';['msvc-name','msvc-r','msvc-sd','msvc-e'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('msvc-unit'))g('msvc-unit').value='pcs';openModal('m-svc');}
-function openEditSvc(id){editSvcId=id;const s=getSvcById(id);if(!s)return;g('m-svc-title').textContent='Edit Layanan: '+s.name;if(g('msvc-name'))g('msvc-name').value=s.name;if(g('msvc-unit'))g('msvc-unit').value=s.unit;if(g('msvc-r'))g('msvc-r').value=s.prices.regular;if(g('msvc-sd'))g('msvc-sd').value=s.prices.sameday;if(g('msvc-e'))g('msvc-e').value=s.prices.express;openModal('m-svc');}
-function saveSvc(){const name=(g('msvc-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama layanan wajib diisi');return;}const unit=g('msvc-unit')?.value||'pcs';const prices={regular:parseInt(g('msvc-r')?.value)||0,sameday:parseInt(g('msvc-sd')?.value)||0,express:parseInt(g('msvc-e')?.value)||0};if(editSvcId){const s=getSvcById(editSvcId);if(s){s.name=name;s.unit=unit;s.prices=prices;}}else{const id='svc'+svcCtr++;serviceTypes.push({id,name,unit,prices,minKg:0,minKgApply:{regular:false,sameday:false,express:false}});}cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast(editSvcId?'\u2713 Layanan diperbarui: '+name:'\u2713 Layanan ditambahkan: '+name);editSvcId=null;}
-function delSvc(id){if(serviceTypes.length<=1){toast('\u26A0\uFE0F Minimal harus ada 1 jenis layanan');return;}confirm_('Hapus Layanan?','Jenis layanan ini akan dihapus. Pesanan yang sudah ada tidak terpengaruh.',()=>{serviceTypes=serviceTypes.filter(s=>s.id!==id);renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('Layanan dihapus');});}
-let editSatItemId=null;
-function openAddSatuanItem(){editSatItemId=null;g('m-sat-title').textContent='Tambah Item Satuan';['msat-name','msat-r','msat-sd','msat-e'].forEach(id=>{const el=g(id);if(el)el.value='';});openModal('m-satuan-item');}
-function openEditSatuanItem(id){editSatItemId=id;const item=satuanItems.find(x=>x.id===id);if(!item)return;g('m-sat-title').textContent='Edit Item: '+item.name;if(g('msat-name'))g('msat-name').value=item.name;if(g('msat-r'))g('msat-r').value=item.prices.regular;if(g('msat-sd'))g('msat-sd').value=item.prices.sameday;if(g('msat-e'))g('msat-e').value=item.prices.express;openModal('m-satuan-item');}
-function saveSatuanItem(){const name=(g('msat-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama item wajib diisi');return;}const prices={regular:parseInt(g('msat-r')?.value)||0,sameday:parseInt(g('msat-sd')?.value)||0,express:parseInt(g('msat-e')?.value)||0};if(editSatItemId){const item=satuanItems.find(x=>x.id===editSatItemId);if(item){item.name=name;item.prices=prices;}}else{satuanItems.push({id:'sat'+satItemCtr++,name,prices});}cm('m-satuan-item');renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast(editSatItemId?'\u2713 Item diperbarui: '+name:'\u2713 Item ditambahkan: '+name);editSatItemId=null;}
+function buildOrderTypeDropdowns(){
+  ['no-type','sno-type'].forEach(selId=>{
+    const el=g(selId);if(!el)return;
+    const curVal=el.value;
+    el.innerHTML=serviceTypes.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+`<option value="satuan">Satuan</option>`;
+    if(serviceTypes.find(s=>s.id===curVal)||curVal==='satuan')el.value=curVal;
+  });
+}
+function rebuildPromoSvcSelect(){
+  const el=g('mp-svc');if(!el)return;
+  const tierOpts=priceOptions.map(po=>`<option value="*-${po.key}">Semua - ${esc(po.label)}</option>`).join('');
+  el.innerHTML='<option value="all">Semua Layanan</option>'+
+    serviceTypes.map(s=>priceOptions.map(po=>`<option value="${s.id}-${po.key}">${s.name} ${esc(po.label)}</option>`).join('')).join('')+
+    priceOptions.map(po=>`<option value="satuan-${po.key}">Satuan ${esc(po.label)}</option>`).join('');
+}
+
+// ─── Service modal helpers ───
+function _toggleMsvcActive(){
+  const cur=g('msvc-active').value==='1';
+  g('msvc-active').value=cur?'0':'1';
+  const btn=g('msvc-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+}
+function _toggleMsatActive(){
+  const cur=g('msat-active').value==='1';
+  g('msat-active').value=cur?'0':'1';
+  const btn=g('msat-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+}
+
+function openAddSvc(){
+  editSvcId=null;
+  g('m-svc-title').textContent='Tambah Jenis Layanan';
+  if(g('msvc-name'))g('msvc-name').value='';
+  if(g('msvc-desc'))g('msvc-desc').value='';
+  if(g('msvc-unit'))g('msvc-unit').value='pcs';
+  if(g('msvc-active'))g('msvc-active').value='1';
+  const ab=g('msvc-active-btn');if(ab){ab.classList.add('on');ab.classList.remove('off');}
+  _renderSvcPriceRows('msvc-price-rows',{});
+  openModal('m-svc');
+}
+function openEditSvc(id){
+  editSvcId=id;const s=getSvcById(id);if(!s)return;
+  g('m-svc-title').textContent='Edit Layanan: '+s.name;
+  if(g('msvc-name'))g('msvc-name').value=s.name;
+  if(g('msvc-desc'))g('msvc-desc').value=s.desc||'';
+  if(g('msvc-unit'))g('msvc-unit').value=s.unit;
+  const active=s.active!==false;
+  if(g('msvc-active'))g('msvc-active').value=active?'1':'0';
+  const ab=g('msvc-active-btn');if(ab){ab.classList.toggle('on',active);ab.classList.toggle('off',!active);}
+  _renderSvcPriceRows('msvc-price-rows',s.prices||{});
+  openModal('m-svc');
+}
+function saveSvc(){
+  const name=(g('msvc-name')?.value||'').trim();if(!name){toast('⚠️ Nama layanan wajib diisi');return;}
+  const unit=g('msvc-unit')?.value||'pcs';
+  const desc=g('msvc-desc')?.value||'';
+  const active=g('msvc-active')?.value!=='0';
+  const prices=_readSvcPriceRows('msvc-price-rows');
+  if(editSvcId){
+    const s=getSvcById(editSvcId);
+    if(s){s.name=name;s.unit=unit;s.desc=desc;s.active=active;s.prices=prices;}
+  }else{
+    const id='svc'+svcCtr++;
+    serviceTypes.push({id,name,unit,desc,active,prices,minKg:0,minKgApply:{}});
+  }
+  cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();
+  toast(editSvcId?'✓ Layanan diperbarui: '+name:'✓ Layanan ditambahkan: '+name);editSvcId=null;
+}
+function delSvc(id){if(serviceTypes.length<=1){toast('⚠️ Minimal harus ada 1 jenis layanan');return;}confirm_('Hapus Layanan?','Jenis layanan ini akan dihapus. Pesanan yang sudah ada tidak terpengaruh.',()=>{serviceTypes=serviceTypes.filter(s=>s.id!==id);renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('Layanan dihapus');});}
+
+function openAddSatuanItem(){
+  editSatItemId=null;
+  g('m-sat-title').textContent='Tambah Item Satuan';
+  if(g('msat-name'))g('msat-name').value='';
+  if(g('msat-desc'))g('msat-desc').value='';
+  if(g('msat-unit'))g('msat-unit').value='pcs';
+  if(g('msat-active'))g('msat-active').value='1';
+  const ab=g('msat-active-btn');if(ab){ab.classList.add('on');ab.classList.remove('off');}
+  _renderSvcPriceRows('msat-price-rows',{});
+  openModal('m-satuan-item');
+}
+function openEditSatuanItem(id){
+  editSatItemId=id;const item=satuanItems.find(x=>x.id===id);if(!item)return;
+  g('m-sat-title').textContent='Edit Item: '+item.name;
+  if(g('msat-name'))g('msat-name').value=item.name;
+  if(g('msat-desc'))g('msat-desc').value=item.desc||'';
+  if(g('msat-unit'))g('msat-unit').value=item.unit||'pcs';
+  const active=item.active!==false;
+  if(g('msat-active'))g('msat-active').value=active?'1':'0';
+  const ab=g('msat-active-btn');if(ab){ab.classList.toggle('on',active);ab.classList.toggle('off',!active);}
+  _renderSvcPriceRows('msat-price-rows',item.prices||{});
+  openModal('m-satuan-item');
+}
+function saveSatuanItem(){
+  const name=(g('msat-name')?.value||'').trim();if(!name){toast('⚠️ Nama item wajib diisi');return;}
+  const unit=g('msat-unit')?.value||'pcs';
+  const desc=g('msat-desc')?.value||'';
+  const active=g('msat-active')?.value!=='0';
+  const prices=_readSvcPriceRows('msat-price-rows');
+  if(editSatItemId){
+    const item=satuanItems.find(x=>x.id===editSatItemId);
+    if(item){item.name=name;item.unit=unit;item.desc=desc;item.active=active;item.prices=prices;}
+  }else{
+    satuanItems.push({id:'sat'+satItemCtr++,name,unit,desc,active,prices});
+  }
+  cm('m-satuan-item');renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();
+  toast(editSatItemId?'✓ Item diperbarui: '+name:'✓ Item ditambahkan: '+name);editSatItemId=null;
+}
 function delSatuanItem(id){confirm_('Hapus Item?','Item ini akan dihapus dari daftar Satuan.',()=>{satuanItems=satuanItems.filter(x=>x.id!==id);renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast('Item dihapus');});}
-function renderAddonList(){const el=g('addon-list');if(!el)return;el.innerHTML=addons.length?addons.map(a=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--b1);font-size:13px"><input value="${a.name}" onchange="updAddon('${a.id}','name',this.value)" style="flex:1;width:auto;font-size:13px;padding:6px 8px"><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:6px 8px"><select onchange="updAddon('${a.id}','unit',this.value)" style="width:110px;font-size:13px;padding:6px 8px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select><button class="btn bre bsm" onclick="delAddon('${a.id}')">\u2715</button></div>`).join(''):'<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';}
+
+function renderAddonList(){const el=g('addon-list');if(!el)return;el.innerHTML=addons.length?addons.map(a=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--b1);font-size:13px"><input value="${a.name}" onchange="updAddon('${a.id}','name',this.value)" style="flex:1;width:auto;font-size:13px;padding:6px 8px"><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:6px 8px"><select onchange="updAddon('${a.id}','unit',this.value)" style="width:110px;font-size:13px;padding:6px 8px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select><button class="btn bre bsm" onclick="delAddon('${a.id}')">✕</button></div>`).join(''):'<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';}
 function updAddon(id,key,val){const a=addons.find(x=>x.id===id);if(!a)return;a[key]=key==='price'?parseInt(val)||0:val;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
 function delAddon(id){addons=addons.filter(x=>x.id!==id);renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
 function openAddAddon(){g('mad-n').value='';g('mad-p').value='';g('mad-u').value='flat';openModal('m-addon');}
-function saveAddon(){const name=g('mad-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}addons.push({id:'a'+addonCtr++,name,price:parseInt(g('mad-p').value)||0,unit:g('mad-u').value});cm('m-addon');renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('\u2713 Layanan tambahan ditambahkan');}
+function saveAddon(){const name=g('mad-n').value.trim();if(!name){toast('⚠️ Nama wajib diisi');return;}addons.push({id:'a'+addonCtr++,name,price:parseInt(g('mad-p').value)||0,unit:g('mad-u').value});cm('m-addon');renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('✓ Layanan tambahan ditambahkan');}
+
+// ─── New Order: visual type/tier cards ───
+function _noRebuildSvcCards(){
+  const el=g('no-stype-cards');if(!el)return;
+  const curType=g('no-type')?.value||'';
+  const svcList=serviceTypes.filter(s=>s.active!==false);
+  let html='';
+  svcList.forEach(s=>{
+    const on=curType===s.id;
+    html+=`<div class="no-stype-card${on?' on':''}" onclick="_noPickType('${s.id}')">
+      <div style="font-size:22px">${s.unit==='kg'?'⚖️':'📦'}</div>
+      <div style="font-weight:700;font-size:13px">${esc(s.name)}</div>
+      <div style="font-size:11px;color:var(--t2)">per ${esc(s.unit)}</div>
+    </div>`;
+  });
+  html+=`<div class="no-stype-card${curType==='satuan'?' on':''}" onclick="_noPickType('satuan')">
+    <div style="font-size:22px">👔</div>
+    <div style="font-weight:700;font-size:13px">Satuan</div>
+    <div style="font-size:11px;color:var(--t2)">per pcs</div>
+  </div>`;
+  el.innerHTML=html;
+}
+function _noRebuildTierCards(){
+  const el=g('no-tier-cards');if(!el)return;
+  const curCat=g('no-cat')?.value||'regular';
+  const activeTiers=_activePoOptions();
+  el.innerHTML=activeTiers.map(po=>`
+    <div class="no-tier-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}')">
+      <div style="font-weight:700;font-size:13px">${esc(po.label)}</div>
+      ${po.est?`<div style="font-size:10px;color:var(--t2);margin-top:3px">${esc(po.est)}</div>`:''}
+    </div>
+  `).join('');
+}
+function _noPickType(val){
+  const sel=g('no-type');if(sel){sel.value=val;}
+  _noRebuildSvcCards();
+  typeChange('no');
+}
+function _noPickTier(key){
+  const sel=g('no-cat');if(sel){sel.value=key;}
+  _noRebuildTierCards();
+  // update sat picker prices
+  const satSel=g('no-sat-sel');if(satSel)_noUpdateSatSelPrices();
+  catChange('no');
+}
+function _noUpdateSatSelPrices(){
+  const cat=g('no-cat')?.value||'regular';
+  const sel=g('no-sat-sel');if(!sel)return;
+  const activeItems=satuanItems.filter(x=>x.active!==false);
+  sel.innerHTML=activeItems.length
+    ? activeItems.map(item=>`<option value="${item.id}">${esc(item.name)} — ${fmt(item.prices?.[cat]||0)} / ${esc(item.unit||'pcs')}</option>`).join('')
+    : '<option value="">Belum ada item satuan</option>';
+}
 
 // ===== PROMO =====
 function isPromoToday(p){if(!p.active)return false;const dm=p.days.length===0||p.days.includes(String(TODAY_DAY));return dm&&(!p.from||TODAY_ISO>=p.from)&&(!p.to||TODAY_ISO<=p.to);}

@@ -2,6 +2,12 @@
 // Covers: order form, order list, kanban tracking, receipt/detail modals, WA notifications
 // Depends on global state and helpers defined in main.js (resolved at call-time).
 
+// ─── Satuan cart state ───
+let _noSatuanCart = [];
+let _snoSatuanCart = [];
+function _getSatuanCart(pre){ return pre==='no' ? _noSatuanCart : _snoSatuanCart; }
+function _setSatuanCart(pre, cart){ if(pre==='no') _noSatuanCart=cart; else _snoSatuanCart=cart; }
+
 // ===== ORDER FORM =====
 function buildOrderForm(pre) {
   buildOrderTypeDropdowns();
@@ -16,6 +22,11 @@ function buildOrderForm(pre) {
   el.innerHTML = addons.map(a =>
     `<label id="${pre}-lbl-${a.id}" style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1);transition:all .15s"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}();toggleAddonLbl('${pre}','${a.id}',this.checked)"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit === 'per_qty' ? '/qty' : ''})</span></label>`
   ).join('');
+  // Rebuild visual type/tier cards for new order page
+  if (pre === 'no' && typeof _noRebuildSvcCards === 'function') {
+    _noRebuildSvcCards();
+    _noRebuildTierCards();
+  }
 }
 
 function updWalletOption(pre) {
@@ -104,20 +115,67 @@ function bQty(type, cat, qty) {
 }
 
 function buildSatuanOrderItems(pre) {
+  // Update the sat-sel dropdown options (prices may have changed)
+  const selId = pre + '-sat-sel';
+  const satSel = g(selId);
+  if (satSel) {
+    const cat = g(pre + '-cat')?.value || 'regular';
+    const activeItems = satuanItems.filter(x => x.active !== false);
+    satSel.innerHTML = activeItems.length
+      ? activeItems.map(item => `<option value="${item.id}">${esc(item.name)} — ${fmt(item.prices?.[cat] || 0)} / ${esc(item.unit || 'pcs')}</option>`).join('')
+      : '<option value="">Belum ada item satuan</option>';
+  }
+  _renderSatuanCartTable(pre);
+}
+
+function _renderSatuanCartTable(pre) {
   const el = g(pre + '-satuan-items'); if (!el) return;
-  const cat = g(pre + '-cat')?.value || 'regular';
-  if (!satuanItems.length) {
-    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:8px 0">Belum ada item satuan. Tambah di menu Harga.</div>';
+  const cart = _getSatuanCart(pre);
+  if (!cart.length) {
+    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah.</div>';
     return;
   }
-  const ch = pre === 'no' ? 'calcO()' : 'calcS()';
-  el.innerHTML = satuanItems.map(item => {
-    const price = item.prices[cat] || 0;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)">
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(item.name)}</div><div style="font-size:11px;color:var(--t2)">${fmt(price)} / pcs</div></div>
-      <input type="number" id="${pre}-sat-${item.id}" value="0" min="0" step="1" style="width:60px;text-align:center;font-size:16px;font-weight:700;padding:6px 8px" oninput="${ch}">
-    </div>`;
-  }).join('');
+  el.innerHTML = `<div style="border:1.5px solid var(--b1);border-radius:10px;overflow:hidden">
+    ${cart.map((line, idx) => `<div class="sat-cart-item" style="padding:8px 12px">
+      <div style="flex:1">
+        <div style="font-weight:600">${esc(line.name)}</div>
+        <div style="font-size:11px;color:var(--t2)">${fmt(line.unitPrice)} × ${line.qty} ${esc(line.unit || 'pcs')}</div>
+      </div>
+      <div style="font-weight:700;min-width:70px;text-align:right">${fmt(line.lineTotal)}</div>
+      <button onclick="removeFromSatuanCart('${pre}',${idx})" style="margin-left:6px;background:none;border:none;cursor:pointer;color:var(--t2);font-size:16px;padding:0 2px;line-height:1">×</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+function addToSatuanCart(pre) {
+  const selEl = g(pre + '-sat-sel');
+  const qtyEl = g(pre + '-sat-qty');
+  if (!selEl || !selEl.value) { toast('⚠️ Pilih item terlebih dahulu'); return; }
+  const qty = parseInt(qtyEl?.value) || 1;
+  if (qty <= 0) { toast('⚠️ Jumlah harus minimal 1'); return; }
+  const itemId = selEl.value;
+  const item = satuanItems.find(x => x.id === itemId); if (!item) return;
+  const cat = g(pre + '-cat')?.value || 'regular';
+  const unitPrice = item.prices?.[cat] || 0;
+  const cart = _getSatuanCart(pre);
+  // If same item already in cart, increment qty
+  const existing = cart.find(l => l.id === itemId);
+  if (existing) {
+    existing.qty += qty;
+    existing.lineTotal = existing.unitPrice * existing.qty;
+  } else {
+    cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty });
+  }
+  if (qtyEl) qtyEl.value = '1';
+  _renderSatuanCartTable(pre);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function removeFromSatuanCart(pre, idx) {
+  const cart = _getSatuanCart(pre);
+  cart.splice(idx, 1);
+  _renderSatuanCartTable(pre);
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function typeChange(pre) {
@@ -163,19 +221,22 @@ function discTypeChange(pre) {
 
 function calcBase(pre) {
   const type = g(pre + '-type').value, cat = g(pre + '-cat').value;
+  // Use priceOptions for est if available
+  const poEst = (typeof priceOptions !== 'undefined' ? priceOptions.find(po => po.key === cat)?.est : null);
   const EST = { regular: '2-3 hari', sameday: '± 8 jam', express: '1 hari' };
-  const est = g(pre + '-est'); if (est) est.value = EST[cat] || '';
+  const est = g(pre + '-est'); if (est) est.value = poEst != null ? poEst : (EST[cat] || '');
 
   if (type === 'satuan') {
-    const satuanLines = [];
-    satuanItems.forEach(item => {
-      const qEl = g(pre + '-sat-' + item.id);
-      const qty = parseInt(qEl?.value) || 0;
-      if (qty > 0) {
-        const unitPrice = item.prices[cat] || 0;
-        satuanLines.push({ id: item.id, name: item.name, qty, unitPrice, lineTotal: unitPrice * qty });
-      }
+    // Cart-based: read from _getSatuanCart
+    const cart = _getSatuanCart(pre);
+    // Recalculate prices in case tier changed
+    const satuanLines = cart.map(line => {
+      const item = satuanItems.find(x => x.id === line.id);
+      const unitPrice = item ? (item.prices?.[cat] || 0) : line.unitPrice;
+      return { id: line.id, name: line.name, unit: line.unit || 'pcs', qty: line.qty, unitPrice, lineTotal: unitPrice * line.qty };
     });
+    // Sync prices back to cart
+    cart.forEach((line, i) => { line.unitPrice = satuanLines[i].unitPrice; line.lineTotal = satuanLines[i].lineTotal; });
     const base = satuanLines.reduce((s, l) => s + l.lineTotal, 0);
     const bq = satuanLines.reduce((s, l) => s + l.qty, 0);
     let addTotal = 0; const addonLines = [];
@@ -306,7 +367,9 @@ function buildOrder(pre) {
   const dw = g(pre + '-dv-w');  if (dw) dw.style.display = 'none';
   const ps = g(pre + '-ps');    if (ps) ps.value = 'Belum Bayar';
   const dpg = g(pre + '-dp-g'); if (dpg) dpg.style.display = 'none';
-  if (res.type === 'satuan') satuanItems.forEach(item => { const el = g(pre + '-sat-' + item.id); if (el) el.value = '0'; });
+  // Reset satuan cart (new cart-based approach)
+  _setSatuanCart(pre, []);
+  if (res.type === 'satuan') buildSatuanOrderItems(pre);
   if (membershipEnabled) updWalletOption(pre);
   if (pre === 'no') calcO(); else calcS();
   return o;

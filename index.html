@@ -356,6 +356,30 @@ tr:hover td{background:#FAFAF7}
 .out-dd button{display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--t1)}
 .out-dd button:hover{background:var(--bg)}
 .out-dd button.danger{color:var(--re)}
+/* ── Pricing page ── */
+.ptab{display:flex;gap:4px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px}
+.ptab-btn{flex:1;padding:8px 12px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--t2);font-family:inherit}
+.ptab-btn.on{background:var(--ca);color:var(--p);box-shadow:0 1px 6px rgba(0,0,0,.1)}
+.ptab-pane{display:none}.ptab-pane.on{display:block}
+.po-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--b1);border-radius:10px;margin-bottom:8px;transition:border-color .15s,background .15s}
+.po-row.on{border-color:var(--p);background:var(--pl)}
+.po-row input[type=text],.po-row input[type=number]{border:1.5px solid var(--b1);border-radius:8px;padding:5px 8px;font-size:12px;font-family:inherit;background:var(--ca);color:var(--t1);outline:none}
+.po-row input[type=text]:focus,.po-row input[type=number]:focus{border-color:var(--p)}
+.svc-card{border:1.5px solid var(--b1);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .15s}
+.svc-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
+/* ── New Order ── */
+.no-stype{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.no-stype-card{border:2px solid var(--b1);border-radius:12px;padding:14px 10px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--ca)}
+.no-stype-card.on{border-color:var(--p);background:var(--pl)}
+.no-tier{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.no-tier-card{border:2px solid var(--b1);border-radius:10px;padding:10px 6px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;background:var(--ca)}
+.no-tier-card.on{border-color:var(--p);background:var(--pl)}
+.sat-picker{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.sat-picker select{flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none}
+.sat-picker select:focus{border-color:var(--p)}
+.sat-cart-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:13px}
+.no-sum-item{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.no-sum-item span:last-child{font-weight:600}
 /* ── Tracking page ── */
 #scr-track{background:#EAECF0}
 @media(min-width:640px){
@@ -670,7 +694,12 @@ tr:hover td{background:#FAFAF7}
   <div class="pt">Buat Pesanan Baru</div>
   <div class="g2 og">
     <div>
-      <div class="card"><div class="ct">Data Pelanggan</div>
+      <!-- Step 1: Customer -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+          <div class="ct" style="margin-bottom:0">Data Pelanggan</div>
+        </div>
         <div class="fg"><label>Outlet</label><select id="no-outlet"></select></div>
         <div class="fg" style="position:relative;margin-bottom:10px">
           <label>Cari Pelanggan Lama</label>
@@ -681,16 +710,36 @@ tr:hover td{background:#FAFAF7}
         <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('no')"></div>
         <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="no-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
       </div>
-      <div class="card"><div class="ct">Detail Layanan</div>
-        <div class="g2">
-          <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="no-type" onchange="typeChange('no')"></select></div>
-          <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="no-cat" onchange="catChange('no')"><option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option></select></div>
+
+      <!-- Step 2: Service Type -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+          <div class="ct" style="margin-bottom:0">Jenis Layanan</div>
         </div>
-        <div class="div_"></div>
+        <!-- Hidden selects (still used by calcBase, typeChange, catChange) -->
+        <select id="no-type" onchange="typeChange('no')" style="display:none"></select>
+        <select id="no-cat" onchange="catChange('no')" style="display:none">
+          <option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option>
+        </select>
+        <!-- Visual type cards (populated by _noRebuildSvcCards) -->
+        <div class="no-stype" id="no-stype-cards"></div>
+        <!-- Visual tier cards -->
+        <div class="no-tier" id="no-tier-cards"></div>
+        <div class="div_" style="margin-top:14px"></div>
+
+        <!-- Satuan section -->
         <div id="no-satuan-sect" style="display:none">
+          <div class="sat-picker">
+            <select id="no-sat-sel" style="flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none"></select>
+            <input type="number" id="no-sat-qty" value="1" min="1" step="1" style="width:62px;text-align:center;font-size:14px;font-weight:700;padding:7px 8px">
+            <button class="btn bp bsm" onclick="addToSatuanCart('no')">+ Tambah</button>
+          </div>
           <div id="no-satuan-items"></div>
           <div class="div_"></div>
         </div>
+
+        <!-- Kg section -->
         <div id="no-kg-sect">
           <div class="g2">
             <div class="fg" style="margin-bottom:0"><label id="no-qty-lbl">Berat (kg) <span id="no-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
@@ -701,25 +750,34 @@ tr:hover td{background:#FAFAF7}
           </div>
           <div class="div_"></div>
         </div>
+
         <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Layanan Tambahan</div>
         <div id="no-addons" class="g2"></div>
       </div>
     </div>
+
+    <!-- Right column: summary + payment -->
     <div>
       <div id="no-promo-box"></div>
-      <div class="card"><div class="ct">Diskon Manual</div>
-        <div class="g2">
-          <div class="fg" style="margin-bottom:0"><label>Jenis Diskon</label>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+          <div class="ct" style="margin-bottom:0">Ringkasan &amp; Bayar</div>
+        </div>
+        <div id="no-preview"></div>
+        <div class="div_"></div>
+        <div class="sr tot" style="margin-bottom:14px"><span>Total</span><span id="no-total" style="color:var(--p)">Rp 0</span></div>
+
+        <!-- Discount -->
+        <div class="g2" style="margin-bottom:10px">
+          <div class="fg" style="margin-bottom:0"><label>Diskon</label>
             <select id="no-disc-type" onchange="calcO();discTypeChange('no')"><option value="none">— Tidak ada</option><option value="persen">% Persentase</option><option value="flat">Rp Nominal</option><option value="per_qty">Rp Per Kg/Pcs</option></select>
           </div>
           <div class="fg" id="no-dv-w" style="margin-bottom:0;display:none"><label id="no-dv-lbl">Nilai</label><input type="number" id="no-disc-val" value="0" min="0" oninput="calcO()"></div>
         </div>
-      </div>
-      <div class="card"><div class="ct">Ringkasan</div>
-        <div id="no-preview"></div><div class="div_"></div>
-        <div class="sr tot"><span>Total</span><span id="no-total" style="color:var(--p)">Rp 0</span></div>
-      </div>
-      <div class="card"><div class="ct">Pembayaran</div>
+        <div class="div_"></div>
+
+        <!-- Payment -->
         <div class="g2">
           <div class="fg" style="margin-bottom:0"><label>Metode</label><select id="no-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select></div>
           <div class="fg" style="margin-bottom:0"><label>Status</label><select id="no-ps" onchange="dpTgl('no')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select></div>
@@ -937,18 +995,49 @@ tr:hover td{background:#FAFAF7}
 <!-- PRICING -->
 <div class="page" id="o-p-pricing">
   <div class="pt">Harga &amp; Layanan</div>
-  <div class="card">
-    <div class="sh"><div class="ct" style="margin-bottom:0">Layanan Kiloan</div><button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan</button></div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Harga per kg · Regular → Same-day → Express. Min. berat per layanan dapat diatur di bawah tiap baris.</div>
+
+  <!-- Price Options (Tier Labels) -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="sh" style="margin-bottom:10px">
+      <div>
+        <div class="ct" style="margin-bottom:2px">Opsi Harga</div>
+        <div style="font-size:12px;color:var(--t2)">Atur nama &amp; estimasi untuk setiap tier. Aktif/nonaktifkan tier sesuai kebutuhan.</div>
+      </div>
+    </div>
+    <div id="price-options-list"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="ptab">
+    <button class="ptab-btn on" onclick="setPricingTab('kiloan',this)">Kiloan</button>
+    <button class="ptab-btn" onclick="setPricingTab('satuan',this)">Satuan</button>
+    <button class="ptab-btn" onclick="setPricingTab('tambahan',this)">Tambahan</button>
+  </div>
+
+  <!-- Kiloan tab -->
+  <div class="ptab-pane on" id="ptab-kiloan">
+    <div class="sh" style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--t2)">Layanan berbasis berat (kg). Harga per kg per tier.</div>
+      <button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan</button>
+    </div>
     <div id="svc-type-list"></div>
   </div>
-  <div class="card">
-    <div class="sh"><div class="ct" style="margin-bottom:0">Item Satuan</div><button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Item</button></div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Item per pcs · pilih beberapa item sekaligus saat buat pesanan. Harga Regular → Same-day → Express.</div>
+
+  <!-- Satuan tab -->
+  <div class="ptab-pane" id="ptab-satuan">
+    <div class="sh" style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--t2)">Item per pcs — harga per tier. Pelanggan dapat memilih beberapa item sekaligus.</div>
+      <button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Item</button>
+    </div>
     <div id="satuan-items-list"></div>
   </div>
-  <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Layanan Tambahan</div><button class="btn bp bsm" onclick="openAddAddon()">+ Tambah</button></div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Otomatis muncul di form Buat Pesanan</div>
+
+  <!-- Tambahan tab -->
+  <div class="ptab-pane" id="ptab-tambahan">
+    <div class="sh" style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--t2)">Otomatis muncul sebagai opsi centang di form Buat Pesanan.</div>
+      <button class="btn bp bsm" onclick="openAddAddon()">+ Tambah</button>
+    </div>
     <div id="addon-list"></div>
   </div>
 </div>
@@ -1207,6 +1296,11 @@ tr:hover td{background:#FAFAF7}
           </div>
           <div class="div_"></div>
           <div id="sno-satuan-sect" style="display:none">
+            <div class="sat-picker">
+              <select id="sno-sat-sel" style="flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none"></select>
+              <input type="number" id="sno-sat-qty" value="1" min="1" step="1" style="width:62px;text-align:center;font-size:14px;font-weight:700;padding:7px 8px">
+              <button class="btn bp bsm" onclick="addToSatuanCart('sno')">+ Tambah</button>
+            </div>
             <div id="sno-satuan-items"></div>
             <div class="div_"></div>
           </div>
@@ -1344,6 +1438,18 @@ tr:hover td{background:#FAFAF7}
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-promo')">Batal</button><button class="btn bp" onclick="savePromo()">Simpan Promo</button></div>
 </div></div>
+<div class="mbg" id="m-price-opt"><div class="mbox"><div class="mhd"><span class="mht" id="m-po-title">Edit Opsi Harga</span><button class="xb" onclick="cm('m-price-opt')">×</button></div>
+  <div class="mbd">
+    <div class="fg"><label>Nama Tier *</label><input id="mpo-label" placeholder="Contoh: Reguler"></div>
+    <div class="fg"><label>Estimasi Pengerjaan</label><input id="mpo-est" placeholder="Contoh: 2-3 Hari"></div>
+    <div class="fg" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
+      <label style="margin-bottom:0">Aktif</label>
+      <button class="toggle on" id="mpo-active-btn" onclick="_toggleMpoActive()"></button>
+      <input type="hidden" id="mpo-active" value="1">
+    </div>
+  </div>
+  <div class="mft"><button class="btn" onclick="cm('m-price-opt')">Batal</button><button class="btn bp" onclick="savePriceOpt()">Simpan</button></div>
+</div></div>
 <div class="mbg" id="m-addon"><div class="mbox"><div class="mhd"><span class="mht">Tambah Layanan Tambahan</span><button class="xb" onclick="cm('m-addon')">×</button></div><div class="mbd"><div class="fg"><label>Nama Layanan *</label><input id="mad-n" placeholder="Contoh: Parfum Premium"></div><div class="g2"><div class="fg" style="margin-bottom:0"><label>Harga (Rp)</label><input type="number" id="mad-p" placeholder="0"></div><div class="fg" style="margin-bottom:0"><label>Satuan</label><select id="mad-u"><option value="flat">per pesanan</option><option value="per_qty">per kg/pcs</option></select></div></div></div><div class="mft"><button class="btn" onclick="cm('m-addon')">Batal</button><button class="btn bp" onclick="saveAddon()">Simpan</button></div></div></div>
 <div class="mbg" id="m-kas"><div class="mbox"><div class="mhd"><span class="mht" id="m-kas-title">Setor Modal</span><button class="xb" onclick="cm('m-kas')">×</button></div><div class="mbd"><div class="fg"><label>Nominal (Rp)</label><input type="number" id="mk-nom" placeholder="0" min="0" oninput="kasNomHint()"></div><div id="mk-hint" style="font-size:12px;color:var(--t2);margin-top:-8px;margin-bottom:10px"></div><div class="fg" style="margin-bottom:0"><label>Keterangan</label><input id="mk-note" placeholder="Contoh: modal kembalian pagi"></div></div><div class="mft"><button class="btn" onclick="cm('m-kas')">Batal</button><button class="btn bp" onclick="submitKas()">Simpan</button></div></div></div>
 <div class="mbg" id="m-printer"><div class="mbox"><div class="mhd"><span class="mht" id="m-printer-title">Tambah Printer</span><button class="xb" onclick="cm('m-printer')">×</button></div>
@@ -1380,24 +1486,33 @@ tr:hover td{background:#FAFAF7}
     <div class="fg"><label>Satuan</label>
       <select id="msvc-unit"><option value="kg">kg (berlaku minimum berat)</option><option value="pcs">pcs / item</option><option value="set">set</option><option value="m2">m²</option></select>
     </div>
-    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Kategori</div>
-    <div class="g3">
-      <div class="fg" style="margin-bottom:0"><label>Regular</label><input type="number" id="msvc-r" placeholder="0" min="0"></div>
-      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msvc-sd" placeholder="0" min="0"></div>
-      <div class="fg" style="margin-bottom:0"><label>Express</label><input type="number" id="msvc-e" placeholder="0" min="0"></div>
+    <div class="fg"><label>Deskripsi (opsional)</label><input id="msvc-desc" placeholder="Contoh: Cuci karpet bersih dengan mesin khusus"></div>
+    <div class="fg" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
+      <label style="margin-bottom:0">Tampilkan di pesanan</label>
+      <button class="toggle on" id="msvc-active-btn" onclick="_toggleMsvcActive()"></button>
+      <input type="hidden" id="msvc-active" value="1">
     </div>
+    <div class="div_" style="margin:12px 0 10px"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Tier</div>
+    <div id="msvc-price-rows"></div>
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-svc')">Batal</button><button class="btn bp" onclick="saveSvc()">Simpan</button></div>
 </div></div>
 <div class="mbg" id="m-satuan-item"><div class="mbox"><div class="mhd"><span class="mht" id="m-sat-title">Tambah Item Satuan</span><button class="xb" onclick="cm('m-satuan-item')">×</button></div>
   <div class="mbd">
     <div class="fg"><label>Nama Item *</label><input id="msat-name" placeholder="Contoh: Bed Cover"></div>
-    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Kategori (per pcs)</div>
-    <div class="g3">
-      <div class="fg" style="margin-bottom:0"><label>Regular</label><input type="number" id="msat-r" placeholder="0" min="0"></div>
-      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msat-sd" placeholder="0" min="0"></div>
-      <div class="fg" style="margin-bottom:0"><label>Express</label><input type="number" id="msat-e" placeholder="0" min="0"></div>
+    <div class="fg"><label>Satuan</label>
+      <select id="msat-unit"><option value="pcs">pcs</option><option value="item">item</option><option value="lembar">lembar</option><option value="pasang">pasang</option><option value="kg">kg</option></select>
     </div>
+    <div class="fg"><label>Deskripsi (opsional)</label><input id="msat-desc" placeholder="Contoh: Termasuk cuci, kering, lipat"></div>
+    <div class="fg" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
+      <label style="margin-bottom:0">Tampilkan di pesanan</label>
+      <button class="toggle on" id="msat-active-btn" onclick="_toggleMsatActive()"></button>
+      <input type="hidden" id="msat-active" value="1">
+    </div>
+    <div class="div_" style="margin:12px 0 10px"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Tier</div>
+    <div id="msat-price-rows"></div>
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-satuan-item')">Batal</button><button class="btn bp" onclick="saveSatuanItem()">Simpan</button></div>
 </div></div>
