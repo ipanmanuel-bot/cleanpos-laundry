@@ -2821,45 +2821,60 @@ function renderSatuanItemsList(){}
 // ─── New Order: visual type/tier cards ───
 function _noRebuildSvcCards(){
   const el=g('no-stype-cards');if(!el)return;
-  const curType=g('no-type')?.value||'';
-  const svcList=serviceTypes.filter(s=>s.active!==false);
-  let html='';
-  svcList.forEach(s=>{
-    const on=curType===s.id;
-    html+=`<div class="no-stype-card${on?' on':''}" onclick="_noPickType('${s.id}')">
-      <div style="font-size:22px">${s.unit==='kg'?'⚖️':'📦'}</div>
-      <div style="font-weight:700;font-size:13px">${esc(s.name)}</div>
-      <div style="font-size:11px;color:var(--t2)">per ${esc(s.unit)}</div>
-    </div>`;
-  });
-  html+=`<div class="no-stype-card${curType==='satuan'?' on':''}" onclick="_noPickType('satuan')">
-    <div style="font-size:22px">👔</div>
-    <div style="font-weight:700;font-size:13px">Satuan</div>
-    <div style="font-size:11px;color:var(--t2)">per pcs</div>
-  </div>`;
-  el.innerHTML=html;
+  const curType=g('no-type')?.value||'kiloan';
+  const types=[
+    {key:'kiloan',label:'Kiloan',desc:'Layanan berbasis berat (kg)'},
+    {key:'satuan',label:'Satuan',desc:'Layanan berbasis item / pcs'}
+  ];
+  el.innerHTML=types.map(t=>`
+    <div class="no-type-card${curType===t.key?' on':''}" onclick="_noPickType('${t.key}')">
+      <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
+      <div class="no-type-body">
+        <div class="no-type-lbl">${t.label}</div>
+        <div class="no-type-desc">${t.desc}</div>
+      </div>
+      <div class="no-type-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+  `).join('');
 }
 function _noRebuildTierCards(){
   const el=g('no-tier-cards');if(!el)return;
   const curCat=g('no-cat')?.value||'regular';
   const activeTiers=_activePoOptions();
+  const tierSect=g('no-tier-sect');
+  const type=g('no-type')?.value||'kiloan';
+  // Hide tier section for satuan (per-item tier selection)
+  if(tierSect) tierSect.style.display=(type==='satuan'?'none':'block');
   el.style.gridTemplateColumns=`repeat(${Math.max(activeTiers.length,1)},1fr)`;
   el.innerHTML=activeTiers.map(po=>`
-    <div class="no-tier-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}')">
-      <div style="font-weight:700;font-size:13px">${esc(po.label)}</div>
-      ${po.est?`<div style="font-size:10px;color:var(--t2);margin-top:3px">${esc(po.est)}</div>`:''}
+    <div class="no-type-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}')" style="padding:10px 12px">
+      <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
+      <div class="no-type-body">
+        <div class="no-type-lbl" style="font-size:12px">${esc(po.label)}</div>
+        ${po.est?`<div class="no-type-desc">${esc(po.est)}</div>`:''}
+      </div>
     </div>
   `).join('');
 }
-function _noPickType(val){
-  const sel=g('no-type');if(sel){sel.value=val;}
-  _noRebuildSvcCards();
-  typeChange('no');
+function _noPickType(key){
+  const inp=g('no-type');if(inp)inp.value=key;
+  // Show/hide kg vs satuan sections
+  const kgSect=g('no-kg-sect');const satSect=g('no-satuan-sect');
+  if(kgSect)kgSect.style.display=(key==='kiloan'?'block':'none');
+  if(satSect)satSect.style.display=(key==='satuan'?'block':'none');
+  // Update card styling (only service type cards, not tier cards)
+  const svcGrid=g('no-stype-cards');
+  if(svcGrid)svcGrid.querySelectorAll('.no-type-card').forEach(c=>{
+    const onclick=c.getAttribute('onclick')||'';
+    c.classList.toggle('on',onclick.includes(`'${key}'`));
+  });
+  if(typeof _noRebuildTierCards==='function')_noRebuildTierCards();
+  if(key==='satuan'&&typeof buildSatuanOrderItems==='function')buildSatuanOrderItems('no');
+  calcO();
 }
 function _noPickTier(key){
   const sel=g('no-cat');if(sel){sel.value=key;}
   _noRebuildTierCards();
-  const satSel=g('no-sat-sel');if(satSel)_noUpdateSatSelPrices();
   catChange('no');
 }
 function _noUpdateSatSelPrices(){

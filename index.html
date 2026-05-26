@@ -361,7 +361,7 @@ tr:hover td{background:#F6F7F9}
 .ptab-btn{padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:var(--t2);border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit;transition:color .2s,border-color .2s;white-space:nowrap}
 .ptab-btn.on{color:var(--p);border-bottom-color:var(--p)}
 .ptab-pane{display:none}.ptab-pane.on{display:block}
-.pricing-split{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+.pricing-split{display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start}
 @media(max-width:900px){.pricing-split{grid-template-columns:1fr}}
 .prc-tbl{width:100%;border-collapse:collapse}
 .prc-tbl th{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;padding:11px 16px;border-bottom:2px solid var(--b1);text-align:left;white-space:nowrap}
@@ -377,7 +377,67 @@ tr:hover td{background:#F6F7F9}
 .prc-opts-hdr{padding:14px 16px;border-bottom:1px solid var(--b1)}
 .svc-card{border:1.5px solid var(--b1);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .15s}
 .svc-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
-/* ── New Order ── */
+/* ── New Order page ─────────────────────────── */
+.no-layout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+@media(max-width:960px){.no-layout{grid-template-columns:1fr}}
+.no-step-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:20px 24px;margin-bottom:16px}
+.no-step-hdr{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.no-step-num{width:28px;height:28px;border-radius:50%;background:var(--p);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.no-step-title{font-size:14px;font-weight:700;color:var(--t1)}
+.no-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.no-type-card{border:2px solid var(--b1);border-radius:12px;padding:14px 16px;cursor:pointer;position:relative;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:12px}
+.no-type-card.on{border-color:var(--p);background:var(--pl)}
+.no-type-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:border-color .15s}
+.no-type-card.on .no-type-radio{border-color:var(--p)}
+.no-type-radio-dot{width:8px;height:8px;border-radius:50%;background:var(--p);display:none}
+.no-type-card.on .no-type-radio-dot{display:block}
+.no-type-check{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;background:var(--p);display:none;align-items:center;justify-content:center}
+.no-type-card.on .no-type-check{display:flex}
+.no-type-body{flex:1;min-width:0}
+.no-type-lbl{font-size:13px;font-weight:700;color:var(--t1)}
+.no-type-desc{font-size:11px;color:var(--t2);margin-top:2px}
+.sat-add-row{display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:8px;align-items:center;margin-bottom:12px}
+@media(max-width:700px){.sat-add-row{grid-template-columns:1fr 1fr;row-gap:8px}}
+.sat-est-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;white-space:nowrap}
+.sat-price-lbl{font-size:12px;color:var(--t2);white-space:nowrap}
+.sat-cart-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.sat-cart-tbl th{text-align:left;padding:9px 10px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;border-bottom:2px solid var(--b1);white-space:nowrap}
+.sat-cart-tbl td{padding:9px 10px;border-bottom:1px solid var(--b1);vertical-align:middle}
+.sat-cart-tbl tr:last-child td{border-bottom:none}
+.sat-cart-tbl tr:hover td{background:#F6F7F9}
+.sat-cart-wrap{border:1.5px solid var(--b1);border-radius:10px;overflow:hidden;margin-top:8px}
+.sat-info-tip{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;background:#e3f2fd;border-radius:8px;font-size:12px;color:#1565c0;margin-top:8px}
+.no-addon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:600px){.no-addon-grid{grid-template-columns:1fr 1fr}}
+.no-addon-card{border:2px solid var(--b1);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.no-addon-card.on{border-color:var(--p);background:var(--pl)}
+.no-addon-name{font-size:12px;font-weight:700;color:var(--t1)}
+.no-addon-price{font-size:11px;color:var(--t2);margin-top:2px}
+.no-addon-check{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--p);display:none;align-items:center;justify-content:center}
+.no-addon-card.on .no-addon-check{display:flex}
+/* Summary sidebar */
+.no-sum-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;overflow:hidden;position:sticky;top:16px}
+.no-sum-hdr{padding:16px 20px;border-bottom:1.5px solid var(--b1);font-size:14px;font-weight:700;color:var(--t1)}
+.no-sum-body{padding:16px 20px}
+.no-sum-cust{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--b1)}
+.no-sum-av{width:40px;height:40px;border-radius:50%;background:var(--p);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.no-sum-av-info{flex:1;min-width:0}
+.no-sum-av-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.no-sum-av-phone{font-size:11px;color:var(--t2)}
+.no-sum-edit-btn{font-size:11px;color:var(--p);cursor:pointer;font-weight:600;white-space:nowrap}
+.no-sum-sect-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:12px}
+.no-sum-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:3px 0}
+.no-sum-row.total{font-size:16px;font-weight:800;color:var(--p);padding:8px 0;border-top:2px solid var(--b1);margin-top:4px}
+.no-sum-item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--b1)}
+.no-sum-item-row:last-child{border-bottom:none}
+.no-sum-item-name{flex:1;min-width:0}
+.no-sum-item-badge{font-size:10px;color:var(--t2);display:block;margin-top:1px}
+.no-sum-item-val{font-weight:600;text-align:right;white-space:nowrap}
+.no-sum-discount{color:var(--p);font-size:12px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;margin:8px 0}
+.no-sum-pay{padding:16px 20px;border-top:1.5px solid var(--b1)}
+.no-sum-savebtn{width:100%;padding:14px;border:none;border-radius:10px;background:var(--p);color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-top:12px;font-family:inherit;transition:opacity .15s}
+.no-sum-savebtn:hover{opacity:.9}
+/* ── Legacy New Order (keep for SNO compatibility) ── */
 .no-stype{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
 .no-stype-card{border:2px solid var(--b1);border-radius:12px;padding:14px 10px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--ca)}
 .no-stype-card.on{border-color:var(--p);background:var(--pl)}
@@ -701,106 +761,152 @@ tr:hover td{background:#F6F7F9}
 
 <!-- NEW ORDER -->
 <div class="page" id="o-p-new-order">
-  <div class="pt">Buat Pesanan Baru</div>
-  <div class="g2 og">
+  <div class="sh" style="margin-bottom:20px">
+    <div><div class="pt">Buat Pesanan Baru</div></div>
+    <button class="btn" onclick="saveDraft()" style="flex-shrink:0">Simpan sebagai Draft</button>
+  </div>
+  <div class="no-layout">
+    <!-- ── LEFT: Steps ───────────────────────── -->
     <div>
-      <!-- Step 1: Customer -->
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-          <div style="width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
-          <div class="ct" style="margin-bottom:0">Data Pelanggan</div>
+      <!-- Step 1: Data Pelanggan -->
+      <div class="no-step-card">
+        <div class="no-step-hdr">
+          <div class="no-step-num">1</div>
+          <div class="no-step-title">Data Pelanggan</div>
         </div>
-        <div class="fg"><label>Outlet</label><select id="no-outlet"></select></div>
-        <div class="fg" style="position:relative;margin-bottom:10px">
-          <label>Cari Pelanggan Lama</label>
-          <input id="no-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('no')" autocomplete="off">
-          <div id="no-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
+        <div class="g2" style="margin-bottom:12px">
+          <div class="fg"><label>Outlet *</label><select id="no-outlet" onchange="calcO()"></select></div>
+          <div class="fg"><label>Cari Pelanggan Lama</label><input id="no-cust-search" placeholder="Nama / No. WA..." oninput="searchCust('no',this.value)"><div id="no-cust-results" style="position:relative"></div></div>
         </div>
-        <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
-        <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('no')"></div>
-        <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="no-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
+        <div class="g2" style="margin-bottom:12px">
+          <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan" oninput="calcO()"></div>
+          <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="calcO()"></div>
+        </div>
+        <div class="fg"><label>Catatan</label><input id="no-note" placeholder="Catatan pesanan (opsional)" oninput="calcO()"></div>
       </div>
 
-      <!-- Step 2: Service Type -->
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-          <div style="width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
-          <div class="ct" style="margin-bottom:0">Jenis Layanan</div>
+      <!-- Step 2: Jenis Pesanan -->
+      <div class="no-step-card">
+        <div class="no-step-hdr">
+          <div class="no-step-num">2</div>
+          <div class="no-step-title">Jenis Pesanan</div>
         </div>
-        <!-- Hidden selects (still used by calcBase, typeChange, catChange) -->
-        <select id="no-type" onchange="typeChange('no')" style="display:none"></select>
-        <select id="no-cat" onchange="catChange('no')" style="display:none">
-          <option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option>
-        </select>
-        <!-- Visual type cards (populated by _noRebuildSvcCards) -->
-        <div class="no-stype" id="no-stype-cards"></div>
-        <!-- Visual tier cards -->
-        <div class="no-tier" id="no-tier-cards"></div>
-        <div class="div_" style="margin-top:14px"></div>
+        <div class="no-type-grid" id="no-stype-cards">
+          <!-- Rendered by _noRebuildSvcCards() -->
+        </div>
+        <!-- hidden state inputs -->
+        <input type="hidden" id="no-type" value="kiloan">
+        <input type="hidden" id="no-cat" value="regular">
+        <input type="hidden" id="no-est">
+      </div>
+
+      <!-- Step 3: Detail Layanan -->
+      <div class="no-step-card" id="no-detail-step">
+        <div class="no-step-hdr">
+          <div class="no-step-num">3</div>
+          <div class="no-step-title" id="no-detail-step-title">Detail Layanan</div>
+        </div>
+
+        <!-- Kiloan section -->
+        <div id="no-kg-sect">
+          <div class="fg" style="margin-bottom:12px">
+            <label>Berat (kg)</label>
+            <input type="number" id="no-kg" step="0.1" min="0" value="1" oninput="calcO()" style="max-width:140px">
+          </div>
+        </div>
 
         <!-- Satuan section -->
         <div id="no-satuan-sect" style="display:none">
-          <div class="sat-picker">
-            <select id="no-sat-sel" style="flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none"></select>
-            <input type="number" id="no-sat-qty" value="1" min="1" step="1" style="width:62px;text-align:center;font-size:14px;font-weight:700;padding:7px 8px">
-            <button class="btn bp bsm" onclick="addToSatuanCart('no')">+ Tambah</button>
+          <div class="sat-add-row">
+            <select id="no-sat-sel" onchange="_noUpdateSatPrice()"><option value="">-- Pilih Item --</option></select>
+            <select id="no-sat-tier" onchange="_noUpdateSatPrice()" style="min-width:110px"><option value="">-- Opsi Harga --</option></select>
+            <span class="sat-est-badge" id="no-sat-est" style="display:none">2-3 Hari</span>
+            <input type="number" id="no-sat-qty" value="1" min="1" style="width:60px;text-align:center">
+            <span class="sat-price-lbl" id="no-sat-price"></span>
+            <button class="btn bp bsm" onclick="addToSatuanCart('no')">+ Tambah Item</button>
           </div>
-          <div id="no-satuan-items"></div>
-          <div class="div_"></div>
+          <div id="no-satuan-items">
+            <div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah Item.</div>
+          </div>
+          <div class="sat-info-tip">
+            <span>ℹ️</span>
+            <span>Pilih item, tentukan opsi harga dan qty, lalu klik 'Tambah Item'.</span>
+          </div>
         </div>
 
-        <!-- Kg section -->
-        <div id="no-kg-sect">
-          <div class="g2">
-            <div class="fg" style="margin-bottom:0"><label id="no-qty-lbl">Berat (kg) <span id="no-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
-              <input type="number" id="no-qty" value="1" min="0.5" step="0.5" oninput="calcO()">
-              <div id="no-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
-            </div>
-            <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="no-est" readonly style="color:var(--t2)"></div>
-          </div>
-          <div class="div_"></div>
+        <!-- Tier selection (shown for kiloan) -->
+        <div id="no-tier-sect" style="margin-top:4px">
+          <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Opsi Harga</div>
+          <div id="no-tier-cards" style="display:grid;gap:8px"></div>
         </div>
+      </div>
 
-        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Layanan Tambahan</div>
-        <div id="no-addons" class="g2"></div>
+      <!-- Step 4: Layanan Tambahan -->
+      <div class="no-step-card">
+        <div class="no-step-hdr">
+          <div class="no-step-num">4</div>
+          <div class="no-step-title">Layanan Tambahan</div>
+        </div>
+        <div class="no-addon-grid" id="no-addons"></div>
       </div>
     </div>
 
-    <!-- Right column: summary + payment -->
+    <!-- ── RIGHT: Summary ─────────────────────── -->
     <div>
-      <div id="no-promo-box"></div>
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-          <div style="width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
-          <div class="ct" style="margin-bottom:0">Ringkasan &amp; Bayar</div>
+      <div class="no-sum-card">
+        <div class="no-sum-hdr">Ringkasan Pesanan</div>
+        <div id="no-sum-body">
+          <!-- Rendered by _noUpdateSummary() -->
+          <div style="padding:20px;color:var(--t2);font-size:13px;text-align:center">Isi form di sebelah kiri untuk melihat ringkasan pesanan.</div>
         </div>
-        <div id="no-preview"></div>
-        <div class="div_"></div>
-        <div class="sr tot" style="margin-bottom:14px"><span>Total</span><span id="no-total" style="color:var(--p)">Rp 0</span></div>
-
-        <!-- Discount -->
-        <div class="g2" style="margin-bottom:10px">
-          <div class="fg" style="margin-bottom:0"><label>Diskon</label>
-            <select id="no-disc-type" onchange="calcO();discTypeChange('no')"><option value="none">— Tidak ada</option><option value="persen">% Persentase</option><option value="flat">Rp Nominal</option><option value="per_qty">Rp Per Kg/Pcs</option></select>
+        <div class="no-sum-pay">
+          <div class="fg" style="margin-bottom:10px">
+            <label>Metode Pembayaran</label>
+            <select id="no-pm" onchange="calcO()">
+              <option value="cash">Tunai</option>
+              <option value="transfer">Transfer</option>
+              <option value="qris">QRIS</option>
+              <option value="other">Lainnya</option>
+            </select>
           </div>
-          <div class="fg" id="no-dv-w" style="margin-bottom:0;display:none"><label id="no-dv-lbl">Nilai</label><input type="number" id="no-disc-val" value="0" min="0" oninput="calcO()"></div>
+          <div class="fg" style="margin-bottom:10px">
+            <label>Status Pembayaran</label>
+            <select id="no-ps" onchange="calcO()">
+              <option value="paid">Lunas</option>
+              <option value="dp">DP / Cicilan</option>
+              <option value="unpaid">Belum Bayar</option>
+            </select>
+          </div>
+          <div id="no-cash-sect">
+            <div class="fg" style="margin-bottom:6px">
+              <label>Uang Diterima</label>
+              <input type="number" id="no-cash" placeholder="0" oninput="calcO()">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0">
+              <span style="color:var(--t2)">Kembalian</span>
+              <span id="no-chg" style="font-weight:700">Rp 0</span>
+            </div>
+          </div>
+          <button class="no-sum-savebtn" onclick="submitOrder()">Simpan Pesanan</button>
         </div>
-        <div class="div_"></div>
-
-        <!-- Payment -->
-        <div class="g2">
-          <div class="fg" style="margin-bottom:0"><label>Metode</label><select id="no-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select></div>
-          <div class="fg" style="margin-bottom:0"><label>Status</label><select id="no-ps" onchange="dpTgl('no')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select></div>
-        </div>
-        <div id="no-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-top:6px;margin-bottom:0"></div>
-        <div class="fg" id="no-dp-g" style="display:none;margin-top:8px;margin-bottom:0"><label>Jumlah DP</label><input type="number" id="no-dp" placeholder="0"></div>
-        <div class="div_"></div>
-        <div class="fg"><label>Uang Diterima</label><input type="number" id="no-cash" oninput="calcChg('no')" placeholder="0"></div>
-        <div style="background:var(--bg);border-radius:10px;padding:12px;display:flex;justify-content:space-between;font-size:14px;margin-bottom:12px"><span>Kembalian</span><span id="no-chg" style="font-weight:700">Rp 0</span></div>
-        <button class="btn bp bfull bpill" onclick="submitO('o')">Simpan Pesanan</button>
       </div>
     </div>
   </div>
+
+  <!-- hidden promo/discount box (not visible by default) -->
+  <div id="no-promo-box" style="display:none">
+    <div class="fg"><label>Diskon / Promo</label>
+      <select id="no-promo" onchange="calcO()"><option value="">Tidak ada diskon</option></select>
+    </div>
+  </div>
+  <!-- hidden discount display -->
+  <span id="no-disc-display" style="display:none"></span>
+  <!-- hidden legacy elements for calcBase compatibility -->
+  <input type="hidden" id="no-qty" value="1">
+  <input type="hidden" id="no-total" value="">
+  <input type="hidden" id="no-disc-type" value="none">
+  <input type="hidden" id="no-disc-val" value="0">
+  <input type="hidden" id="no-preview">
 </div>
 
 <!-- TRACKING -->
