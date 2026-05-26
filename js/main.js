@@ -2271,12 +2271,11 @@ function toggleMembershipExpiry(){
 function _activePoOptions(){return priceOptions.filter(po=>po.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));}
 function _getPoLabel(key){return priceOptions.find(po=>po.key===key)?.label||key;}
 function _getPoEst(key){return priceOptions.find(po=>po.key===key)?.est||'';}
+function _minPrice(prices){const vals=priceOptions.filter(po=>po.active!==false).map(po=>prices?.[po.key]||0).filter(v=>v>0);return vals.length?Math.min(...vals):0;}
 
+// ─── Main entry ───
 function renderPricing(){
-  renderPriceOptionsList();
-  renderSvcTypeList();
-  renderSatuanItemsList();
-  renderAddonList();
+  _renderPricingTab(_pricingTab);
   buildOrderTypeDropdowns();
   rebuildPromoSvcSelect();
   _noRebuildSvcCards();
@@ -2288,32 +2287,247 @@ function setPricingTab(tab, btn){
   document.querySelectorAll('.ptab-btn').forEach(b=>b.classList.remove('on'));
   if(btn)btn.classList.add('on');
   ['kiloan','satuan','tambahan'].forEach(t=>{const p=g('ptab-'+t);if(p)p.classList.toggle('on',t===tab);});
+  _renderPricingTab(tab);
+  // update header actions
+  _renderPricingHeaderActions(tab);
 }
 
-// ─── Price Options ───
-function renderPriceOptionsList(){
-  const el=g('price-options-list');if(!el)return;
-  const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
-  el.innerHTML=tiers.map(po=>{
-    const on=po.active!==false;
-    return `<div class="po-row${on?'':" style='opacity:.55'"}">
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px">${esc(po.label)}</div>
-        <div style="font-size:12px;color:var(--t2)">Estimasi: ${esc(po.est||'—')}</div>
+function _renderPricingHeaderActions(tab){
+  const el=g('prc-header-actions');if(!el)return;
+  if(tab==='kiloan'){
+    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('kiloan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Kiloan</button>
+    <button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan Kiloan</button>`;
+  }else if(tab==='satuan'){
+    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('satuan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Satuan</button>
+    <button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>`;
+  }else{
+    el.innerHTML=`<button class="btn bp bsm" onclick="openAddAddon()">+ Tambah Layanan Tambahan</button>`;
+  }
+}
+
+function _renderPricingTab(tab){
+  if(tab==='kiloan') _renderKiloanTab();
+  else if(tab==='satuan') _renderSatuanTab();
+  else _renderTambahanTab();
+  _renderPricingHeaderActions(tab);
+}
+
+// ─── Kiloan tab ───
+function _renderKiloanTab(){
+  const pane=g('ptab-kiloan');if(!pane)return;
+  const activePo=_activePoOptions();
+  const poCount=priceOptions.length;
+
+  let html=`<div class="prc-banner warn"><span style="font-size:16px;flex-shrink:0">💡</span><div>Semua layanan kiloan akan menggunakan set opsi harga yang sama. Ubah opsi harga di menu "Kelola Opsi Harga Kiloan".</div></div>`;
+  html+=`<div class="pricing-split">`;
+
+  // ── Left: service list ──
+  html+=`<div>
+    <div style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:2px">Daftar Layanan Kiloan</div>
+      <div style="font-size:12px;color:var(--t2)">Kelola item layanan kiloan yang tersedia di outlet Anda.</div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">
+      <table class="prc-tbl"><thead><tr>
+        <th>NAMA LAYANAN</th><th>SATUAN</th><th>HARGA DASAR</th><th>STATUS</th><th>AKSI</th>
+      </tr></thead><tbody>`;
+  if(!serviceTypes.length){
+    html+=`<tr><td colspan="5" style="text-align:center;color:var(--t2);padding:20px">Belum ada layanan kiloan.</td></tr>`;
+  }else{
+    serviceTypes.forEach(s=>{
+      const active=s.active!==false;
+      const minP=_minPrice(s.prices||{});
+      const isKg=s.unit==='kg';
+      html+=`<tr>
+        <td><div style="font-weight:600">${esc(s.name)}</div>${s.desc?`<div style="font-size:11px;color:var(--t2)">${esc(s.desc)}</div>`:''}</td>
+        <td style="color:var(--t2)">${esc(s.unit)}</td>
+        <td>Mulai dari <strong>${fmt(minP)}</strong></td>
+        <td><span class="prc-badge-${active?'on':'off'}">${active?'Aktif':'Nonaktif'}</span></td>
+        <td><div style="display:flex;gap:6px;align-items:center">
+          <button class="btn bsm" title="Edit" onclick="openEditSvc('${s.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          ${serviceTypes.length>1?`<button class="btn bre bsm" title="Hapus" onclick="delSvc('${s.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`:``}
+        </div></td>
+      </tr>`;
+      if(isKg){
+        const ma=s.minKgApply||{};const mk=s.minKg||0;
+        html+=`<tr style="background:var(--bg)"><td colspan="5" style="padding:8px 12px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px">
+            <span style="font-weight:700;color:var(--t2);text-transform:uppercase;font-size:10px;letter-spacing:.05em">Min. Berat:</span>
+            <input type="number" id="mkg-${s.id}" value="${mk}" min="0" max="20" step="0.5" style="width:56px;font-size:13px;font-weight:700;text-align:center;padding:4px 6px">
+            <span style="font-weight:600">kg &nbsp; Berlaku:</span>
+            ${activePo.map(po=>`<label style="display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="mka-${s.id}-${po.key}" ${ma[po.key]?'checked':''} onchange="saveSvcMinKg('${s.id}')">&nbsp;${esc(po.label)}</label>`).join('')}
+            <button class="btn bp bsm bpill" onclick="saveSvcMinKg('${s.id}')">Simpan</button>
+          </div>
+        </td></tr>`;
+      }
+    });
+  }
+  html+=`</tbody></table></div>
+    <button class="btn bp bfull" onclick="openAddSvc()">+ Tambah Layanan Kiloan</button>
+  </div>`;
+
+  // ── Right: price options panel ──
+  html+=_renderPriceOptsPanel('Kiloan');
+  html+=`</div>`;
+  pane.innerHTML=html;
+}
+
+// ─── Satuan tab ───
+function _renderSatuanTab(){
+  const pane=g('ptab-satuan');if(!pane)return;
+  const activePo=_activePoOptions();
+
+  let html=`<div class="pricing-split">`;
+
+  // ── Left: satuan item list ──
+  html+=`<div>
+    <div style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Daftar Layanan Satuan</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="prc-sat-srch" class="ord-search" placeholder="Cari layanan satuan..." oninput="_filterSatuanList()" style="flex:1;min-width:0">
+        <button class="btn bsm" title="Filter" style="padding:8px 10px;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
       </div>
-      <button class="toggle ${on?'on':'off'}" onclick="togglePriceOptActive('${po.key}')"></button>
-      <button class="btn bsm" onclick="openEditPriceOpt('${po.key}')">Edit</button>
-    </div>`;
-  }).join('');
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px" id="prc-sat-tbl-wrap">`;
+  html+=_renderSatuanTable(satuanItems,activePo);
+  html+=`</div>
+    <button class="btn bp bfull" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>
+  </div>`;
+
+  // ── Right: price options panel ──
+  html+=_renderPriceOptsPanel('Satuan');
+  html+=`</div>`;
+  pane.innerHTML=html;
+}
+
+function _renderSatuanTable(items, activePo){
+  let html=`<table class="prc-tbl"><thead><tr>
+    <th>NAMA LAYANAN</th><th>SATUAN</th><th>HARGA DASAR</th><th>OPSI HARGA</th><th>STATUS</th><th>AKSI</th>
+  </tr></thead><tbody>`;
+  if(!items.length){
+    html+=`<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:20px">Belum ada item satuan. Klik + Tambah.</td></tr>`;
+  }else{
+    items.forEach(item=>{
+      const active=item.active!==false;
+      const minP=_minPrice(item.prices||{});
+      const opsiCount=activePo.length;
+      html+=`<tr>
+        <td><div style="font-weight:600">${esc(item.name)}</div>${item.desc?`<div style="font-size:11px;color:var(--t2)">${esc(item.desc)}</div>`:''}</td>
+        <td style="color:var(--t2)">${esc(item.unit||'pcs')}</td>
+        <td>Mulai dari <strong>${fmt(minP)}</strong></td>
+        <td><span class="badge gy" style="font-size:11px">${opsiCount} opsi</span></td>
+        <td><span class="prc-badge-${active?'on':'off'}">${active?'Aktif':'Nonaktif'}</span></td>
+        <td><div style="display:flex;gap:6px;align-items:center">
+          <button class="btn bsm" title="Pengaturan" onclick="openItemSettings('${item.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="btn bre bsm" title="Hapus" onclick="delSatuanItem('${item.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        </div></td>
+      </tr>`;
+    });
+  }
+  html+=`</tbody></table>`;
+  return html;
+}
+
+function _filterSatuanList(){
+  const q=(g('prc-sat-srch')?.value||'').toLowerCase().trim();
+  const filtered=q?satuanItems.filter(x=>x.name.toLowerCase().includes(q)):satuanItems;
+  const wrap=g('prc-sat-tbl-wrap');if(wrap)wrap.innerHTML=_renderSatuanTable(filtered,_activePoOptions());
+}
+
+// ─── Tambahan tab ───
+function _renderTambahanTab(){
+  const pane=g('ptab-tambahan');if(!pane)return;
+  let html=`<div style="margin-bottom:12px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:2px">Layanan Tambahan</div>
+    <div style="font-size:12px;color:var(--t2)">Otomatis muncul sebagai opsi centang di form Buat Pesanan.</div>
+  </div>`;
+  if(!addons.length){
+    html+=`<div style="text-align:center;padding:32px;color:var(--t2);background:var(--ca);border:1.5px solid var(--b1);border-radius:12px">Belum ada layanan tambahan.</div>`;
+  }else{
+    html+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px"><table class="prc-tbl"><thead><tr>
+      <th>NAMA</th><th>HARGA</th><th>SATUAN</th><th>AKSI</th>
+    </tr></thead><tbody>`;
+    addons.forEach(a=>{
+      html+=`<tr>
+        <td><input value="${esc(a.name)}" onchange="updAddon('${a.id}','name',this.value)" style="border:none;background:none;font-size:13px;font-weight:600;width:100%;padding:0;font-family:inherit;color:var(--t1)"></td>
+        <td><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:4px 6px"></td>
+        <td><select onchange="updAddon('${a.id}','unit',this.value)" style="font-size:12px;padding:4px 6px;width:120px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select></td>
+        <td><button class="btn bre bsm" onclick="delAddon('${a.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+  html+=`<button class="btn bp bfull" onclick="openAddAddon()">+ Tambah Layanan Tambahan</button>`;
+  pane.innerHTML=html;
+}
+
+// ─── Price Options right panel ───
+function _renderPriceOptsPanel(type){
+  const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const activeCount=tiers.filter(t=>t.active!==false).length;
+  let html=`<div class="prc-opts-panel">
+    <div class="prc-opts-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px">Opsi Harga ${esc(type)} (Universal)</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Opsi harga ini berlaku untuk semua layanan ${esc(type.toLowerCase())}.</div>
+        </div>
+        <span class="badge gy" style="font-size:11px;flex-shrink:0">${activeCount} Opsi</span>
+      </div>
+    </div>
+    <table class="prc-tbl"><thead><tr>
+      <th>OPSI HARGA</th><th>ESTIMASI</th><th>URUTAN</th><th>STATUS</th><th>AKSI</th>
+    </tr></thead><tbody>`;
+  tiers.forEach(po=>{
+    const on=po.active!==false;
+    html+=`<tr style="${on?'':'opacity:.55'}">
+      <td style="font-weight:600">${esc(po.label)}</td>
+      <td style="color:var(--t2)">${esc(po.est||'—')}</td>
+      <td style="color:var(--t2);text-align:center">${po.order||'—'}</td>
+      <td><span class="prc-badge-${on?'on':'off'}">${on?'Aktif':'Nonaktif'}</span></td>
+      <td><div style="display:flex;gap:5px;align-items:center">
+        <button class="toggle ${on?'on':'off'}" style="transform:scale(.75);transform-origin:left" onclick="togglePriceOptActive('${po.key}')"></button>
+        <button class="btn bsm" title="Edit" onclick="openEditPriceOpt('${po.key}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      </div></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>
+    <div style="padding:12px 16px;border-top:1px solid var(--b1)">
+      <button class="btn bfull" style="font-size:12px" onclick="openAddPriceOpt()">+ Tambah Opsi Harga</button>
+    </div>
+    <div class="prc-banner info" style="margin:0 12px 12px;border-radius:8px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <ul style="margin:0;padding-left:16px">
+        <li>Opsi harga yang diubah akan berlaku untuk semua layanan ${esc(type.toLowerCase())}.</li>
+        <li>Estimasi waktu ditampilkan saat membuat pesanan.</li>
+        <li>Urutan menentukan posisi opsi harga di form order.</li>
+      </ul>
+    </div>
+  </div>`;
+  return html;
+}
+
+// ─── Price Options modal (add/edit tier) ───
+function openPriceOptModal(type){
+  // Open the existing m-price-opt modal but just show the list — for now reuse openEditPriceOpt for first tier
+  // Actually just show a toast directing user to edit individual tiers
+  toast('Klik ✏️ pada baris opsi harga untuk mengedit.');
+}
+function openAddPriceOpt(){
+  _editPoKey=null;
+  const nextOrder=priceOptions.length?Math.max(...priceOptions.map(po=>po.order||0))+1:1;
+  g('m-po-title').textContent='Tambah Opsi Harga';
+  g('mpo-label').value='';
+  g('mpo-est').value='';
+  const btn=g('mpo-active-btn');if(btn){btn.classList.add('on');btn.classList.remove('off');}
+  if(g('mpo-active'))g('mpo-active').value='1';
+  openModal('m-price-opt');
 }
 
 function togglePriceOptActive(key){
   const po=priceOptions.find(x=>x.key===key);if(!po)return;
   po.active=!po.active;
-  renderPriceOptionsList();
-  renderSvcTypeList();
-  renderSatuanItemsList();
-  _noRebuildTierCards();
+  renderPricing();
   syncSettings();
   toast((po.active?'✓ Tier aktif: ':'Tier nonaktif: ')+po.label);
 }
@@ -2338,12 +2552,154 @@ function _toggleMpoActive(){
 
 function savePriceOpt(){
   const label=(g('mpo-label')?.value||'').trim();if(!label){toast('⚠️ Nama tier wajib diisi');return;}
-  const po=priceOptions.find(x=>x.key===_editPoKey);if(!po)return;
-  po.label=label;po.est=g('mpo-est')?.value||'';po.active=g('mpo-active').value==='1';
-  cm('m-price-opt');renderPricing();syncSettings();toast('✓ Tier diperbarui: '+label);_editPoKey=null;
+  const active=g('mpo-active').value==='1';
+  const est=g('mpo-est')?.value||'';
+  if(_editPoKey){
+    const po=priceOptions.find(x=>x.key===_editPoKey);if(!po)return;
+    po.label=label;po.est=est;po.active=active;
+  }else{
+    // new tier: generate a key from label
+    const key='tier_'+Date.now();
+    const nextOrder=priceOptions.length?Math.max(...priceOptions.map(po=>po.order||0))+1:1;
+    priceOptions.push({key,label,est,order:nextOrder,active});
+  }
+  cm('m-price-opt');renderPricing();syncSettings();
+  toast(_editPoKey?'✓ Tier diperbarui: '+label:'✓ Tier ditambahkan: '+label);_editPoKey=null;
 }
 
-// ─── Kiloan service type list ───
+// ─── Per-item sub-page (Satuan) ───
+let _itemPageId=null;
+function openItemSettings(id){
+  const item=satuanItems.find(x=>x.id===id);if(!item)return;
+  _itemPageId=id;
+  const mainPage=g('prc-main-page');const itemPage=g('prc-item-page');
+  if(mainPage)mainPage.style.display='none';if(itemPage)itemPage.style.display='';
+  _renderItemSettingsPage(item);
+}
+
+function backToPricingList(){
+  _itemPageId=null;
+  const mainPage=g('prc-main-page');const itemPage=g('prc-item-page');
+  if(mainPage)mainPage.style.display='';if(itemPage)itemPage.style.display='none';
+  // refresh satuan tab
+  if(_pricingTab==='satuan')_renderSatuanTab();
+}
+
+function _renderItemSettingsPage(item){
+  const activePo=_activePoOptions();
+  const allPo=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const active=item.active!==false;
+
+  let html=`
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="backToPricingList()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Kembali ke Daftar Layanan Satuan
+    </button>
+    <div style="flex:1"></div>
+    <button class="btn bre bsm" onclick="toggleItemActive('${item.id}')" id="item-toggle-btn">${active?'Nonaktifkan Layanan':'Aktifkan Layanan'}</button>
+  </div>
+  <div class="pt" style="margin-bottom:4px">Pengaturan: ${esc(item.name)} (${esc(item.unit||'pcs')})</div>
+  <div style="font-size:13px;color:var(--t2);margin-bottom:18px">Atur harga dasar dan opsi harga untuk item satuan ini.</div>
+  <div class="pricing-split">
+    <!-- Left: form -->
+    <div class="card">
+      <div class="fg"><label>Nama Layanan</label><input id="ips-name" value="${esc(item.name)}" placeholder="Nama item"></div>
+      <div class="fg"><label>Satuan</label>
+        <select id="ips-unit" style="padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none;width:100%">
+          ${['pcs','item','lembar','pasang','kg'].map(u=>`<option value="${u}" ${(item.unit||'pcs')===u?'selected':''}>${u}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Deskripsi (opsional)</label><input id="ips-desc" value="${esc(item.desc||'')}" placeholder="Contoh: Bed cover ukuran single/double/king"></div>
+      <div class="fg" style="margin-bottom:0">
+        <label>Harga Dasar</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="ips-base" value="${activePo.length?item.prices?.[activePo[0].key]||0:0}" min="0" style="flex:1;font-size:14px;font-weight:700;padding:8px 10px" oninput="_ipsUpdateBaseInPanel()">
+          <span style="color:var(--t2);font-size:13px">/ ${esc(item.unit||'pcs')}</span>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Harga mulai dari untuk opsi termurah.</div>
+      </div>
+      <div class="div_" style="margin:14px 0"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:600;font-size:14px">Status</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${active?'Aktif':'Nonaktif'}</div>
+        </div>
+        <button class="toggle ${active?'on':'off'}" id="ips-active-btn" onclick="_ipsToggleActive()"></button>
+        <input type="hidden" id="ips-active" value="${active?'1':'0'}">
+      </div>
+    </div>
+    <!-- Right: per-tier prices -->
+    <div class="prc-opts-panel">
+      <div class="prc-opts-hdr">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">Opsi Harga untuk ${esc(item.name)}</div>
+        <div style="font-size:12px;color:var(--t2)">Mengikuti set opsi harga satuan (Universal)</div>
+      </div>
+      <table class="prc-tbl"><thead><tr>
+        <th>OPSI HARGA</th><th>ESTIMASI</th><th>HARGA</th><th>URUTAN</th><th>STATUS</th><th></th>
+      </tr></thead><tbody id="ips-price-tbody">`;
+  allPo.forEach(po=>{
+    const on=po.active!==false;
+    const price=item.prices?.[po.key]||0;
+    html+=`<tr id="ips-row-${po.key}" style="${on?'':'opacity:.55'}">
+      <td style="font-weight:600">${esc(po.label)}</td>
+      <td style="color:var(--t2);font-size:12px">${esc(po.est||'—')}</td>
+      <td><input type="number" id="ips-price-${po.key}" value="${price}" min="0" style="width:90px;font-size:13px;font-weight:700;padding:5px 8px;text-align:right"></td>
+      <td style="color:var(--t2);text-align:center">${po.order||'—'}</td>
+      <td><span class="prc-badge-${on?'on':'off'}">${on?'Aktif':'Nonaktif'}</span></td>
+      <td><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer" onclick="document.getElementById('ips-price-${po.key}').focus()"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>
+      <div class="prc-banner info" style="margin:12px;border-radius:8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <ul style="margin:0;padding-left:16px">
+          <li>Harga dapat berbeda untuk setiap item satuan meskipun menggunakan opsi yang sama.</li>
+          <li>Ubah harga pada tabel di atas untuk item ini saja.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+    <button class="btn" onclick="backToPricingList()">Batal</button>
+    <button class="btn bp bpill" onclick="saveItemSettings()">Simpan Perubahan</button>
+  </div>`;
+
+  const el=g('prc-item-content');if(el)el.innerHTML=html;
+}
+
+function _ipsToggleActive(){
+  const cur=g('ips-active').value==='1';
+  g('ips-active').value=cur?'0':'1';
+  const btn=g('ips-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+}
+function _ipsUpdateBaseInPanel(){
+  const val=parseInt(g('ips-base')?.value)||0;
+  const activePo=_activePoOptions();
+  if(activePo.length){const el=g('ips-price-'+activePo[0].key);if(el)el.value=val;}
+}
+function toggleItemActive(id){
+  const item=satuanItems.find(x=>x.id===id);if(!item)return;
+  item.active=!(item.active!==false);
+  const btn=g('item-toggle-btn');if(btn)btn.textContent=item.active?'Nonaktifkan Layanan':'Aktifkan Layanan';
+  const ab=g('ips-active-btn');if(ab){ab.classList.toggle('on',item.active);ab.classList.toggle('off',!item.active);}
+  if(g('ips-active'))g('ips-active').value=item.active?'1':'0';
+  syncSettings();toast((item.active?'✓ Aktif: ':'Nonaktif: ')+item.name);
+}
+function saveItemSettings(){
+  const item=satuanItems.find(x=>x.id===_itemPageId);if(!item)return;
+  item.name=(g('ips-name')?.value||'').trim()||item.name;
+  item.unit=g('ips-unit')?.value||item.unit;
+  item.desc=g('ips-desc')?.value||'';
+  item.active=g('ips-active')?.value!=='0';
+  const prices={};
+  priceOptions.forEach(po=>{const el=g('ips-price-'+po.key);if(el)prices[po.key]=parseInt(el.value)||0;});
+  item.prices=prices;
+  buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();
+  toast('✓ Pengaturan '+item.name+' disimpan');
+  backToPricingList();
+}
+
+// ─── Service modal helpers ───
 function _renderSvcPriceRows(containerId, prices){
   const el=g(containerId);if(!el)return;
   const activeOpts=_activePoOptions();
@@ -2358,69 +2714,16 @@ function _renderSvcPriceRows(containerId, prices){
     </div>
   `).join('');
 }
-
 function _readSvcPriceRows(containerId){
   const prices={};
   priceOptions.forEach(po=>{const el=g(containerId+'-'+po.key);if(el)prices[po.key]=parseInt(el.value)||0;});
   return prices;
 }
 
-function renderSvcTypeList(){
-  const el=g('svc-type-list');if(!el)return;
-  if(!serviceTypes.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada layanan.</div>';return;}
-  const activeOpts=_activePoOptions();
-  const colHdr=activeOpts.map(po=>`<span>${esc(po.label)}</span>`).join('');
-  const cols='1fr '+activeOpts.map(()=>'88px').join(' ')+' 70px';
-  const hdr=`<div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Layanan</span>${colHdr}<span></span></div>`;
-  let rows='';
-  serviceTypes.forEach(s=>{
-    const isKg=s.unit==='kg';const ma=s.minKgApply||{};const mk=s.minKg||0;
-    rows+=`<div class="svc-card">`;
-    rows+=`<div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;${isKg?'margin-bottom:10px':''}" >`;
-    rows+=`<div><div style="font-weight:600;font-size:13px">${esc(s.name)}</div><div style="font-size:10px;color:var(--t2)">per ${esc(s.unit)}</div></div>`;
-    activeOpts.forEach(po=>{rows+=`<input type="number" value="${s.prices?.[po.key]||0}" min="0" onchange="updSvcPrice('${s.id}','${po.key}',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;});
-    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSvc('${s.id}')">Edit</button>${serviceTypes.length>1?`<button class="btn bre bsm" onclick="delSvc('${s.id}')">✕</button>`:''}</div>`;
-    rows+=`</div>`;
-    if(isKg){
-      rows+=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg);border-radius:8px">`;
-      rows+=`<span style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em">Min. Berat:</span>`;
-      rows+=`<input type="number" id="mkg-${s.id}" value="${mk}" min="0" max="20" step="0.5" style="width:64px;font-size:14px;font-weight:700;text-align:center">`;
-      rows+=`<span style="font-size:13px;font-weight:600">kg &nbsp; Berlaku:</span>`;
-      activeOpts.forEach(po=>{rows+=`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="mka-${s.id}-${po.key}" ${ma[po.key]?'checked':''} onchange="saveSvcMinKg('${s.id}')">&nbsp;${esc(po.label)}</label>`;});
-      rows+=`<button class="btn bp bsm bpill" onclick="saveSvcMinKg('${s.id}')">Simpan</button>`;
-      rows+=`</div>`;
-    }
-    rows+=`</div>`;
-  });
-  el.innerHTML=hdr+rows;
-}
 function saveSvcMinKg(id){const s=getSvcById(id);if(!s)return;const val=parseFloat(g('mkg-'+id)?.value)||0;s.minKg=val;const apply={};priceOptions.forEach(po=>{apply[po.key]=!!(g('mka-'+id+'-'+po.key)?.checked);});s.minKgApply=apply;calcO();calcS();syncSettings();toast('✓ Min. berat '+s.name+' diperbarui');}
-function renderSatuanItemsList(){
-  const el=g('satuan-items-list');if(!el)return;
-  const activeOpts=_activePoOptions();
-  if(!satuanItems.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada item. Klik + Tambah Item.</div>';return;}
-  let rows='';
-  satuanItems.forEach(item=>{
-    const active=item.active!==false;
-    rows+=`<div class="svc-card${active?'':' off_'}">`;
-    rows+=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">`;
-    rows+=`<div><div style="font-weight:600;font-size:14px">${esc(item.name)}</div>`;
-    rows+=`<div style="font-size:11px;color:var(--t2)">per ${esc(item.unit||'pcs')}${item.desc?` · ${esc(item.desc)}`:''}</div></div>`;
-    rows+=`<div style="display:flex;gap:4px;flex-shrink:0"><button class="btn bsm" onclick="openEditSatuanItem('${item.id}')">Edit</button><button class="btn bre bsm" onclick="delSatuanItem('${item.id}')">✕</button></div>`;
-    rows+=`</div>`;
-    rows+=`<div style="display:grid;grid-template-columns:repeat(${activeOpts.length},1fr);gap:8px">`;
-    activeOpts.forEach(po=>{
-      rows+=`<div style="background:var(--bg);border-radius:8px;padding:8px 10px;text-align:center">`;
-      rows+=`<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${esc(po.label)}</div>`;
-      rows+=`<input type="number" value="${item.prices?.[po.key]||0}" min="0" onchange="updSatuanItemPrice('${item.id}','${po.key}',this.value)" style="width:100%;font-size:14px;font-weight:700;text-align:center;padding:4px 6px">`;
-      rows+=`</div>`;
-    });
-    rows+=`</div></div>`;
-  });
-  el.innerHTML=rows;
-}
 function updSatuanItemPrice(id,cat,val){const item=satuanItems.find(x=>x.id===id);if(!item)return;item.prices[cat]=parseInt(val)||0;buildSatuanOrderItems('no');calcO();buildSatuanOrderItems('sno');calcS();syncSettings();}
 function updSvcPrice(id,cat,val){const s=getSvcById(id);if(!s)return;s.prices[cat]=parseInt(val)||0;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();}
+
 function buildOrderTypeDropdowns(){
   ['no-type','sno-type'].forEach(selId=>{
     const el=g(selId);if(!el)return;
@@ -2431,13 +2734,12 @@ function buildOrderTypeDropdowns(){
 }
 function rebuildPromoSvcSelect(){
   const el=g('mp-svc');if(!el)return;
-  const tierOpts=priceOptions.map(po=>`<option value="*-${po.key}">Semua - ${esc(po.label)}</option>`).join('');
   el.innerHTML='<option value="all">Semua Layanan</option>'+
     serviceTypes.map(s=>priceOptions.map(po=>`<option value="${s.id}-${po.key}">${s.name} ${esc(po.label)}</option>`).join('')).join('')+
     priceOptions.map(po=>`<option value="satuan-${po.key}">Satuan ${esc(po.label)}</option>`).join('');
 }
 
-// ─── Service modal helpers ───
+// ─── Kiloan/Satuan modals (add) ───
 function _toggleMsvcActive(){
   const cur=g('msvc-active').value==='1';
   g('msvc-active').value=cur?'0':'1';
@@ -2448,7 +2750,6 @@ function _toggleMsatActive(){
   g('msat-active').value=cur?'0':'1';
   const btn=g('msat-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
 }
-
 function openAddSvc(){
   editSvcId=null;
   g('m-svc-title').textContent='Tambah Jenis Layanan';
@@ -2478,18 +2779,12 @@ function saveSvc(){
   const desc=g('msvc-desc')?.value||'';
   const active=g('msvc-active')?.value!=='0';
   const prices=_readSvcPriceRows('msvc-price-rows');
-  if(editSvcId){
-    const s=getSvcById(editSvcId);
-    if(s){s.name=name;s.unit=unit;s.desc=desc;s.active=active;s.prices=prices;}
-  }else{
-    const id='svc'+svcCtr++;
-    serviceTypes.push({id,name,unit,desc,active,prices,minKg:0,minKgApply:{}});
-  }
+  if(editSvcId){const s=getSvcById(editSvcId);if(s){s.name=name;s.unit=unit;s.desc=desc;s.active=active;s.prices=prices;}}
+  else{const id='svc'+svcCtr++;serviceTypes.push({id,name,unit,desc,active,prices,minKg:0,minKgApply:{}});}
   cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();
   toast(editSvcId?'✓ Layanan diperbarui: '+name:'✓ Layanan ditambahkan: '+name);editSvcId=null;
 }
 function delSvc(id){if(serviceTypes.length<=1){toast('⚠️ Minimal harus ada 1 jenis layanan');return;}confirm_('Hapus Layanan?','Jenis layanan ini akan dihapus. Pesanan yang sudah ada tidak terpengaruh.',()=>{serviceTypes=serviceTypes.filter(s=>s.id!==id);renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('Layanan dihapus');});}
-
 function openAddSatuanItem(){
   editSatItemId=null;
   g('m-sat-title').textContent='Tambah Item Satuan';
@@ -2501,40 +2796,27 @@ function openAddSatuanItem(){
   _renderSvcPriceRows('msat-price-rows',{});
   openModal('m-satuan-item');
 }
-function openEditSatuanItem(id){
-  editSatItemId=id;const item=satuanItems.find(x=>x.id===id);if(!item)return;
-  g('m-sat-title').textContent='Edit Item: '+item.name;
-  if(g('msat-name'))g('msat-name').value=item.name;
-  if(g('msat-desc'))g('msat-desc').value=item.desc||'';
-  if(g('msat-unit'))g('msat-unit').value=item.unit||'pcs';
-  const active=item.active!==false;
-  if(g('msat-active'))g('msat-active').value=active?'1':'0';
-  const ab=g('msat-active-btn');if(ab){ab.classList.toggle('on',active);ab.classList.toggle('off',!active);}
-  _renderSvcPriceRows('msat-price-rows',item.prices||{});
-  openModal('m-satuan-item');
-}
+function openEditSatuanItem(id){openItemSettings(id);}
 function saveSatuanItem(){
   const name=(g('msat-name')?.value||'').trim();if(!name){toast('⚠️ Nama item wajib diisi');return;}
   const unit=g('msat-unit')?.value||'pcs';
   const desc=g('msat-desc')?.value||'';
   const active=g('msat-active')?.value!=='0';
   const prices=_readSvcPriceRows('msat-price-rows');
-  if(editSatItemId){
-    const item=satuanItems.find(x=>x.id===editSatItemId);
-    if(item){item.name=name;item.unit=unit;item.desc=desc;item.active=active;item.prices=prices;}
-  }else{
-    satuanItems.push({id:'sat'+satItemCtr++,name,unit,desc,active,prices});
-  }
+  if(editSatItemId){const item=satuanItems.find(x=>x.id===editSatItemId);if(item){item.name=name;item.unit=unit;item.desc=desc;item.active=active;item.prices=prices;}}
+  else{satuanItems.push({id:'sat'+satItemCtr++,name,unit,desc,active,prices});}
   cm('m-satuan-item');renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();
   toast(editSatItemId?'✓ Item diperbarui: '+name:'✓ Item ditambahkan: '+name);editSatItemId=null;
 }
 function delSatuanItem(id){confirm_('Hapus Item?','Item ini akan dihapus dari daftar Satuan.',()=>{satuanItems=satuanItems.filter(x=>x.id!==id);renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast('Item dihapus');});}
 
-function renderAddonList(){const el=g('addon-list');if(!el)return;el.innerHTML=addons.length?addons.map(a=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--b1);font-size:13px"><input value="${a.name}" onchange="updAddon('${a.id}','name',this.value)" style="flex:1;width:auto;font-size:13px;padding:6px 8px"><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:6px 8px"><select onchange="updAddon('${a.id}','unit',this.value)" style="width:110px;font-size:13px;padding:6px 8px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select><button class="btn bre bsm" onclick="delAddon('${a.id}')">✕</button></div>`).join(''):'<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';}
+function renderAddonList(){/* kept for compat, actual render is in _renderTambahanTab */}
 function updAddon(id,key,val){const a=addons.find(x=>x.id===id);if(!a)return;a[key]=key==='price'?parseInt(val)||0:val;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
-function delAddon(id){addons=addons.filter(x=>x.id!==id);renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
+function delAddon(id){addons=addons.filter(x=>x.id!==id);_renderTambahanTab();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
 function openAddAddon(){g('mad-n').value='';g('mad-p').value='';g('mad-u').value='flat';openModal('m-addon');}
-function saveAddon(){const name=g('mad-n').value.trim();if(!name){toast('⚠️ Nama wajib diisi');return;}addons.push({id:'a'+addonCtr++,name,price:parseInt(g('mad-p').value)||0,unit:g('mad-u').value});cm('m-addon');renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('✓ Layanan tambahan ditambahkan');}
+function saveAddon(){const name=g('mad-n').value.trim();if(!name){toast('⚠️ Nama wajib diisi');return;}addons.push({id:'a'+addonCtr++,name,price:parseInt(g('mad-p').value)||0,unit:g('mad-u').value});cm('m-addon');_renderTambahanTab();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('✓ Layanan tambahan ditambahkan');}
+function renderSvcTypeList(){}
+function renderSatuanItemsList(){}
 
 // ─── New Order: visual type/tier cards ───
 function _noRebuildSvcCards(){
@@ -2561,6 +2843,7 @@ function _noRebuildTierCards(){
   const el=g('no-tier-cards');if(!el)return;
   const curCat=g('no-cat')?.value||'regular';
   const activeTiers=_activePoOptions();
+  el.style.gridTemplateColumns=`repeat(${Math.max(activeTiers.length,1)},1fr)`;
   el.innerHTML=activeTiers.map(po=>`
     <div class="no-tier-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}')">
       <div style="font-weight:700;font-size:13px">${esc(po.label)}</div>
@@ -2576,7 +2859,6 @@ function _noPickType(val){
 function _noPickTier(key){
   const sel=g('no-cat');if(sel){sel.value=key;}
   _noRebuildTierCards();
-  // update sat picker prices
   const satSel=g('no-sat-sel');if(satSel)_noUpdateSatSelPrices();
   catChange('no');
 }

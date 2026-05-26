@@ -357,14 +357,24 @@ tr:hover td{background:#FAFAF7}
 .out-dd button:hover{background:var(--bg)}
 .out-dd button.danger{color:var(--re)}
 /* ── Pricing page ── */
-.ptab{display:flex;gap:4px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px}
-.ptab-btn{flex:1;padding:8px 12px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--t2);font-family:inherit}
-.ptab-btn.on{background:var(--ca);color:var(--p);box-shadow:0 1px 6px rgba(0,0,0,.1)}
+.ptab-bar{display:flex;border-bottom:2px solid var(--b1);margin-bottom:18px;gap:0}
+.ptab-btn{padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:var(--t2);border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit;transition:color .2s,border-color .2s;white-space:nowrap}
+.ptab-btn.on{color:var(--p);border-bottom-color:var(--p)}
 .ptab-pane{display:none}.ptab-pane.on{display:block}
-.po-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--b1);border-radius:10px;margin-bottom:8px;transition:border-color .15s,background .15s}
-.po-row.on{border-color:var(--p);background:var(--pl)}
-.po-row input[type=text],.po-row input[type=number]{border:1.5px solid var(--b1);border-radius:8px;padding:5px 8px;font-size:12px;font-family:inherit;background:var(--ca);color:var(--t1);outline:none}
-.po-row input[type=text]:focus,.po-row input[type=number]:focus{border-color:var(--p)}
+.pricing-split{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+@media(max-width:900px){.pricing-split{grid-template-columns:1fr}}
+.prc-tbl{width:100%;border-collapse:collapse}
+.prc-tbl th{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:2px solid var(--b1);text-align:left;white-space:nowrap}
+.prc-tbl td{padding:10px 12px;border-bottom:1px solid var(--b1);font-size:13px;vertical-align:middle}
+.prc-tbl tr:last-child td{border-bottom:none}
+.prc-tbl tbody tr:hover td{background:var(--bg)}
+.prc-badge-on{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32}
+.prc-badge-off{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--t2)}
+.prc-banner{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:14px}
+.prc-banner.warn{background:#fffde7;border:1px solid #f9a825;color:#795504}
+.prc-banner.info{background:#e3f2fd;border:1px solid #90caf9;color:#1565c0}
+.prc-opts-panel{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;overflow:hidden;position:sticky;top:16px}
+.prc-opts-hdr{padding:14px 16px;border-bottom:1px solid var(--b1)}
 .svc-card{border:1.5px solid var(--b1);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .15s}
 .svc-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
 /* ── New Order ── */
@@ -994,51 +1004,36 @@ tr:hover td{background:#FAFAF7}
 
 <!-- PRICING -->
 <div class="page" id="o-p-pricing">
-  <div class="pt">Harga &amp; Layanan</div>
 
-  <!-- Price Options (Tier Labels) -->
-  <div class="card" style="margin-bottom:14px">
-    <div class="sh" style="margin-bottom:10px">
+  <!-- ── Sub-page: per-item settings ── -->
+  <div id="prc-item-page" style="display:none">
+    <div id="prc-item-content"></div>
+  </div>
+
+  <!-- ── Main pricing page ── -->
+  <div id="prc-main-page">
+    <div class="sh" style="align-items:flex-start;margin-bottom:14px">
       <div>
-        <div class="ct" style="margin-bottom:2px">Opsi Harga</div>
-        <div style="font-size:12px;color:var(--t2)">Atur nama &amp; estimasi untuk setiap tier. Aktif/nonaktifkan tier sesuai kebutuhan.</div>
+        <div class="pt" style="margin-bottom:2px">Harga &amp; Layanan</div>
+        <div style="font-size:13px;color:var(--t2)">Kelola layanan dan harga sesuai kebutuhan bisnis Anda.</div>
       </div>
+      <div id="prc-header-actions" style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap"></div>
     </div>
-    <div id="price-options-list"></div>
-  </div>
 
-  <!-- Tabs -->
-  <div class="ptab">
-    <button class="ptab-btn on" onclick="setPricingTab('kiloan',this)">Kiloan</button>
-    <button class="ptab-btn" onclick="setPricingTab('satuan',this)">Satuan</button>
-    <button class="ptab-btn" onclick="setPricingTab('tambahan',this)">Tambahan</button>
-  </div>
-
-  <!-- Kiloan tab -->
-  <div class="ptab-pane on" id="ptab-kiloan">
-    <div class="sh" style="margin-bottom:12px">
-      <div style="font-size:12px;color:var(--t2)">Layanan berbasis berat (kg). Harga per kg per tier.</div>
-      <button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan</button>
+    <!-- Tab bar (underline) -->
+    <div class="ptab-bar">
+      <button class="ptab-btn on" onclick="setPricingTab('kiloan',this)">Kiloan</button>
+      <button class="ptab-btn" onclick="setPricingTab('satuan',this)">Satuan</button>
+      <button class="ptab-btn" onclick="setPricingTab('tambahan',this)">Tambahan</button>
     </div>
-    <div id="svc-type-list"></div>
-  </div>
 
-  <!-- Satuan tab -->
-  <div class="ptab-pane" id="ptab-satuan">
-    <div class="sh" style="margin-bottom:12px">
-      <div style="font-size:12px;color:var(--t2)">Item per pcs — harga per tier. Pelanggan dapat memilih beberapa item sekaligus.</div>
-      <button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Item</button>
-    </div>
-    <div id="satuan-items-list"></div>
-  </div>
+    <!-- Tab panes (content injected by JS) -->
+    <div class="ptab-pane on" id="ptab-kiloan"></div>
+    <div class="ptab-pane" id="ptab-satuan"></div>
+    <div class="ptab-pane" id="ptab-tambahan"></div>
 
-  <!-- Tambahan tab -->
-  <div class="ptab-pane" id="ptab-tambahan">
-    <div class="sh" style="margin-bottom:12px">
-      <div style="font-size:12px;color:var(--t2)">Otomatis muncul sebagai opsi centang di form Buat Pesanan.</div>
-      <button class="btn bp bsm" onclick="openAddAddon()">+ Tambah</button>
-    </div>
-    <div id="addon-list"></div>
+    <!-- Hidden containers kept for backward-compat (renderSvcTypeList etc.) -->
+    <div style="display:none"><div id="svc-type-list"></div><div id="satuan-items-list"></div><div id="addon-list"></div><div id="price-options-list"></div></div>
   </div>
 </div>
 
