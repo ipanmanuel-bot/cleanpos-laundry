@@ -2700,19 +2700,83 @@ function saveItemSettings(){
 }
 
 // ─── Service modal helpers ───
-function _renderSvcPriceRows(containerId, prices){
-  const el=g(containerId);if(!el)return;
-  const activeOpts=_activePoOptions();
-  el.innerHTML=activeOpts.map(po=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b1)">
-      <div>
-        <div style="font-size:13px;font-weight:600">${esc(po.label)}</div>
-        ${po.est?`<div style="font-size:10px;color:var(--t2)">${esc(po.est)}</div>`:''}
+function _getTierMeta(key, label) {
+  const k = (key + ' ' + label).toLowerCase();
+  if (k.includes('super') || k.includes('vip')) return {
+    bg:'#f3e5f5', fg:'#7b1fa2', badge_bg:'#e1bee7', badge_fg:'#6a1b9a',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>'
+  };
+  if (k.includes('express')) return {
+    bg:'#e3f2fd', fg:'#1565c0', badge_bg:'#bbdefb', badge_fg:'#0d47a1',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>'
+  };
+  if (k.includes('same') || k.includes('sameday')) return {
+    bg:'#fff3e0', fg:'#e65100', badge_bg:'#ffe0b2', badge_fg:'#bf360c',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+  };
+  if (k.includes('jam') || k.includes('hour')) return {
+    bg:'#fce4ec', fg:'#c62828', badge_bg:'#f8bbd0', badge_fg:'#b71c1c',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+  return {
+    bg:'#e8f5e9', fg:'#2e7d32', badge_bg:'#c8e6c9', badge_fg:'#1b5e20',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+}
+
+let _msvcPendingRefresh = false;
+function _msvcUnitChange() {
+  const unit = g('msvc-unit')?.value || 'kg';
+  const helpers = { kg:'Harga akan dihitung berdasarkan per kilogram.', pcs:'Harga akan dihitung per item / pcs.', pasang:'Harga akan dihitung per pasang.', meter:'Harga akan dihitung per meter.' };
+  const hlp = g('msvc-unit-helper'); if (hlp) hlp.textContent = helpers[unit] || '';
+  // Update all price labels in tier cards
+  const lbl = 'Harga per ' + unit;
+  document.querySelectorAll('.msvc-price-lbl').forEach(el => el.textContent = lbl);
+}
+
+function _renderSvcPriceRows(containerId, prices) {
+  const el = g(containerId); if (!el) return;
+  const activeOpts = _activePoOptions();
+  const unit = g('msvc-unit')?.value || 'kg';
+  if (!activeOpts.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--t2);font-size:13px;padding:16px 0">Belum ada tier harga. Klik "Tambah Tier" untuk menambahkan.</div>';
+    return;
+  }
+  el.innerHTML = activeOpts.map((po, idx) => {
+    const meta = _getTierMeta(po.key, po.label);
+    const price = prices?.[po.key] || 0;
+    const hasPrice = price > 0;
+    return `<div class="msvc-tier-card${hasPrice ? ' has-price' : ''}" id="msvc-tc-${po.key}" draggable="true"
+        ondragstart="_msvcDragStart(event,'${po.key}')"
+        ondragover="_msvcDragOver(event,'${po.key}')"
+        ondrop="_msvcDrop(event,'${po.key}')"
+        ondragend="_msvcDragEnd()">
+      <div class="msvc-tier-drag" title="Seret untuk reorder">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>
       </div>
-      <input type="number" id="${containerId}-${po.key}" value="${prices?.[po.key]||0}" min="0" placeholder="0"
-        style="width:100px;font-size:13px;padding:6px 8px;text-align:right">
-    </div>
-  `).join('');
+      <div class="msvc-tier-icon" style="background:${meta.bg};color:${meta.fg}">${meta.svg}</div>
+      <div class="msvc-tier-info">
+        <div class="msvc-tier-name">
+          ${esc(po.label)}
+          ${po.est ? `<span class="msvc-tier-badge" style="background:${meta.badge_bg};color:${meta.badge_fg}">${esc(po.est)}</span>` : ''}
+          ${hasPrice ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${meta.fg}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` : ''}
+        </div>
+        ${po.est ? `<div class="msvc-tier-est">Estimasi selesai ${esc(po.est)}</div>` : ''}
+      </div>
+      <div class="msvc-price-side">
+        <div class="msvc-price-lbl">Harga per ${esc(unit)}</div>
+        <div class="msvc-price-row">
+          <span class="msvc-price-rp">Rp</span>
+          <input type="number" class="msvc-price-input" id="${containerId}-${po.key}"
+            value="${price || ''}" min="0" placeholder="0"
+            oninput="_msvcPriceChange(this,'msvc-tc-${po.key}')">
+        </div>
+      </div>
+      <button class="msvc-tier-del" title="Hapus tier" onclick="_msvcDelTier('${po.key}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`;
+  }).join('');
 }
 function _readSvcPriceRows(containerId){
   const prices={};
@@ -2744,7 +2808,44 @@ function _toggleMsvcActive(){
   const cur=g('msvc-active').value==='1';
   g('msvc-active').value=cur?'0':'1';
   const btn=g('msvc-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+  const card=g('msvc-status-card');if(card)card.classList.toggle('active',!cur);
 }
+function _msvcPriceChange(input, cardId) {
+  const card = g(cardId); if (!card) return;
+  const val = parseFloat(input.value) || 0;
+  card.classList.toggle('has-price', val > 0);
+}
+
+let _msvcDragKey = null;
+function _msvcDragStart(e, key) { _msvcDragKey = key; e.currentTarget.classList.add('dragging'); }
+function _msvcDragEnd() {
+  _msvcDragKey = null;
+  document.querySelectorAll('.msvc-tier-card').forEach(c => c.classList.remove('dragging'));
+}
+function _msvcDragOver(e, key) { e.preventDefault(); }
+function _msvcDrop(e, targetKey) {
+  e.preventDefault();
+  if (!_msvcDragKey || _msvcDragKey === targetKey) return;
+  const fromIdx = priceOptions.findIndex(p => p.key === _msvcDragKey);
+  const toIdx = priceOptions.findIndex(p => p.key === targetKey);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const moved = priceOptions.splice(fromIdx, 1)[0];
+  priceOptions.splice(toIdx, 0, moved);
+  priceOptions.forEach((p, i) => p.order = i + 1);
+  const prices = _readSvcPriceRows('msvc-price-rows');
+  _renderSvcPriceRows('msvc-price-rows', prices);
+  syncSettings();
+}
+
+function _msvcDelTier(key) {
+  if (!confirm('Hapus tier ini? Harga layanan yang menggunakan tier ini akan ikut terhapus.')) return;
+  priceOptions = priceOptions.filter(p => p.key !== key);
+  const prices = _readSvcPriceRows('msvc-price-rows');
+  delete prices[key];
+  _renderSvcPriceRows('msvc-price-rows', prices);
+  syncSettings();
+}
+
 function _toggleMsatActive(){
   const cur=g('msat-active').value==='1';
   g('msat-active').value=cur?'0':'1';
@@ -2752,24 +2853,28 @@ function _toggleMsatActive(){
 }
 function openAddSvc(){
   editSvcId=null;
-  g('m-svc-title').textContent='Tambah Jenis Layanan';
+  const t=g('m-svc-title');if(t)t.textContent='Tambah Layanan Kiloan';
   if(g('msvc-name'))g('msvc-name').value='';
-  if(g('msvc-desc'))g('msvc-desc').value='';
-  if(g('msvc-unit'))g('msvc-unit').value='pcs';
+  if(g('msvc-desc')){g('msvc-desc').value='';const cnt=g('msvc-desc-cnt');if(cnt)cnt.textContent='0';}
+  if(g('msvc-unit'))g('msvc-unit').value='kg';
+  _msvcUnitChange();
   if(g('msvc-active'))g('msvc-active').value='1';
   const ab=g('msvc-active-btn');if(ab){ab.classList.add('on');ab.classList.remove('off');}
+  const sc=g('msvc-status-card');if(sc)sc.classList.add('active');
   _renderSvcPriceRows('msvc-price-rows',{});
   openModal('m-svc');
 }
 function openEditSvc(id){
   editSvcId=id;const s=getSvcById(id);if(!s)return;
-  g('m-svc-title').textContent='Edit Layanan: '+s.name;
+  const t=g('m-svc-title');if(t)t.textContent='Edit Layanan Kiloan';
   if(g('msvc-name'))g('msvc-name').value=s.name;
-  if(g('msvc-desc'))g('msvc-desc').value=s.desc||'';
-  if(g('msvc-unit'))g('msvc-unit').value=s.unit;
+  if(g('msvc-desc')){const desc=s.desc||'';g('msvc-desc').value=desc;const cnt=g('msvc-desc-cnt');if(cnt)cnt.textContent=desc.length;}
+  if(g('msvc-unit'))g('msvc-unit').value=s.unit||'kg';
+  _msvcUnitChange();
   const active=s.active!==false;
   if(g('msvc-active'))g('msvc-active').value=active?'1':'0';
   const ab=g('msvc-active-btn');if(ab){ab.classList.toggle('on',active);ab.classList.toggle('off',!active);}
+  const sc=g('msvc-status-card');if(sc)sc.classList.toggle('active',active);
   _renderSvcPriceRows('msvc-price-rows',s.prices||{});
   openModal('m-svc');
 }

@@ -439,6 +439,46 @@ tr:hover td{background:#F6F7F9}
 .no-sum-pay{padding:16px 20px;border-top:1.5px solid var(--b1)}
 .no-sum-savebtn{width:100%;padding:14px;border:none;border-radius:10px;background:var(--p);color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-top:12px;font-family:inherit;transition:opacity .15s}
 .no-sum-savebtn:hover{opacity:.9}
+/* ── m-svc modal redesign ─────────────────── */
+@media(min-width:600px){.msvc-modal{max-width:800px!important;width:calc(100vw - 40px)}}
+.msvc-body{display:grid;grid-template-columns:1fr 1px 1fr;min-height:0}
+@media(max-width:700px){.msvc-body{grid-template-columns:1fr}}
+.msvc-left{padding:24px}
+.msvc-right{padding:24px}
+.msvc-divider{background:var(--b1)}
+@media(max-width:700px){.msvc-divider{height:1px;width:100%}}
+.msvc-sec-hdr{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.msvc-sec-num{width:22px;height:22px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.msvc-sec-title{font-size:13px;font-weight:700;color:var(--t1)}
+.msvc-sub{font-size:11px;color:var(--t2);margin-top:3px}
+.msvc-status-card{border:1.5px solid var(--b1);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .15s,background .15s}
+.msvc-status-card.active{border-color:var(--p);background:var(--pl)}
+.msvc-status-lbl{font-size:13px;font-weight:600;color:var(--p)}
+.msvc-info-banner{background:#e8f4fd;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px;font-size:12px;color:#1a6ea8;display:flex;align-items:flex-start;gap:7px;margin-bottom:12px;line-height:1.5}
+.msvc-tier-card{border:1.5px solid var(--b1);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--ca);transition:border-color .15s,box-shadow .15s;cursor:default}
+.msvc-tier-card.has-price{border-color:var(--p);background:var(--pl)}
+.msvc-tier-card.dragging{opacity:.5;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.msvc-tier-drag{display:flex;flex-direction:column;gap:3px;cursor:grab;padding:2px 4px;flex-shrink:0;opacity:.4}
+.msvc-tier-drag:hover{opacity:.8}
+.msvc-tier-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.msvc-tier-info{flex:1;min-width:0}
+.msvc-tier-name{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.msvc-tier-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;white-space:nowrap}
+.msvc-tier-est{font-size:11px;color:var(--t2);margin-top:1px}
+.msvc-price-side{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.msvc-price-lbl{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.msvc-price-row{display:flex;align-items:center;border:1.5px solid var(--b1);border-radius:7px;overflow:hidden;background:var(--ca)}
+.msvc-price-rp{padding:5px 8px;font-size:12px;font-weight:700;background:var(--bg);border-right:1.5px solid var(--b1);color:var(--t2);flex-shrink:0;line-height:1.4}
+.msvc-price-input{border:none!important;border-radius:0!important;width:72px;text-align:right;font-size:13px;font-weight:700;padding:5px 7px!important;background:transparent!important;box-shadow:none!important}
+.msvc-price-input:focus{outline:none!important;border:none!important;box-shadow:none!important}
+.msvc-tier-del{width:26px;height:26px;border:none;background:none;cursor:pointer;color:#e53935;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s;flex-shrink:0;padding:0}
+.msvc-tier-del:hover{background:#ffebee}
+.msvc-add-tier{width:100%;padding:10px;border:1.5px dashed var(--b1);border-radius:10px;background:none;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;font-family:inherit;margin-top:4px}
+.msvc-add-tier:hover{background:var(--pl);border-color:var(--p)}
+.msvc-hint{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:5px;margin-top:10px;line-height:1.4}
+.msvc-icon-wrap{position:relative}
+.msvc-icon-wrap svg.msvc-field-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--t2)}
+.msvc-icon-wrap input,.msvc-icon-wrap select{padding-left:34px!important}
 /* ── Legacy New Order (keep for SNO compatibility) ── */
 .no-stype{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
 .no-stype-card{border:2px solid var(--b1);border-radius:12px;padding:14px 10px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--ca)}
@@ -1583,23 +1623,87 @@ tr:hover td{background:#F6F7F9}
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-printer')">Batal</button><button class="btn bp" onclick="savePrinter()">Simpan Printer</button></div>
 </div></div>
-<div class="mbg" id="m-svc"><div class="mbox"><div class="mhd"><span class="mht" id="m-svc-title">Tambah Jenis Layanan</span><button class="xb" onclick="cm('m-svc')">×</button></div>
-  <div class="mbd">
-    <div class="fg"><label>Nama Layanan *</label><input id="msvc-name" placeholder="Contoh: Cuci Karpet"></div>
-    <div class="fg"><label>Satuan</label>
-      <select id="msvc-unit"><option value="kg">kg (berlaku minimum berat)</option><option value="pcs">pcs / item</option><option value="set">set</option><option value="m2">m²</option></select>
+<div class="mbg" id="m-svc"><div class="mbox msvc-modal">
+  <div class="mhd" style="border-radius:20px 20px 0 0">
+    <div>
+      <div class="mht" id="m-svc-title">Tambah Layanan Kiloan</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px;display:flex;align-items:center;gap:5px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span id="m-svc-subtitle">Layanan berbasis berat. Harga dihitung per kilogram.</span>
+      </div>
     </div>
-    <div class="fg"><label>Deskripsi (opsional)</label><input id="msvc-desc" placeholder="Contoh: Cuci karpet bersih dengan mesin khusus"></div>
-    <div class="fg" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
-      <label style="margin-bottom:0">Tampilkan di pesanan</label>
-      <button class="toggle on" id="msvc-active-btn" onclick="_toggleMsvcActive()"></button>
-      <input type="hidden" id="msvc-active" value="1">
-    </div>
-    <div class="div_" style="margin:12px 0 10px"></div>
-    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Tier</div>
-    <div id="msvc-price-rows"></div>
+    <button class="xb" onclick="cm('m-svc')">×</button>
   </div>
-  <div class="mft"><button class="btn" onclick="cm('m-svc')">Batal</button><button class="btn bp" onclick="saveSvc()">Simpan</button></div>
+  <div class="msvc-body">
+    <!-- ── LEFT ───────────────────────────────── -->
+    <div class="msvc-left">
+      <!-- 1. Informasi Layanan -->
+      <div class="msvc-sec-hdr"><div class="msvc-sec-num">1</div><div class="msvc-sec-title">Informasi Layanan</div></div>
+      <div class="fg">
+        <label>Nama Layanan *</label>
+        <div class="msvc-icon-wrap">
+          <svg class="msvc-field-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg>
+          <input id="msvc-name" placeholder="Contoh: Cuci Kiloan">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Satuan *</label>
+        <div class="msvc-icon-wrap">
+          <svg class="msvc-field-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <select id="msvc-unit" onchange="_msvcUnitChange()">
+            <option value="kg">kg</option>
+            <option value="pcs">pcs</option>
+            <option value="pasang">pasang</option>
+            <option value="meter">meter</option>
+          </select>
+        </div>
+        <div class="msvc-sub" id="msvc-unit-helper">Harga akan dihitung berdasarkan per kilogram.</div>
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label>Deskripsi (opsional)</label>
+        <textarea id="msvc-desc" rows="4" placeholder="Contoh: Setrika dan lipat pakaian rapi." maxlength="150" oninput="document.getElementById('msvc-desc-cnt').textContent=this.value.length"></textarea>
+        <div style="text-align:right;font-size:11px;color:var(--t2);margin-top:2px"><span id="msvc-desc-cnt">0</span>/150</div>
+      </div>
+      <!-- 2. Status Layanan -->
+      <div style="margin-top:20px">
+        <div class="msvc-sec-hdr"><div class="msvc-sec-num">2</div><div class="msvc-sec-title">Status Layanan</div></div>
+        <div class="msvc-status-card active" id="msvc-status-card">
+          <div>
+            <div class="msvc-status-lbl">Aktifkan layanan di form pesanan</div>
+            <div class="msvc-sub" style="margin-top:3px">Layanan akan muncul saat membuat pesanan baru.</div>
+          </div>
+          <button class="toggle on" id="msvc-active-btn" onclick="_toggleMsvcActive()"></button>
+          <input type="hidden" id="msvc-active" value="1">
+        </div>
+      </div>
+    </div>
+    <!-- ── DIVIDER ─────────────────────────────── -->
+    <div class="msvc-divider"></div>
+    <!-- ── RIGHT ──────────────────────────────── -->
+    <div class="msvc-right">
+      <div class="msvc-sec-hdr"><div class="msvc-sec-num">3</div><div class="msvc-sec-title">Harga per Tier</div></div>
+      <div class="msvc-info-banner">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>Tambah tier sesuai kebutuhan laundry Anda.<br>Kosongkan harga atau set 0 jika tidak ingin menyediakan tier tersebut.</span>
+      </div>
+      <div id="msvc-price-rows"></div>
+      <button class="msvc-add-tier" onclick="openAddPriceOpt();_msvcPendingRefresh=true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tambah Tier
+      </button>
+      <div class="msvc-hint">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Urutan tier akan ditampilkan sesuai posisi di atas (dari atas ke bawah).
+      </div>
+    </div>
+  </div>
+  <div class="mft">
+    <button class="btn" onclick="cm('m-svc')">Batal</button>
+    <button class="btn bp" onclick="saveSvc()" style="display:inline-flex;align-items:center;gap:6px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Simpan Layanan
+    </button>
+  </div>
 </div></div>
 <div class="mbg" id="m-satuan-item"><div class="mbox"><div class="mhd"><span class="mht" id="m-sat-title">Tambah Item Satuan</span><button class="xb" onclick="cm('m-satuan-item')">×</button></div>
   <div class="mbd">
