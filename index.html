@@ -377,6 +377,54 @@ tr:hover td{background:#F6F7F9}
 .prc-opts-hdr{padding:14px 16px;border-bottom:1px solid var(--b1)}
 .svc-card{border:1.5px solid var(--b1);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .15s}
 .svc-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
+/* ── Kiloan tab redesign ─────────────────────── */
+.prc-svc-wrap{border:1.5px solid var(--b1);border-radius:12px;margin-bottom:10px;overflow:hidden;background:var(--ca)}
+.prc-svc-wrap.dragging{opacity:.5}
+.prc-svc-row{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.prc-svc-drag{flex-shrink:0;cursor:grab;color:var(--t2);opacity:.4;display:flex;align-items:center;padding:2px}
+.prc-svc-drag:hover{opacity:.8}
+.prc-svc-col-name{flex:1;min-width:0}
+.prc-svc-col-unit{width:48px;font-size:12px;color:var(--t2);flex-shrink:0;text-align:center}
+.prc-svc-col-price{width:150px;font-size:12px;color:var(--t1);flex-shrink:0}
+.prc-svc-col-status{width:72px;flex-shrink:0;text-align:center}
+.prc-svc-col-aksi{display:flex;gap:5px;flex-shrink:0}
+.prc-svc-settings{background:#fafafa;border-top:1px dashed var(--b1);padding:12px 14px 14px}
+.prc-svc-settings-hdr{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.prc-svc-settings-body{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.prc-minkg-group{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.prc-minkg-lbl{font-size:12px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:4px}
+.prc-minkg-input{width:60px;text-align:center;padding:5px 6px!important;font-size:13px;font-weight:700}
+.prc-tier-apply-group{flex:1;min-width:0}
+.prc-tier-apply-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.prc-tier-chips{display:flex;gap:6px;flex-wrap:wrap}
+.prc-tier-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px 4px 7px;border:1.5px solid var(--b1);border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;background:var(--ca);color:var(--t1);user-select:none;line-height:1}
+.prc-tier-chip:hover{border-color:var(--p);background:var(--pl)}
+.prc-tier-chip.on{border-color:var(--p);background:var(--pl);color:var(--p);font-weight:600}
+.prc-tier-chip svg.chip-off{display:block;opacity:.35}
+.prc-tier-chip svg.chip-on{display:none;color:var(--p)}
+.prc-tier-chip.on svg.chip-off{display:none}
+.prc-tier-chip.on svg.chip-on{display:block}
+.prc-svc-save-row{display:flex;justify-content:flex-end;margin-top:12px}
+.prc-col-hdr{display:flex;align-items:center;gap:10px;padding:7px 14px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--b1)}
+.prc-po-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1.5px solid var(--b1);border-radius:10px;margin-bottom:8px;background:var(--ca);transition:border-color .15s}
+.prc-po-row.prc-po-active{border-color:var(--p)}
+.prc-po-row.dragging{opacity:.4;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.prc-po-drag{flex-shrink:0;cursor:grab;opacity:.35;display:flex;align-items:center;padding:2px}
+.prc-po-drag:hover{opacity:.8}
+.prc-po-icon-cell{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.prc-po-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.prc-po-name-block{min-width:0}
+.prc-po-name{font-size:13px;font-weight:700;color:var(--t1)}
+.prc-po-est-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;display:inline-flex;margin-top:3px;white-space:nowrap}
+.prc-po-est-col{width:90px;font-size:12px;color:var(--t2);flex-shrink:0}
+.prc-po-order-col{width:40px;text-align:center;font-size:13px;font-weight:600;color:var(--t2);flex-shrink:0}
+.prc-po-status-col{display:flex;align-items:center;gap:6px;width:110px;flex-shrink:0}
+.prc-po-status-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.prc-po-aksi-col{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.prc-po-add-btn{width:100%;padding:11px;border:1.5px dashed var(--b1);border-radius:10px;background:none;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;font-family:inherit;margin-bottom:10px}
+.prc-po-add-btn:hover{background:var(--pl);border-color:var(--p)}
+.prc-po-info-box{background:#e8f4fd;border:1px solid #bee3f8;border-radius:8px;padding:12px 14px;font-size:12px;color:#1a6ea8;line-height:1.6}
+.prc-po-info-box ul{margin:4px 0 0;padding-left:16px}
 /* ── New Order page ─────────────────────────── */
 .no-layout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
 @media(max-width:960px){.no-layout{grid-template-columns:1fr}}
