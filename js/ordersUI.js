@@ -112,12 +112,6 @@ document.addEventListener('click', e => {
     if (wrap && !wrap.contains(e.target)) {
       const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
     }
-    // New (NO) search results
-    const searchEl = g(pre+'-cust-search');
-    const resultsEl = g(pre+'-cust-results');
-    if (resultsEl && searchEl && !searchEl.contains(e.target) && !resultsEl.contains(e.target)) {
-      resultsEl.innerHTML = '';
-    }
   });
 });
 
