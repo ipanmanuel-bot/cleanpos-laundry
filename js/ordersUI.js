@@ -321,25 +321,84 @@ function submitO(role) {
 }
 
 // ===== ORDERS LIST =====
-function setOrdOutlet(id) { ordOutlet = id; renderOrders(); }
+function setOrdOutlet(id) { ordOutlet = id; _ordPage = 1; _renderOrdFilterChips(); renderOrders(); }
+function setOrdFst(v) { ordFst = v; _ordPage = 1; _renderOrdFilterChips(); renderOrders(); }
+function setOrdFpy(v) { ordFpy = v; _ordPage = 1; _renderOrdFilterChips(); renderOrders(); }
 
 function setOrdDateFilter(f) {
-  ordDateFilter = f;
+  ordDateFilter = f; _ordPage = 1;
+  // Keep staff date buttons working
   ['all','today','week','month','custom'].forEach(k => {
-    const ob = g('odf-'+k);  if (ob) ob.className = 'btn bsm bpill' + (f===k?' bp':'');
     const sb = g('sodf-'+k); if (sb) sb.className = 'btn bsm bpill' + (f===k?' bp':'');
   });
-  const ocr = g('odf-custom-range');  if (ocr) ocr.style.display = f==='custom'?'flex':'none';
   const scr = g('sodf-custom-range'); if (scr) scr.style.display = f==='custom'?'flex':'none';
+  // Update owner filter panel
+  _renderOrdFilterChips();
+  const ocr = g('orf-custom-range'); if (ocr) ocr.style.display = f==='custom'?'flex':'none';
   renderOrders();
+}
+
+function resetOrdFilters() {
+  ordOutlet = 'all'; ordFst = ''; ordFpy = ''; ordDateFilter = 'all'; _ordPage = 1;
+  const ocr = g('orf-custom-range'); if (ocr) ocr.style.display = 'none';
+  _renderOrdFilterChips();
+  renderOrders();
+}
+
+function setOrdPage(p) {
+  _ordPage = Math.max(1, p);
+  renderOrders();
+}
+
+function openOrdFilterPanel() {
+  // Outlet chips
+  const oc = g('orf-outlet');
+  if (oc) oc.innerHTML = [{id:'all',name:'Semua'},...outlets.map(o=>({id:o.id,name:o.name}))]
+    .map(o=>`<button class="orf-chip${ordOutlet===o.id?' on':''}" onclick="setOrdOutlet('${o.id}')">${esc(o.name)}</button>`).join('');
+  // Status chips
+  const sc = g('orf-status');
+  if (sc) sc.innerHTML = ['Semua',...STATUS_LIST]
+    .map(s=>`<button class="orf-chip${(s==='Semua'?ordFst==='':ordFst===s)?' on':''}" onclick="setOrdFst('${s==='Semua'?'':s}')">${esc(s)}</button>`).join('');
+  // Pay chips
+  const pc = g('orf-pay');
+  if (pc) pc.innerHTML = ['Semua','Belum Bayar','DP','Lunas']
+    .map(p=>`<button class="orf-chip${(p==='Semua'?ordFpy==='':ordFpy===p)?' on':''}" onclick="setOrdFpy('${p==='Semua'?'':p}')">${esc(p)}</button>`).join('');
+  // Date chips
+  const dc = g('orf-date');
+  if (dc) dc.innerHTML = [{v:'all',l:'Semua'},{v:'today',l:'Hari Ini'},{v:'week',l:'Minggu Ini'},{v:'month',l:'Bulan Ini'},{v:'custom',l:'Custom'}]
+    .map(d=>`<button class="orf-chip${ordDateFilter===d.v?' on':''}" onclick="setOrdDateFilter('${d.v}')">${esc(d.l)}</button>`).join('');
+  const ocr = g('orf-custom-range'); if (ocr) ocr.style.display = ordDateFilter==='custom'?'flex':'none';
+  openModal('m-ord-filter');
+}
+
+// Re-render just the chips inside the open filter panel (keeps .on state in sync)
+function _renderOrdFilterChips() {
+  document.querySelectorAll('#orf-outlet .orf-chip').forEach(b => b.classList.toggle('on', b.textContent.trim()==='Semua'?ordOutlet==='all':b.onclick?.toString().includes(`'${ordOutlet}'`)));
+  document.querySelectorAll('#orf-status .orf-chip').forEach(b => { const v=b.getAttribute('onclick')?.match(/setOrdFst\('([^']*)'\)/)?.[1]??null; if(v!==null) b.classList.toggle('on',v===ordFst); });
+  document.querySelectorAll('#orf-pay    .orf-chip').forEach(b => { const v=b.getAttribute('onclick')?.match(/setOrdFpy\('([^']*)'\)/)?.[1]??null; if(v!==null) b.classList.toggle('on',v===ordFpy); });
+  document.querySelectorAll('#orf-date   .orf-chip').forEach(b => { const v=b.getAttribute('onclick')?.match(/setOrdDateFilter\('([^']*)'\)/)?.[1]??null; if(v!==null) b.classList.toggle('on',v===ordDateFilter); });
+}
+
+function _renderOrdActiveChips() {
+  const wrap = g('ord-active-chips'); if (!wrap) return;
+  const dtL = {today:'Hari Ini',week:'Minggu Ini',month:'Bulan Ini',custom:'Custom'};
+  const chips = [];
+  if (ordOutlet !== 'all') { const oc=go(ordOutlet); chips.push(`<span class="ofc ofc-out">${esc(oc?.name||ordOutlet)}<button class="ofc-x" onclick="setOrdOutlet('all')">×</button></span>`); }
+  if (ordFst !== '')        chips.push(`<span class="ofc ofc-st">${esc(ordFst)}<button class="ofc-x" onclick="setOrdFst('')">×</button></span>`);
+  if (ordFpy !== '')        { const cls=ordFpy==='Lunas'?'ofc-pay-ok':ordFpy==='DP'?'ofc-pay-dp':'ofc-pay-no'; chips.push(`<span class="ofc ${cls}">${esc(ordFpy)}<button class="ofc-x" onclick="setOrdFpy('')">×</button></span>`); }
+  if (ordDateFilter!=='all') chips.push(`<span class="ofc ofc-dt">${dtL[ordDateFilter]||ordDateFilter}<button class="ofc-x" onclick="setOrdDateFilter('all')">×</button></span>`);
+  wrap.innerHTML = chips.join('');
+  wrap.style.display = chips.length ? 'flex' : 'none';
+  const cnt = chips.length;
+  const badge = g('ord-filter-badge'); if (badge) { badge.textContent=cnt; badge.style.display=cnt?'inline':'none'; }
+  const btn = g('ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
 }
 
 function renderOrders() {
   const isO = curRole === 'owner';
-  if (isO) { const oc = g('ord-outlet-chips'); if (oc) oc.innerHTML = buildOutletFilterChips(ordOutlet, 'setOrdOutlet'); }
   const q = ((isO ? g('o-srch') : g('s-srch'))?.value || '').toLowerCase();
-  const fs = (isO ? g('o-fst') : g('s-fst'))?.value || '';
-  const fp = isO ? (g('o-fpy')?.value || '') : '';
+  const fs = isO ? ordFst : (g('s-fst')?.value || '');
+  const fp = isO ? ordFpy : (g('s-fpy')?.value || '');
 
   // Date filter range
   let dateFrom = null, dateTo = null;
@@ -347,7 +406,7 @@ function renderOrders() {
     dateFrom = dateTo = TODAY_ISO;
   } else if (ordDateFilter === 'week') {
     const _d = new Date(); _d.setHours(0,0,0,0);
-    const _dow = (_d.getDay() + 6) % 7; // 0=Mon
+    const _dow = (_d.getDay() + 6) % 7;
     const _wkStart = new Date(_d); _wkStart.setDate(_wkStart.getDate() - _dow);
     dateFrom = _isoStr(_wkStart); dateTo = TODAY_ISO;
   } else if (ordDateFilter === 'month') {
@@ -355,12 +414,12 @@ function renderOrders() {
     dateFrom = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-01`;
     dateTo = TODAY_ISO;
   } else if (ordDateFilter === 'custom') {
-    dateFrom = (isO ? g('o-date-from') : g('s-date-from'))?.value || '';
-    dateTo   = (isO ? g('o-date-to')   : g('s-date-to'))?.value   || '';
+    dateFrom = g('o-date-from')?.value || '';
+    dateTo   = g('o-date-to')?.value   || '';
   }
 
-  const list = orders.filter(o => {
-    const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q);
+  const fullList = orders.filter(o => {
+    const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q));
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
     const matchO = isO ? (ordOutlet === 'all' || o.outletId === ordOutlet) : (curStaff ? o.outletId === curStaff.oid : true);
@@ -369,10 +428,26 @@ function renderOrders() {
     return matchQ && matchS && matchP && matchO && matchD;
   }).slice().sort((a, b) => (b.isoDate || '').localeCompare(a.isoDate || ''));
 
+  const _PER_PAGE = 10;
+  const _totalPages = Math.max(1, Math.ceil(fullList.length / _PER_PAGE));
+  if (_ordPage > _totalPages) _ordPage = _totalPages;
+  const list = fullList.slice((_ordPage - 1) * _PER_PAGE, _ordPage * _PER_PAGE);
+
+  if (isO) _renderOrdActiveChips();
+
+  // Mobile cards (owner only)
+  const cardWrap = isO ? g('ord-cards') : null;
+  if (cardWrap) _renderOrdCards(list, cardWrap);
+
+  // Table
   const tbId = isO ? 'ord-tb' : 's-ord-tb';
   const tb = g(tbId); if (!tb) return;
   const colspan = isO ? 11 : 9;
-  if (!list.length) { tb.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`; return; }
+  if (!fullList.length) {
+    tb.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`;
+    if (isO) _renderOrdPager(0, 1);
+    return;
+  }
   const waBtn = o => (o.status === 'Selesai' || o.status === 'Diambil')
     ? (o.waSent ? `<span class="badge gg">✓</span>` : `<button class="btn bp bsm" onclick="openWaMod('${o.id}')">💬</button>`)
     : '—';
@@ -403,6 +478,92 @@ function renderOrders() {
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
     </tr>`).join('');
   }
+  if (isO) _renderOrdPager(fullList.length, _totalPages);
+}
+
+function _renderOrdPager(total, totalPages) {
+  const wrap = g('ord-pager'); if (!wrap) return;
+  if (totalPages <= 1) { wrap.innerHTML = ''; return; }
+  const p = _ordPage;
+  let btns = '';
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= p - 1 && i <= p + 1)) {
+      btns += `<button class="btn bsm${i === p ? ' bp' : ''}" onclick="setOrdPage(${i})" style="min-width:32px;padding:4px 8px">${i}</button>`;
+    } else if (i === p - 2 || i === p + 2) {
+      btns += `<span style="align-self:center;color:var(--t2);padding:0 2px;font-size:13px">…</span>`;
+    }
+  }
+  wrap.innerHTML = `<div style="display:flex;align-items:center;gap:5px;justify-content:center;padding:12px 0 4px;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--t2);margin-right:4px">${total} pesanan</span>
+    <button class="btn bsm" onclick="setOrdPage(${p - 1})" ${p === 1 ? 'disabled' : ''} style="min-width:32px;padding:4px 8px">‹</button>
+    ${btns}
+    <button class="btn bsm" onclick="setOrdPage(${p + 1})" ${p === totalPages ? 'disabled' : ''} style="min-width:32px;padding:4px 8px">›</button>
+  </div>`;
+}
+
+const _IC_EYE = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const _IC_RECEIPT = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+const _IC_MSG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+const _IC_CHECK = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const _IC_TRASH = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+
+function _renderOrdCards(list, wrap) {
+  if (!list.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = list.map(o => {
+    const _oc = go(o.outletId);
+    const _ocColor = _oc?.color ? safeColor(_oc.color) : '#aaa';
+    const initials = o.name ? o.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase() : '?';
+    const canWa = o.status === 'Selesai' || o.status === 'Diambil';
+    const waAct = canWa ? (o.waSent
+      ? `<button class="oib grn" disabled title="WA terkirim" style="opacity:.5">${_IC_CHECK}</button>`
+      : `<button class="oib grn" onclick="openWaMod('${esc(o.id)}')" title="Kirim WA">${_IC_MSG}</button>`) : '';
+    return `<div class="ocard">
+      <div class="ocard-hd" onclick="toggleOrdCard('${esc(o.id)}')">
+        <div class="ocard-av">${initials}</div>
+        <div class="ocard-info">
+          <div class="ocard-name">${esc(o.name)}</div>
+          <div class="ocard-id">${esc(o.id)}</div>
+          <div class="ocard-tags">
+            <span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span>
+            <span class="badge ${SL_PAY[o.payStatus]}">${esc(o.payStatus)}</span>
+          </div>
+        </div>
+        <div class="ocard-rhs">
+          <div class="ocard-total">${fmt(o.total)}</div>
+          <svg class="ocard-chev" id="ochev-${esc(o.id)}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+      </div>
+      <div class="ocard-meta">
+        <span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span>
+        ${_oc ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${_ocColor}"></span><span style="font-weight:600;color:${_ocColor}">${esc(_oc.name)}</span>` : ''}
+        <span>${esc(o.date||'—')}</span>
+      </div>
+      <div class="ocard-body" id="obody-${esc(o.id)}" style="display:none">
+        <div class="ocard-dg">
+          <div><div class="ocard-dl">No. WA</div><div class="ocard-dv">${esc(o.phone||'—')}</div></div>
+          <div><div class="ocard-dl">Outlet</div><div class="ocard-dv">${esc(_oc?.name||'—')}</div></div>
+          <div><div class="ocard-dl">Total</div><div class="ocard-dv">${fmt(o.total)}</div></div>
+          <div><div class="ocard-dl">Tgl Masuk</div><div class="ocard-dv">${esc(o.date||'—')}</div></div>
+          ${o.pickupDate?`<div><div class="ocard-dl">Tgl Ambil</div><div class="ocard-dv">${esc(o.pickupDate)}</div></div>`:''}
+          ${o.notes?`<div style="grid-column:1/-1"><div class="ocard-dl">Catatan</div><div class="ocard-dv">${esc(o.notes)}</div></div>`:''}
+        </div>
+        <div class="ocard-acts">
+          <button class="oib blu" onclick="showDetail('${esc(o.id)}')" title="Detail">${_IC_EYE}</button>
+          <button class="oib" onclick="showRcpt('${esc(o.id)}')" title="Struk">${_IC_RECEIPT}</button>
+          ${waAct}
+          <button class="oib red" onclick="deleteOrder('${esc(o.id)}')" title="Hapus">${_IC_TRASH}</button>
+          <button class="btn bsm bp" onclick="openPayPicker('${esc(o.id)}',this)" style="margin-left:auto;border-radius:var(--rp)">${esc(o.payStatus)}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleOrdCard(id) {
+  const body = g('obody-'+id); const chev = g('ochev-'+id); if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (chev) chev.classList.toggle('open', open);
 }
 
 // ===== KANBAN / TRACKING =====
