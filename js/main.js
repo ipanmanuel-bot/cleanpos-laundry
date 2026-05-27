@@ -2632,12 +2632,13 @@ function openPriceOptModal(type){
 }
 function openAddPriceOpt(){
   _editPoKey=null;
-  const nextOrder=priceOptions.length?Math.max(...priceOptions.map(po=>po.order||0))+1:1;
   g('m-po-title').textContent='Tambah Opsi Harga';
+  if(g('m-po-subtitle'))g('m-po-subtitle').textContent='Buat tier baru untuk opsi harga kiloan yang berlaku untuk semua layanan.';
   g('mpo-label').value='';
   g('mpo-est').value='';
   const btn=g('mpo-active-btn');if(btn){btn.classList.add('on');btn.classList.remove('off');}
   if(g('mpo-active'))g('mpo-active').value='1';
+  if(g('mpo-active-lbl')){g('mpo-active-lbl').textContent='Aktif digunakan';g('mpo-active-lbl').style.color='var(--p)';}
   openModal('m-price-opt');
 }
 
@@ -2658,12 +2659,14 @@ function togglePriceOptActive(key){
 function openEditPriceOpt(key){
   _editPoKey=key;
   const po=priceOptions.find(x=>x.key===key);if(!po)return;
-  g('m-po-title').textContent='Edit Tier: '+po.label;
+  g('m-po-title').textContent='Edit Opsi Harga';
+  if(g('m-po-subtitle'))g('m-po-subtitle').textContent='Perbarui nama, estimasi, atau status tier ini.';
   g('mpo-label').value=po.label;
   g('mpo-est').value=po.est||'';
   const active=po.active!==false;
   g('mpo-active').value=active?'1':'0';
   const btn=g('mpo-active-btn');if(btn){btn.classList.toggle('on',active);btn.classList.toggle('off',!active);}
+  const lbl=g('mpo-active-lbl');if(lbl){lbl.textContent=active?'Aktif digunakan':'Nonaktif';lbl.style.color=active?'var(--p)':'var(--t2)';}
   openModal('m-price-opt');
 }
 
@@ -2671,6 +2674,7 @@ function _toggleMpoActive(){
   const cur=g('mpo-active').value==='1';
   g('mpo-active').value=cur?'0':'1';
   const btn=g('mpo-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+  const lbl=g('mpo-active-lbl');if(lbl){lbl.textContent=cur?'Nonaktif':'Aktif digunakan';lbl.style.color=cur?'var(--t2)':'var(--p)';}
 }
 
 function savePriceOpt(){
@@ -2982,12 +2986,7 @@ function buildOrderTypeDropdowns(){
     if(serviceTypes.find(s=>s.id===curVal)||curVal==='satuan')el.value=curVal;
   });
 }
-function rebuildPromoSvcSelect(){
-  const el=g('mp-svc');if(!el)return;
-  el.innerHTML='<option value="all">Semua Layanan</option>'+
-    serviceTypes.map(s=>priceOptions.map(po=>`<option value="${s.id}-${po.key}">${s.name} ${esc(po.label)}</option>`).join('')).join('')+
-    priceOptions.map(po=>`<option value="satuan-${po.key}">Satuan ${esc(po.label)}</option>`).join('');
-}
+// rebuildPromoSvcSelect is now a no-op stub (defined in promo section below)
 
 // ─── Kiloan/Satuan modals (add) ───
 function _toggleMsvcActive(){
@@ -3182,19 +3181,527 @@ function _noUpdateSatSelPrices(){
 }
 
 // ===== PROMO =====
+let _promoTabState = 'aktif';
+let _mpStep = 1;
+let _mpMaxStep = 1;
+let _mpState = {};
+const _DAYS_SHORT = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+const _DAY_VALS = ['0','1','2','3','4','5','6'];
+
 function isPromoToday(p){if(!p.active)return false;const dm=p.days.length===0||p.days.includes(String(TODAY_DAY));return dm&&(!p.from||TODAY_ISO>=p.from)&&(!p.to||TODAY_ISO<=p.to);}
+function isPromoScheduled(p){if(!p.active)return false;if(!p.from)return false;return p.from>TODAY_ISO;}
 function promoDiscLbl(p){if(p.discType==='persen')return `-${p.discVal}%`;if(p.discType==='flat')return `-${fmt(p.discVal)}`;return `-${fmt(p.discVal)}/qty`;}
-function renderPromo(){const el=g('promo-list');if(!el)return;if(!promos.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Belum ada promo.</div>';return;}const today=promos.filter(p=>isPromoToday(p));const rest=promos.filter(p=>!isPromoToday(p));let html='';if(today.length){html+=`<div style="font-size:11px;font-weight:700;color:var(--am);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">\uD83D\uDD25 Berlaku Hari Ini</div>`;today.forEach(p=>{html+=promoCard(p,true);});}if(rest.length){if(today.length)html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px">Promo Lainnya</div>';rest.forEach(p=>{html+=promoCard(p,false);});}el.innerHTML=html;}
-function promoCard(p,today){const dn=p.days.length?p.days.map(d=>DAYS_ID[parseInt(d)]).join(', '):'Setiap hari';return `<div class="pcrd${today?' pact':!p.active?' poff':''}"><div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">${esc(p.name)}</span>${today?'<span class="ptd">\uD83D\uDD25 Hari ini</span>':''}${!p.active?'<span class="badge gy">Nonaktif</span>':''}</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px"><span class="badge gbl">${SVC_LBL[p.svc]||esc(p.svc)}</span><span class="badge gr_" style="font-weight:700">${promoDiscLbl(p)}</span><span class="badge gp">\uD83D\uDCC5 ${dn}</span>${p.from||p.to?`<span class="badge gy">${esc(p.from||'\u2014')} s/d ${esc(p.to||'\u2014')}</span>`:''} ${p.outlets&&p.outlets.length?p.outlets.map(oid=>{const out=go(oid);return out?`<span class="badge" style="background:${safeColor(out.color)}18;color:${safeColor(out.color)}">${esc(out.name)}</span>`:''}).join(''):'<span class="badge gy">Semua Outlet</span>'}</div>${p.note?`<div style="font-size:12px;color:var(--t2)">${esc(p.note)}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px"><button class="toggle ${p.active?'on':'off'}" onclick="togglePromo('${p.id}')"></button><div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditPromo('${p.id}')">Edit</button><button class="btn bre bsm" onclick="delPromo('${p.id}')">Hapus</button></div></div></div></div>`;}
-function togglePromo(id){const p=promos.find(x=>x.id===id);if(!p)return;p.active=!p.active;renderPromo();syncSettings();toast((p.active?'\u2713 Promo aktif':'Promo nonaktif')+': '+p.name);}
+
+function _promoTabClick(el){
+  document.querySelectorAll('#promo-filter-tabs .promo-ftab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  _promoTabState=el.dataset.tab;
+  renderPromo();
+}
+
+function _promoSvcLbl(p){
+  if(p.targets){
+    const parts=[];
+    if(p.targets.kiloan&&p.targets.kiloan.length){
+      if(p.targets.kiloan[0]==='all')parts.push('Semua Kiloan');
+      else parts.push('Kiloan: '+p.targets.kiloan.map(k=>{const po=priceOptions.find(x=>x.key===k);return po?po.label:k;}).join(', '));
+    }
+    if(p.targets.satuan&&p.targets.satuan.length){
+      if(p.targets.satuan[0]==='all')parts.push('Semua Satuan');
+      else parts.push('Satuan');
+    }
+    return parts.join(' & ')||'Semua Layanan';
+  }
+  const SVC_LBL_={all:'Semua Layanan','kiloan-regular':'Kiloan Reguler','kiloan-sameday':'Kiloan Same Day','kiloan-express':'Kiloan Express','satuan-regular':'Satuan Reguler','satuan-sameday':'Satuan Same Day','satuan-express':'Satuan Express'};
+  return SVC_LBL_[p.svc]||p.svc||'—';
+}
+
+function _promoDayLbl(p){
+  if(!p.days||!p.days.length)return 'Setiap hari';
+  return p.days.map(d=>_DAYS_SHORT[parseInt(d)]||d).join(', ');
+}
+
+function _promoOutletLbl(p){
+  if(!p.outlets||!p.outlets.length)return 'Semua Outlet';
+  return p.outlets.map(oid=>{const o=outlets.find(x=>x.id===oid);return o?o.name:oid;}).join(', ');
+}
+
+function renderPromo(){
+  const el=g('promo-list');if(!el)return;
+  const q=(g('promo-search')?.value||'').toLowerCase().trim();
+  const aktif=promos.filter(p=>p.active&&!isPromoScheduled(p));
+  const terjadwal=promos.filter(p=>p.active&&isPromoScheduled(p));
+  const nonaktif=promos.filter(p=>!p.active);
+  const setCount=(id,n)=>{const el=g(id);if(el)el.textContent=n;};
+  setCount('pcnt-aktif',aktif.length);
+  setCount('pcnt-terjadwal',terjadwal.length);
+  setCount('pcnt-nonaktif',nonaktif.length);
+  let list=_promoTabState==='aktif'?aktif:_promoTabState==='terjadwal'?terjadwal:nonaktif;
+  if(q)list=list.filter(p=>p.name.toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q));
+  if(!list.length){
+    el.innerHTML=`<div style="text-align:center;padding:32px 24px;color:var(--t2)"><div style="font-size:13px;font-weight:500;margin-bottom:4px">Belum ada promo</div><div style="font-size:12px">Klik + Tambah Promo untuk membuat promo baru.</div></div>`;
+    return;
+  }
+  el.innerHTML=list.map(p=>_promoCard(p)).join('');
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
+function _promoCard(p){
+  const svcLbl=_promoSvcLbl(p);
+  const dayLbl=_promoDayLbl(p);
+  const outLbl=_promoOutletLbl(p);
+  const discLbl=promoDiscLbl(p);
+  const discType=p.discType==='persen'?'Diskon Persen':p.discType==='flat'?'Diskon Nominal':'Diskon Per Qty';
+  const period=p.from||p.to?`${p.from||'—'} — ${p.to||'—'}`:'Tanpa batas';
+  return `<div class="promo-card">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <div class="promo-icon-wrap">
+        <i data-lucide="${p.discType==='persen'?'percent':'tag'}" style="width:18px;height:18px;stroke-width:2;color:var(--p)"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${esc(p.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="toggle ${p.active?'on':'off'}" onclick="togglePromo('${p.id}')"></button>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+          <span class="badge" style="background:var(--pl);color:var(--p);font-size:10px">${esc(svcLbl)}</span>
+          <span class="badge" style="background:#fff3f3;color:var(--re);font-size:10px;font-weight:700">${esc(discLbl)}</span>
+          <span class="badge" style="background:var(--bg);color:var(--t2);font-size:10px">${esc(dayLbl)}</span>
+          <span class="badge" style="background:var(--bg);color:var(--t2);font-size:10px">${esc(outLbl)}</span>
+        </div>
+        ${p.note?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">${esc(p.note)}</div>`:''}
+        <div class="promo-meta-grid">
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="tag" style="width:10px;height:10px;stroke-width:2"></i> Tipe Promo</div>
+            <div class="pmv">${esc(discType)}</div>
+          </div>
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="layers" style="width:10px;height:10px;stroke-width:2"></i> Berlaku Untuk</div>
+            <div class="pmv">${esc(svcLbl)}</div>
+          </div>
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="calendar" style="width:10px;height:10px;stroke-width:2"></i> Berlaku Pada</div>
+            <div class="pmv">${esc(dayLbl)}</div>
+          </div>
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="store" style="width:10px;height:10px;stroke-width:2"></i> Outlet</div>
+            <div class="pmv">${esc(outLbl)}</div>
+          </div>
+        </div>
+        <div class="promo-card-footer">
+          <div style="font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px">
+            <i data-lucide="calendar-range" style="width:11px;height:11px;stroke-width:2"></i>
+            Periode: ${esc(period)}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn bsm" onclick="openEditPromo('${p.id}')">Edit</button>
+            <button class="btn bre bsm" onclick="delPromo('${p.id}')">Hapus</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function togglePromo(id){const p=promos.find(x=>x.id===id);if(!p)return;p.active=!p.active;renderPromo();syncSettings();toast((p.active?'Promo aktif':'Promo nonaktif')+': '+p.name);}
 function delPromo(id){confirm_('Hapus Promo?','Promo ini akan dihapus.',()=>{promos=promos.filter(x=>x.id!==id);renderPromo();syncSettings();toast('Promo dihapus');});}
-function promoDiscChange(){const dl=g('mp-dv-lbl');if(dl)dl.textContent={persen:'Nilai (%)',flat:'Nominal (Rp)',per_qty:'Per Kg/Pcs (Rp)'}[g('mp-dt').value]||'Nilai';}
-function tDay(el,day){el.classList.toggle('sel');if(el.classList.contains('sel')){if(!selDays.includes(day))selDays.push(day);}else selDays=selDays.filter(d=>d!==day);}
-function buildPromoOutletChips(sel){const el=g('mp-outlet-chips');if(!el)return;el.innerHTML=outlets.map(o=>{const s=sel.includes(o.id);return `<span class="chip${s?' on':''}" onclick="togglePromoOutlet('${o.id}',this)" style="${s?`background:${o.color}18;border-color:${o.color};color:${o.color}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${o.color};margin-right:5px;vertical-align:middle"></span>${o.name}</span>`;}).join('');}
-function togglePromoOutlet(id){if(promoOutlets.includes(id))promoOutlets=promoOutlets.filter(x=>x!==id);else promoOutlets.push(id);buildPromoOutletChips(promoOutlets);}
-function openAddPromo(){editPromoId=null;selDays=[];promoOutlets=[];g('m-promo-title').textContent='Tambah Promo';['mp-n','mp-dv','mp-from','mp-to','mp-note'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('mp-svc'))g('mp-svc').value='all';if(g('mp-dt'))g('mp-dt').value='persen';document.querySelectorAll('.day-pill').forEach(el=>el.classList.remove('sel'));buildPromoOutletChips([]);promoDiscChange();openModal('m-promo');}
-function openEditPromo(id){editPromoId=id;const p=promos.find(x=>x.id===id);if(!p)return;selDays=[...p.days];promoOutlets=[...(p.outlets||[])];g('m-promo-title').textContent='Edit Promo';if(g('mp-n'))g('mp-n').value=p.name;if(g('mp-svc'))g('mp-svc').value=p.svc;if(g('mp-dt'))g('mp-dt').value=p.discType;if(g('mp-dv'))g('mp-dv').value=p.discVal;if(g('mp-from'))g('mp-from').value=p.from;if(g('mp-to'))g('mp-to').value=p.to;if(g('mp-note'))g('mp-note').value=p.note;document.querySelectorAll('.day-pill').forEach(el=>{const m=el.getAttribute('onclick').match(/'(\d)'/);if(m)el.classList.toggle('sel',selDays.includes(m[1]));});buildPromoOutletChips(promoOutlets);promoDiscChange();openModal('m-promo');}
-function savePromo(){const name=g('mp-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama promo wajib diisi');return;}const val=parseFloat(g('mp-dv').value)||0;if(!val){toast('\u26A0\uFE0F Nilai diskon wajib diisi');return;}const obj={id:editPromoId||'pr'+promoCtr++,name,svc:g('mp-svc').value,discType:g('mp-dt').value,discVal:val,days:[...selDays],from:g('mp-from').value,to:g('mp-to').value,note:g('mp-note').value,active:true,outlets:[...promoOutlets]};if(editPromoId){const i=promos.findIndex(x=>x.id===editPromoId);if(i>=0)promos[i]={...promos[i],...obj,id:editPromoId};}else promos.unshift(obj);cm('m-promo');renderPromo();toast(editPromoId?'\u2713 Promo diperbarui':'\u2713 Promo ditambahkan: '+name);}
+
+// ── Step modal ──
+function _mpSvgChk(){return `<i data-lucide="check" style="width:12px;height:12px;stroke-width:3;display:block"></i>`;}
+
+function _mpUpdateSidebar(){
+  for(let i=1;i<=4;i++){
+    const el=document.querySelector(`#mp-sidebar [data-step="${i}"]`);
+    if(!el)continue;
+    el.classList.toggle('act',i===_mpStep);
+    el.classList.toggle('done',i<_mpStep);
+    const num=el.querySelector('.mp-sn');
+    if(num){
+      if(i<_mpStep){num.innerHTML='<i data-lucide="check" style="width:11px;height:11px;stroke-width:3;display:block"></i>';}
+      else{num.textContent=i;}
+    }
+  }
+  const back=g('mp-btn-back');if(back)back.style.display=_mpStep>1?'':'none';
+  const next=g('mp-btn-next');if(next)next.textContent=_mpStep===4?'Simpan Promo':'Lanjutkan';
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
+function _mpRenderContent(){
+  const el=g('mp-content');if(!el)return;
+  if(_mpStep===1)el.innerHTML=_mpStep1Html();
+  else if(_mpStep===2)el.innerHTML=_mpStep2Html();
+  else if(_mpStep===3)el.innerHTML=_mpStep3Html();
+  else el.innerHTML=_mpStep4Html();
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
+function _mpStep1Html(){
+  const s=_mpState;
+  const days=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+  const dayVals=['1','2','3','4','5','6','0'];
+  const daysHtml=days.map((d,i)=>`<button type="button" class="dpill${(s.days||[]).includes(dayVals[i])?' sel':''}" onclick="_mpToggleDay('${dayVals[i]}',this)">${d}</button>`).join('');
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">1. Informasi Promo</div>
+  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:16px">
+    <div class="fg" style="margin-bottom:0">
+      <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Nama Promo <span style="color:#e53935">*</span></label>
+      <input id="mp-n" placeholder="Contoh: Promo Selasa Hemat" value="${esc(s.name||'')}">
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-bottom:2px">
+      <label style="font-size:12px;font-weight:600;color:var(--t2)">Status</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button type="button" class="toggle ${s.active!==false?'on':'off'}" id="mp-active-btn" onclick="_mpToggleActive()"></button>
+        <span id="mp-active-lbl" style="font-size:12px;font-weight:500;color:${s.active!==false?'var(--p)':'var(--t2)'};">${s.active!==false?'Aktif':'Nonaktif'}</span>
+      </div>
+    </div>
+  </div>
+  <div class="fg" style="margin-bottom:16px">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Periode Promo</label>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+      <input type="date" id="mp-from" value="${esc(s.from||'')}" placeholder="Dari tanggal">
+      <div style="color:var(--t2);font-size:13px;text-align:center">—</div>
+      <input type="date" id="mp-to" value="${esc(s.to||'')}" placeholder="Sampai tanggal">
+    </div>
+    <div style="font-size:11px;color:var(--t2);margin-top:5px">Kosongkan jika tidak ada batas waktu.</div>
+  </div>
+  <div class="fg" style="margin-bottom:16px">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Hari Aktif</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${daysHtml}</div>
+    <div style="font-size:11px;color:var(--t2);margin-top:7px">Kosongkan untuk berlaku setiap hari.</div>
+  </div>
+  <div class="fg" style="margin-bottom:0">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Berlaku di Outlet</label>
+    <div style="display:flex;gap:10px">
+      <div class="outlet-opt${(s.outletMode||'all')==='all'?' sel':''}" onclick="_mpSetOutletMode('all')">
+        <div class="outlet-opt-icon"><i data-lucide="store" style="width:16px;height:16px;stroke-width:2;display:block"></i></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">Semua Outlet</div>
+          <div style="font-size:11px;color:var(--t2)">Berlaku untuk semua outlet</div>
+        </div>
+        ${(s.outletMode||'all')==='all'?`<i data-lucide="check" style="width:16px;height:16px;stroke-width:2.5;color:var(--p);margin-left:auto;flex-shrink:0;display:block"></i>`:''}
+      </div>
+      <div class="outlet-opt${(s.outletMode||'all')==='specific'?' sel':''}" onclick="_mpSetOutletMode('specific')">
+        <div class="outlet-opt-icon"><i data-lucide="map-pin" style="width:16px;height:16px;stroke-width:2;display:block"></i></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">Pilih Outlet Tertentu</div>
+          <div style="font-size:11px;color:var(--t2)">Pilih outlet yang ingin mendapatkan promo</div>
+        </div>
+        ${(s.outletMode||'all')==='specific'?`<i data-lucide="check" style="width:16px;height:16px;stroke-width:2.5;color:var(--p);margin-left:auto;flex-shrink:0;display:block"></i>`:''}
+      </div>
+    </div>
+    ${(s.outletMode)==='specific'?`<div id="mp-outlet-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${outlets.map(o=>{const sel=(s.outlets||[]).includes(o.id);return `<span class="chip${sel?' on':''}" onclick="_mpToggleOutlet('${o.id}')" style="${sel?`background:${o.color}18;border-color:${o.color};color:${o.color}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${o.color};margin-right:5px;vertical-align:middle"></span>${esc(o.name)}</span>`;}).join('')}</div>`:''}
+  </div>`;
+}
+
+function _mpStep2Html(){
+  const s=_mpState;
+  const activePo=priceOptions.filter(po=>po.active!==false);
+  const activeSatuan=satuanItems.filter(x=>x.active!==false);
+  const kiloanAll=(s.kiloanTargets||[])[0]==='all';
+  const kiloanChecked=k=>kiloanAll||(s.kiloanTargets||[]).includes(k);
+  const satuanAll=(s.satuanTargets||[])[0]==='all';
+  const mChk=(itemId,tierKey)=>{
+    if(satuanAll)return true;
+    return (s.satuanTargets||[]).includes(itemId+'-'+tierKey);
+  };
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">2. Berlaku untuk Layanan</div>
+  <div class="mp-accord">
+    <div class="mp-accord-hd" onclick="_mpToggleAccord('kiloan')">
+      <i data-lucide="shirt" style="width:18px;height:18px;stroke-width:1.8;color:var(--p);flex-shrink:0;display:block"></i>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">Kiloan</div>
+        <div style="font-size:11px;color:var(--t2)">Atur layanan kiloan yang mendapatkan promo</div>
+      </div>
+      <i data-lucide="${s._kiloanOpen!==false?'chevron-up':'chevron-down'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
+    </div>
+    ${s._kiloanOpen!==false?`<div class="mp-accord-bd">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;font-size:13px;font-weight:600;color:var(--t1)">
+        <input type="checkbox" id="mp-kiloan-all" ${kiloanAll?'checked':''} onchange="_mpKiloanAllChg(this)"> Semua Kiloan
+      </label>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px;margin-left:26px">Aktifkan untuk semua layanan kiloan.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:26px">
+        ${activePo.map(po=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:6px 12px;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca)">
+          <input type="checkbox" id="mp-k-${po.key}" ${kiloanChecked(po.key)?'checked':''} onchange="_mpKiloanTierChg('${po.key}',this)"> Kiloan ${esc(po.label)}
+        </label>`).join('')}
+      </div>
+    </div>`:''}
+  </div>
+  <div class="mp-accord">
+    <div class="mp-accord-hd" onclick="_mpToggleAccord('satuan')">
+      <i data-lucide="package" style="width:18px;height:18px;stroke-width:1.8;color:var(--p);flex-shrink:0;display:block"></i>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">Satuan</div>
+        <div style="font-size:11px;color:var(--t2)">Atur layanan satuan yang mendapatkan promo</div>
+      </div>
+      <i data-lucide="${s._satuanOpen!==false?'chevron-up':'chevron-down'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
+    </div>
+    ${s._satuanOpen!==false?`<div class="mp-accord-bd">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--t1)">
+        <input type="checkbox" id="mp-satuan-all" ${satuanAll?'checked':''} onchange="_mpSatuanAllChg(this)"> Semua Satuan
+      </label>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:12px;margin-left:26px">Aktifkan untuk semua layanan satuan.</div>
+      ${activeSatuan.length&&activePo.length?`
+      <div style="overflow-x:auto">
+        <table class="mp-matrix">
+          <thead>
+            <tr>
+              <th style="min-width:120px">Layanan Satuan</th>
+              ${activePo.map(po=>`<th>${esc(po.label)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${activeSatuan.map(item=>`<tr>
+              <td>${esc(item.name)}</td>
+              ${activePo.map(po=>`<td><input type="checkbox" ${mChk(item.id,po.key)?'checked':''} onchange="_mpMatrixChg('${item.id}','${po.key}',this)" style="width:16px;height:16px;cursor:pointer"></td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`:'<div style="font-size:12px;color:var(--t2)">Belum ada item satuan atau tier aktif.</div>'}
+    </div>`:''}
+  </div>`;
+}
+
+function _mpStep3Html(){
+  const s=_mpState;
+  const dt=s.discType||'persen';
+  const helpers={persen:'Masukkan nilai dalam persen. Contoh: 10 untuk diskon 10%.',flat:'Masukkan nominal dalam Rupiah. Contoh: 5000 untuk diskon Rp 5.000.',per_qty:'Masukkan nominal per kg atau pcs.'};
+  const labels={persen:'Nilai (%)',flat:'Nominal (Rp)',per_qty:'Per Kg/Pcs (Rp)'};
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">3. Diskon</div>
+  <div class="fg" style="margin-bottom:16px">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Jenis Diskon <span style="color:#e53935">*</span></label>
+    <div style="display:flex;gap:8px">
+      ${[{v:'flat',l:'Rp Nominal'},{v:'persen',l:'Persen'}].map(x=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 14px;border:1.5px solid ${dt===x.v?'var(--p)':'var(--b1)'};border-radius:8px;background:${dt===x.v?'var(--pl)':'var(--ca)'};flex:1">
+        <input type="radio" name="mp-dt-r" value="${x.v}" ${dt===x.v?'checked':''} onchange="_mpDiscTypeChg('${x.v}')"> ${x.l}
+      </label>`).join('')}
+    </div>
+  </div>
+  <div class="fg" style="margin-bottom:0">
+    <label id="mp-dv-lbl" style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
+    <input type="number" id="mp-dv" placeholder="0" min="0" value="${s.discVal||''}" oninput="_mpState.discVal=parseFloat(this.value)||0">
+    <div style="font-size:11px;color:var(--t2);margin-top:5px">${helpers[dt]||''}</div>
+  </div>`;
+}
+
+function _mpStep4Html(){
+  const s=_mpState;
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">4. Catatan (Opsional)</div>
+  <div class="fg" style="margin-bottom:0">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Catatan Internal</label>
+    <textarea id="mp-note" placeholder="Keterangan untuk kasir atau referensi internal..." rows="4" style="resize:none">${esc(s.note||'')}</textarea>
+    <div style="font-size:11px;color:var(--t2);margin-top:5px">Catatan ini tidak ditampilkan ke pelanggan.</div>
+  </div>`;
+}
+
+// Step navigation
+function _mpGo(step){
+  if(step>_mpMaxStep)return;
+  _mpSaveCurrentStepState();
+  _mpStep=step;
+  _mpUpdateSidebar();
+  _mpRenderContent();
+}
+
+function _mpNext(){
+  if(_mpStep===4){savePromo();return;}
+  if(!_mpValidate())return;
+  _mpSaveCurrentStepState();
+  _mpStep++;
+  if(_mpStep>_mpMaxStep)_mpMaxStep=_mpStep;
+  _mpUpdateSidebar();
+  _mpRenderContent();
+}
+
+function _mpPrev(){
+  if(_mpStep<=1)return;
+  _mpSaveCurrentStepState();
+  _mpStep--;
+  _mpUpdateSidebar();
+  _mpRenderContent();
+}
+
+function _mpSaveCurrentStepState(){
+  if(_mpStep===1){
+    _mpState.name=(g('mp-n')?.value||'').trim();
+    _mpState.from=g('mp-from')?.value||'';
+    _mpState.to=g('mp-to')?.value||'';
+  } else if(_mpStep===3){
+    _mpState.discVal=parseFloat(g('mp-dv')?.value)||0;
+  } else if(_mpStep===4){
+    _mpState.note=g('mp-note')?.value||'';
+  }
+}
+
+function _mpValidate(){
+  if(_mpStep===1){
+    const name=(g('mp-n')?.value||'').trim();
+    if(!name){toast('Nama promo wajib diisi');return false;}
+    _mpState.name=name;
+  }
+  if(_mpStep===3){
+    const val=parseFloat(g('mp-dv')?.value)||0;
+    if(!val){toast('Nilai diskon wajib diisi');return false;}
+    _mpState.discVal=val;
+  }
+  return true;
+}
+
+// Interactivity helpers
+function _mpToggleActive(){
+  _mpState.active=_mpState.active===false?true:false;
+  const btn=g('mp-active-btn');const lbl=g('mp-active-lbl');
+  if(btn){btn.classList.toggle('on',_mpState.active!==false);btn.classList.toggle('off',_mpState.active===false);}
+  if(lbl){lbl.textContent=_mpState.active!==false?'Aktif':'Nonaktif';lbl.style.color=_mpState.active!==false?'var(--p)':'var(--t2)';}
+}
+
+function _mpToggleDay(val,el){
+  const days=_mpState.days||[];
+  if(days.includes(val)){_mpState.days=days.filter(d=>d!==val);el.classList.remove('sel');}
+  else{_mpState.days=[...days,val];el.classList.add('sel');}
+}
+
+function _mpSetOutletMode(mode){
+  _mpState.outletMode=mode;
+  if(mode==='all')_mpState.outlets=[];
+  _mpRenderContent();
+}
+
+function _mpToggleOutlet(id){
+  const outlets_=_mpState.outlets||[];
+  if(outlets_.includes(id))_mpState.outlets=outlets_.filter(x=>x!==id);
+  else _mpState.outlets=[...outlets_,id];
+  const chips=g('mp-outlet-chips');
+  if(chips)chips.querySelectorAll('.chip').forEach(c=>{
+    const onclickAttr=c.getAttribute('onclick')||'';
+    const m=onclickAttr.match(/'([^']+)'/);
+    if(m)c.classList.toggle('on',(_mpState.outlets||[]).includes(m[1]));
+  });
+}
+
+function _mpToggleAccord(type){
+  if(type==='kiloan')_mpState._kiloanOpen=_mpState._kiloanOpen===false?true:false;
+  else _mpState._satuanOpen=_mpState._satuanOpen===false?true:false;
+  _mpRenderContent();
+}
+
+function _mpKiloanAllChg(cb){
+  _mpState.kiloanTargets=cb.checked?['all']:[];
+  const activePo=priceOptions.filter(po=>po.active!==false);
+  activePo.forEach(po=>{const el=g('mp-k-'+po.key);if(el)el.checked=cb.checked;});
+}
+
+function _mpKiloanTierChg(key,cb){
+  const t=_mpState.kiloanTargets||[];
+  if(t[0]==='all'){_mpState.kiloanTargets=priceOptions.filter(po=>po.active!==false).map(po=>po.key).filter(k=>k!==key);}
+  else if(cb.checked){if(!t.includes(key))_mpState.kiloanTargets=[...t,key];}
+  else{_mpState.kiloanTargets=t.filter(k=>k!==key);}
+  const allCb=g('mp-kiloan-all');
+  if(allCb){const activePo=priceOptions.filter(po=>po.active!==false);const allChk=activePo.every(po=>(_mpState.kiloanTargets||[]).includes(po.key));allCb.checked=allChk;allCb.indeterminate=!allChk&&(_mpState.kiloanTargets||[]).length>0;}
+}
+
+function _mpSatuanAllChg(cb){
+  _mpState.satuanTargets=cb.checked?['all']:[];
+  document.querySelectorAll('.mp-matrix input[type="checkbox"]').forEach(el=>{el.checked=cb.checked;});
+}
+
+function _mpMatrixChg(itemId,tierKey,cb){
+  const t=_mpState.satuanTargets||[];
+  const key=itemId+'-'+tierKey;
+  if(t[0]==='all'){
+    const activePo_=priceOptions.filter(po=>po.active!==false);
+    const activeSatuan_=satuanItems.filter(x=>x.active!==false);
+    _mpState.satuanTargets=[];
+    activeSatuan_.forEach(item=>activePo_.forEach(po=>{if(!(item.id===itemId&&po.key===tierKey))_mpState.satuanTargets.push(item.id+'-'+po.key);}));
+  } else if(cb.checked){
+    if(!t.includes(key))_mpState.satuanTargets=[...t,key];
+  } else {
+    _mpState.satuanTargets=t.filter(k=>k!==key);
+  }
+  const allCb=g('mp-satuan-all');
+  if(allCb){
+    const activePo_=priceOptions.filter(po=>po.active!==false);
+    const activeSatuan_=satuanItems.filter(x=>x.active!==false);
+    const total=activeSatuan_.length*activePo_.length;
+    const checked=(_mpState.satuanTargets||[]).length;
+    allCb.checked=checked===total;
+    allCb.indeterminate=checked>0&&checked<total;
+  }
+}
+
+function _mpDiscTypeChg(val){
+  _mpState.discType=val;
+  _mpRenderContent();
+}
+
+function promoDiscChange(){} // kept for backward compat
+
+// ── Open modal ──
+function openAddPromo(){
+  editPromoId=null;
+  _mpStep=1;_mpMaxStep=1;
+  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',_kiloanOpen:true,_satuanOpen:true};
+  g('m-promo-title').textContent='Tambah Promo';
+  _mpUpdateSidebar();
+  _mpRenderContent();
+  openModal('m-promo');
+}
+
+function openEditPromo(id){
+  editPromoId=id;
+  const p=promos.find(x=>x.id===id);if(!p)return;
+  _mpStep=1;_mpMaxStep=4;
+  let kiloanTargets=[];let satuanTargets=[];
+  if(p.targets){
+    kiloanTargets=p.targets.kiloan||[];
+    satuanTargets=p.targets.satuan||[];
+  } else if(p.svc){
+    if(p.svc==='all'){kiloanTargets=['all'];satuanTargets=['all'];}
+    else if(p.svc.startsWith('kiloan-')){kiloanTargets=[p.svc.replace('kiloan-','')];}
+    else if(p.svc.startsWith('satuan-')){satuanTargets=['all'];}
+  }
+  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',_kiloanOpen:true,_satuanOpen:true};
+  g('m-promo-title').textContent='Edit Promo';
+  _mpUpdateSidebar();
+  _mpRenderContent();
+  openModal('m-promo');
+}
+
+function savePromo(){
+  _mpSaveCurrentStepState();
+  const name=(_mpState.name||'').trim();
+  if(!name){toast('Nama promo wajib diisi');_mpGo(1);return;}
+  const val=_mpState.discVal||0;
+  if(!val){toast('Nilai diskon wajib diisi');_mpGo(3);return;}
+  const kt=_mpState.kiloanTargets||[];
+  const st=_mpState.satuanTargets||[];
+  let svc='all';
+  if(kt.length&&!st.length){svc=kt[0]==='all'?'kiloan-all':'kiloan-'+kt[0];}
+  else if(st.length&&!kt.length){svc=st[0]==='all'?'satuan-all':'satuan-'+((st[0]||'').split('-')[1]||'regular');}
+  const obj={
+    id:editPromoId||'pr'+promoCtr++,
+    name,svc,
+    targets:{kiloan:[...kt],satuan:[...st]},
+    discType:_mpState.discType||'persen',
+    discVal:val,
+    days:[...(_mpState.days||[])],
+    from:_mpState.from||'',
+    to:_mpState.to||'',
+    note:_mpState.note||'',
+    active:_mpState.active!==false,
+    outlets:[...(_mpState.outletMode==='all'?[]:(_mpState.outlets||[]))]
+  };
+  if(editPromoId){const i=promos.findIndex(x=>x.id===editPromoId);if(i>=0)promos[i]={...promos[i],...obj,id:editPromoId};}
+  else promos.unshift(obj);
+  cm('m-promo');
+  renderPromo();
+  toast(editPromoId?'Promo diperbarui':'Promo ditambahkan: '+name);
+}
+
+// tDay kept for any old references
+function tDay(el,day){el.classList.toggle('sel');const days=_mpState.days||[];if(el.classList.contains('sel')){if(!days.includes(day))_mpState.days=[...days,day];}else _mpState.days=days.filter(d=>d!==day);}
+function buildPromoOutletChips(sel){}
+function togglePromoOutlet(id){}
+function rebuildPromoSvcSelect(){}
 
 // ===== KAS KASIR =====
 function setKasOutlet(id){kasOutlet=id;renderKas();}

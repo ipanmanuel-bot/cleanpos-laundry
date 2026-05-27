@@ -291,9 +291,23 @@ function getActivePromo(type, cat) {
     if (!p.active) return false;
     const dm = p.days.length === 0 || p.days.includes(String(TODAY_DAY));
     const dateOk = (!p.from || TODAY_ISO >= p.from) && (!p.to || TODAY_ISO <= p.to);
-    const svcOk = p.svc === 'all' || p.svc === key;
     const outletOk = !p.outlets || p.outlets.length === 0 || p.outlets.includes(curOid);
-    return dm && dateOk && svcOk && outletOk;
+    if (!dm || !dateOk || !outletOk) return false;
+    if (p.targets) {
+      if (type === 'satuan') {
+        const st = p.targets.satuan || [];
+        if (!st.length) return false;
+        if (st[0] === 'all') return true;
+        return st.some(t => t.endsWith('-' + cat) || t === cat);
+      } else {
+        const kt = p.targets.kiloan || [];
+        if (!kt.length) return false;
+        if (kt[0] === 'all') return true;
+        return kt.includes(cat);
+      }
+    }
+    const svcOk = p.svc === 'all' || p.svc === key || p.svc === type + '-all';
+    return svcOk;
   });
 }
 
@@ -377,8 +391,9 @@ function doCalc(pre, hasDisc) {
   let promoAmt = actPromo && promoEnabled ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
   const pb = g(pre + '-promo-box');
   if (actPromo && pb) {
+    pb.style.display = 'block';
     pb.innerHTML = `<div class="${promoEnabled ? 'pb-act' : 'pb-off'}"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:${promoEnabled ? '#3d6b10' : 'var(--t2)'}">${actPromo.name}</div><div style="font-size:11px;color:${promoEnabled ? '#4a7a15' : 'var(--t3)'}">${actPromo.discType === 'persen' ? actPromo.discVal + '%' : fmt(calcPromoDisc(actPromo, subtotal, bq))} diskon</div></div></div><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="${pre}-promo-chk" ${promoEnabled ? 'checked' : ''} onchange="${pre === 'no' ? 'calcO' : 'calcS'}()"> Pakai promo</label></div></div>`;
-  } else if (pb) pb.innerHTML = '';
+  } else if (pb) { pb.style.display = 'none'; pb.innerHTML = ''; }
   let discType = 'none', discAmt = 0;
   if (hasDisc) {
     discType = g(pre + '-disc-type')?.value || 'none';
@@ -484,12 +499,16 @@ function _noUpdateSummary(res) {
   }
 
   // Subtotal + discount + total
-  const discAmt = res.actPromo ? (res.actPromo.type==='pct' ? Math.round((res.subtotal||0)*(res.actPromo.val/100)) : (res.actPromo.val||0)) : (res.promoAmt||0);
-  const total = res.total || Math.max(0, (res.subtotal||0) - discAmt);
+  const promoAmt = res.promoAmt || 0;
+  const manualDiscAmt = res.discAmt || 0;
+  const total = res.total || Math.max(0, (res.subtotal||0) - promoAmt - manualDiscAmt);
 
   let financeHtml = `<div class="no-sum-row" style="margin-top:10px"><span style="color:var(--t2)">Subtotal</span><span style="font-weight:600">${fmt(res.subtotal||0)}</span></div>`;
-  if (discAmt > 0 && res.actPromo) {
-    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon (${esc(res.actPromo?.name||'Promo')})</span><span style="color:#e53935;font-weight:600">–${fmt(discAmt)}</span></div>`;
+  if (promoAmt > 0 && res.actPromo) {
+    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon (${esc(res.actPromo?.name||'Promo')})</span><span style="color:#e53935;font-weight:600">–${fmt(promoAmt)}</span></div>`;
+  }
+  if (manualDiscAmt > 0) {
+    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon Manual</span><span style="color:#e53935;font-weight:600">–${fmt(manualDiscAmt)}</span></div>`;
   }
   financeHtml += `<a class="no-sum-discount" onclick="_noTogglePromo()">+ Tambah Diskon</a>`;
   financeHtml += `<div class="no-sum-row total"><span>Total</span><span>${fmt(total)}</span></div>`;
