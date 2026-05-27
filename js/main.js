@@ -2341,7 +2341,7 @@ function _renderKiloanLeft(){
       <div style="font-weight:700;font-size:14px;margin-bottom:2px">Daftar Layanan Kiloan</div>
       <div style="font-size:12px;color:var(--t2)">Kelola item layanan kiloan yang tersedia di outlet Anda.</div>
     </div>
-    <div class="prc-col-hdr" style="padding-left:44px">
+    <div class="prc-col-hdr">
       <div style="flex:1">Nama Layanan</div>
       <div style="width:48px;text-align:center">Satuan</div>
       <div style="width:150px">Harga Dasar</div>
@@ -2361,13 +2361,8 @@ function _renderKiloanLeft(){
         const isOn=tierApply[po.key]!==false;
         return `<div class="prc-tier-chip${isOn?' on':''}" id="chip-${s.id}-${po.key}" onclick="_toggleTierChip(this)">${CHECK_OFF}${CHECK_ON}${esc(po.label)}</div>`;
       }).join('');
-      html+=`<div class="prc-svc-wrap" id="prc-svc-wrap-${s.id}" draggable="true"
-        ondragstart="_svcDragStart(event,'${s.id}')"
-        ondragover="_svcDragOver(event,'${s.id}')"
-        ondrop="_svcDrop(event,'${s.id}')"
-        ondragend="_svcDragEnd()">
+      html+=`<div class="prc-svc-wrap" id="prc-svc-wrap-${s.id}">
         <div class="prc-svc-row">
-          <div class="prc-svc-drag" title="Seret untuk mengubah urutan">${DRAG_ICON}</div>
           <div class="prc-svc-col-name">
             <div style="font-weight:700;font-size:13px">${esc(s.name)}</div>
             ${s.desc?`<div style="font-size:11px;color:var(--t2);margin-top:1px">${esc(s.desc)}</div>`:''}
@@ -2409,6 +2404,9 @@ function _renderKiloanLeft(){
 }
 
 function _renderKiloanRight(){
+  return _renderPriceOptsPanel('Kiloan');
+}
+function _renderKiloanRight_unused(){
   const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
   const activeCount=tiers.filter(t=>t.active!==false).length;
   const DRAG_ICON=`<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>`;
@@ -2648,14 +2646,9 @@ function togglePriceOptActive(key){
   po.active=!po.active;
   syncSettings();
   toast((po.active?'Tier aktif: ':'Tier nonaktif: ')+po.label);
-  // Targeted DOM update — avoids disrupting unsaved chip/minkg changes
-  const row=document.getElementById('prc-po-row-'+key);
-  if(row){
-    row.classList.toggle('prc-po-active',po.active);
-    const badge=row.querySelector('.prc-po-status-badge');
-    if(badge){badge.className='prc-po-status-badge '+(po.active?'prc-badge-on':'prc-badge-off');badge.textContent=po.active?'Aktif':'Nonaktif';}
-    const tog=row.querySelector('.toggle');
-    if(tog){tog.classList.toggle('on',po.active);tog.classList.toggle('off',!po.active);}
+  // Re-render only the right panel to preserve unsaved chip/minKg state in left panel
+  const right=g('prc-kiloan-right');
+  if(right){right.innerHTML=_renderKiloanRight();
   } else {
     renderPricing();
   }
