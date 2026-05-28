@@ -42,6 +42,7 @@ function buildOrderForm(pre) {
     _noRebuildSvcCards();
     _noRebuildTierCards();
   }
+  if (typeof _applyKgStep === 'function') _applyKgStep();
 }
 
 function updWalletOption(pre) {
@@ -480,11 +481,13 @@ function _noUpdateSummary(res) {
       }).join('')}</div>`;
   } else if (res.type === 'kiloan' || (res.type !== 'satuan')) {
     const tierLbl = (typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===res.cat)?.label:null)||res.cat||'';
+    const svcName = (typeof serviceTypes!=='undefined'?serviceTypes.find(s=>s.id===res.type)?.name:null)||'Kiloan';
+    const itemCnt = parseInt(g('no-item-count')?.value)||null;
     itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan</div>
       <div class="no-sum-item-row">
         <div class="no-sum-item-name">
-          <span>Kiloan</span>
-          <span class="no-sum-item-badge">${esc(tierLbl)} · ${res.rawQty||0} kg</span>
+          <span>${esc(svcName)}</span>
+          <span class="no-sum-item-badge">${esc(tierLbl)} · ${res.rawQty||0} kg${itemCnt?` · ${itemCnt} item`:''}</span>
         </div>
         <div class="no-sum-item-val">${fmt(res.base||0)}</div>
       </div>`;
@@ -602,7 +605,8 @@ function buildOrder(pre) {
   const payStatus = (pre === 'no' ? (psMap[psRaw] || psRaw) : psRaw);
   const o = {
     id: genId(), name, phone, svcType: res.type, svcCat: res.cat,
-    qty: res.bq, rawQty: res.rawQty, satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
+    qty: res.bq, rawQty: res.rawQty, itemCount: parseInt(g(pre+'-item-count')?.value)||null,
+    satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
     base: res.base, discType: res.discType, discAmt: res.discAmt,
     promoAmt: res.promoAmt, total: res.total,
     payMethod, payStatus,
@@ -643,6 +647,7 @@ function buildOrder(pre) {
   if (pre === 'no') {
     addons.forEach(a => { const card = g('no-addon-card-' + a.id); if (card) card.classList.remove('on'); });
     const kgEl = g('no-kg'); if (kgEl) kgEl.value = '1';
+    const icEl = g('no-item-count'); if (icEl) icEl.value = '';
   } else {
     addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false; });
   }
@@ -1079,6 +1084,7 @@ function showDetail(id) {
     <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${esc(go(o.outletId)?.name || '—')}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>
+    ${o.itemCount ? `<div class="rrow"><span style="color:var(--t2)">Jumlah Item</span><span>${o.itemCount} item</span></div>` : ''}
     <div class="rrow"><span style="color:var(--t2)">Metode Bayar</span><span style="font-weight:600">${esc(o.payMethod || '—')}</span></div>
     <div class="rrow rb" style="border-top:1px dashed #ccc;padding-top:5px;margin-top:4px"><span>Total</span><span>${fmt(o.total)}</span></div>
   </div>
@@ -1262,13 +1268,15 @@ function buildMsg(tpl, o) {
   const trackingUrl = o.tracking_token
     ? (window.location.origin + window.location.pathname + '?track=' + o.tracking_token)
     : '';
+  const bayarTxt = o.payStatus === 'Lunas' ? 'Lunas' : o.payStatus === 'DP' ? 'DP (Belum Lunas)' : 'Belum Lunas';
   return tpl
     .replace(/{nama}/g, o.name)
     .replace(/{id}/g, o.id)
     .replace(/{total}/g, fmt(o.total))
     .replace(/{layanan}/g, o.svcType + ' ' + o.svcCat)
     .replace(/{est}/g, { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[o.svcCat] || '')
-    .replace(/{link}/g, trackingUrl);
+    .replace(/{link}/g, trackingUrl)
+    .replace(/{bayar}/g, bayarTxt);
 }
 
 function fmtPh(p) {
@@ -1329,20 +1337,71 @@ function switchWaTplTab(type, el) {
 
 function prevTpl() {
   const el = g('wa-tpl'), p = g('wa-prev'); if (!el || !p) return;
+  const linkOn = g('wa-link-toggle')?.classList.contains('on') !== false;
+  const exLink = linkOn ? 'https://cleanpos.app/track/LDRY-001' : '';
   p.innerHTML = el.value
     .replace(/{nama}/g,    '<strong>Budi Santoso</strong>')
     .replace(/{id}/g,      '<strong>LDRY-001</strong>')
     .replace(/{total}/g,   '<strong>Rp 21.000</strong>')
     .replace(/{layanan}/g, 'kiloan regular')
     .replace(/{est}/g,     '2-3 hari')
+    .replace(/{link}/g,    exLink ? '<a href="#" style="color:#0a5c7a">' + exLink + '</a>' : '<em style="color:#aaa">[link tracking]</em>')
+    .replace(/{bayar}/g,   '<strong>Lunas</strong>')
     .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+    .replace(/_(.*?)_/g,   '<em>$1</em>')
+    .replace(/~(.*?)~/g,   '<s>$1</s>')
     .replace(/\n/g, '<br>');
+  const cc = g('wa-char-count'); if (cc) cc.textContent = el.value.length + ' karakter';
+}
+
+function insertWaVar(varStr) {
+  const ta = g('wa-tpl'); if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + varStr + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + varStr.length;
+  ta.focus();
+  prevTpl();
+}
+
+function waTplWrap(open, close) {
+  const ta = g('wa-tpl'); if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'teks';
+  ta.value = ta.value.slice(0, s) + open + sel + close + ta.value.slice(e);
+  ta.selectionStart = s + open.length;
+  ta.selectionEnd = s + open.length + sel.length;
+  ta.focus();
+  prevTpl();
+}
+
+function waTplList() {
+  const ta = g('wa-tpl'); if (!ta) return;
+  const s = ta.selectionStart;
+  const insert = '\n• Item 1\n• Item 2\n• Item 3';
+  ta.value = ta.value.slice(0, s) + insert + ta.value.slice(s);
+  ta.selectionStart = ta.selectionEnd = s + insert.length;
+  ta.focus();
+  prevTpl();
+}
+
+const WA_TPL_DEFAULTS = {
+  selesai:     `Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n💳 Status: {bayar}\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`,
+  konfirmasi:  `Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,
+  tagih_dp:    `Halo {nama} 👋\n\nPesanan Anda sudah dicatat!\n📋 No: *{id}*\n💰 Total: *{total}*\n\nMohon transfer DP 50% ke:\n🏦 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! 🙏`,
+  tagih_lunas: `Halo {nama} 👋\n\nKonfirmasi pembayaran:\n📋 No: *{id}*\n💰 Total: *{total}*\n\nTransfer ke:\n🏦 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. 🙏`
+};
+
+function resetWaTpl() {
+  const def = WA_TPL_DEFAULTS[curWaTplTab];
+  if (!def) return;
+  const ta = g('wa-tpl'); if (ta) { ta.value = def; prevTpl(); }
 }
 
 function saveTpl() {
   const val = g('wa-tpl')?.value || '';
   if (curWaTplTab === 'selesai') { waTplSelesai = val; }
   else { waTplNew[curWaTplTab] = val; }
+  if (typeof syncSettings === 'function') syncSettings();
   toast('✓ Template "' + { selesai: 'Pesanan Selesai', tagih_dp: 'Tagih DP', tagih_lunas: 'Tagih Lunas', konfirmasi: 'Konfirmasi Terima' }[curWaTplTab] + '" tersimpan!');
 }
 

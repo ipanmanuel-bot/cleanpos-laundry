@@ -8,7 +8,7 @@ function orderToRow(o) {
     user_id: currentUserId,
     id: o.id, name: o.name, phone: o.phone,
     svc_type: o.svcType, svc_cat: o.svcCat,
-    qty: o.qty, raw_qty: o.rawQty,
+    qty: o.qty, raw_qty: o.rawQty, item_count: o.itemCount || null,
     satuan_lines: JSON.stringify(o.satuanLines || []),
     add_ons: JSON.stringify(o.addOns), add_on_amt: o.addOnAmt,
     base: o.base, disc_type: o.discType, disc_amt: o.discAmt,
@@ -31,7 +31,7 @@ function rowToOrder(r) {
   return {
     id: r.id, name: r.name, phone: r.phone,
     svcType: r.svc_type, svcCat: r.svc_cat,
-    qty: r.qty, rawQty: r.raw_qty,
+    qty: r.qty, rawQty: r.raw_qty, itemCount: r.item_count || null,
     satuanLines, addOns, addOnAmt: r.add_on_amt,
     base: r.base, discType: r.disc_type, discAmt: r.disc_amt,
     promoAmt: r.promo_amt, total: r.total,
@@ -145,7 +145,8 @@ function syncSettings() {
     membership_packages: JSON.stringify(membershipPackages),
     membership_expiry_enabled: membershipExpiryEnabled,
     membership_expiry_days: membershipExpiryDays,
-    price_options: JSON.stringify(priceOptions)
+    price_options: JSON.stringify(priceOptions),
+    kg_step: kgStep
   });
 }
 
@@ -205,6 +206,7 @@ async function supaLoadAll() {
     if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
     if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
     try { if (s.price_options) priceOptions = JSON.parse(s.price_options); } catch(e) { console.error('[parse] price_options:', e); }
+    if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
   }
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));

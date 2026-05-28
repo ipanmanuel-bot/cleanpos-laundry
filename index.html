@@ -164,6 +164,36 @@ tr:hover td{background:#F6F7F9}
 .wa-bg{background:#ECE5DD;border-radius:10px;padding:12px}
 .wa-bbl{background:#fff;border-radius:2px 10px 10px 10px;padding:10px 13px;font-size:12px;line-height:1.7;color:#111;white-space:pre-wrap;position:relative}
 .wa-bbl::before{content:'';position:absolute;top:0;left:-8px;border:8px solid transparent;border-right-color:#fff;border-top-color:#fff}
+.wa-split{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+.wa-var-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.wa-var-chip{background:var(--pl);color:var(--p);border:1px solid var(--p);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Courier New',monospace;user-select:none}
+.wa-var-chip:hover{background:var(--p);color:#fff}
+.wa-toolbar{display:flex;gap:4px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);margin-bottom:8px}
+.wa-tb-btn{background:none;border:1px solid var(--b1);border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--t1);transition:.15s;line-height:1.5;min-width:28px}
+.wa-tb-btn:hover{background:var(--b1)}
+.wa-char-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.wa-char{font-size:11px;color:var(--t2)}
+.wa-toggle-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--b1)}
+.wa-toggle-row:last-child{border-bottom:none;padding-bottom:0}
+.wa-toggle-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.wa-toggle-desc{font-size:11px;color:var(--t2)}
+.wa-phone{background:#f0f0f0;border-radius:22px;overflow:hidden;border:3px solid #333;box-shadow:0 8px 24px rgba(0,0,0,.18);margin:0 auto}
+.wa-phone-bar{background:#128C7E;padding:10px 14px;display:flex;align-items:center;gap:8px}
+.wa-phone-avatar{width:32px;height:32px;border-radius:50%;background:#075E54;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;color:#fff;font-weight:700}
+.wa-phone-name{flex:1;color:#fff}
+.wa-phone-nametxt{font-size:13px;font-weight:700;line-height:1.2}
+.wa-phone-sub{font-size:10px;opacity:.8}
+.wa-chat-area{background:#ECE5DD;padding:14px 12px;min-height:160px}
+.wa-chat-bubble-wrap{max-width:88%}
+.wa-chat-msg{background:#fff;border-radius:2px 10px 10px 10px;padding:10px 12px;font-size:12px;line-height:1.65;color:#111;position:relative;white-space:pre-wrap;word-break:break-word;display:inline-block;max-width:100%}
+.wa-chat-msg::before{content:'';position:absolute;top:0;left:-7px;border:7px solid transparent;border-right-color:#fff;border-top-color:#fff}
+.wa-chat-ts{font-size:10px;color:#888;text-align:right;margin-top:3px}
+.wa-ref-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.wa-ref-tbl th{text-align:left;padding:6px 8px;background:var(--bg);border-bottom:2px solid var(--b1);font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.wa-ref-tbl td{padding:6px 8px;border-bottom:1px solid var(--b1);vertical-align:top}
+.wa-ref-tbl tr:last-child td{border-bottom:none}
+.wa-ref-tbl td:first-child{font-family:'Courier New',monospace;color:var(--p);font-weight:600;white-space:nowrap}
+@media(max-width:768px){.wa-split{grid-template-columns:1fr}}
 .kanban{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .kcol{background:var(--bg);border-radius:var(--r);padding:10px;min-height:60px;border:2px solid var(--b1)}
 .khd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -1113,9 +1143,15 @@ tr:hover td{background:#F6F7F9}
 
         <!-- Kiloan section -->
         <div id="no-kg-sect">
-          <div class="fg" style="margin-bottom:12px">
-            <label>Berat (kg)</label>
-            <input type="number" id="no-kg" step="0.1" min="0" value="1" oninput="calcO()" style="max-width:140px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+            <div class="fg" style="margin-bottom:0;flex:0 0 auto">
+              <label>Berat (kg)</label>
+              <input type="number" id="no-kg" step="0.1" min="0" value="1" oninput="calcO()" style="max-width:140px">
+            </div>
+            <div class="fg" style="margin-bottom:0;flex:1;min-width:120px">
+              <label>Jumlah Item <span style="font-size:10px;font-weight:400;color:var(--t2)">(opsional)</span></label>
+              <input type="number" id="no-item-count" min="1" step="1" placeholder="Cth: 5" oninput="calcO()" style="max-width:140px">
+            </div>
           </div>
         </div>
 
@@ -1224,24 +1260,114 @@ tr:hover td{background:#F6F7F9}
 <!-- WA -->
 <div class="page" id="o-p-wa">
   <div class="pt">WA Notifikasi</div>
-  <div class="card" style="background:var(--pl);border:2px solid var(--p);box-shadow:none"><div style="font-size:13px;color:#3d6b10;display:flex;align-items:flex-start;gap:6px"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;flex-shrink:0;margin-top:1px;display:block"></i><span>Variabel: <code style="background:#fff;padding:1px 5px;border-radius:4px">{nama}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{id}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{total}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{layanan}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{est}</code> <code style="background:#fff;padding:1px 5px;border-radius:4px">{link}</code> <span style="font-size:11px;opacity:.8">← link tracking</span></span></div></div>
 
-  <div class="card">
-    <div class="chips" id="wa-tpl-tabs">
-      <span class="chip on" onclick="switchWaTplTab('selesai',this)"><i data-lucide="check-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Pesanan Selesai</span>
-      <span class="chip" onclick="switchWaTplTab('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih DP</span>
-      <span class="chip" onclick="switchWaTplTab('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span>
-      <span class="chip" onclick="switchWaTplTab('konfirmasi',this)"><i data-lucide="clipboard-check" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span>
-    </div>
-    <div style="font-size:11px;color:var(--am);background:var(--amb);border-radius:8px;padding:8px 10px;margin-bottom:10px" id="wa-tpl-hint">Dikirim otomatis saat status pesanan berubah ke Selesai</div>
-    <textarea id="wa-tpl" rows="6" style="font-size:13px;line-height:1.6" oninput="prevTpl()"></textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-      <div style="font-size:12px;color:var(--t2);font-weight:600">Preview:</div>
-      <button class="btn bp bsm bpill" onclick="saveTpl()"><i data-lucide="save" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Simpan Template</button>
-    </div>
-    <div class="wa-bg" style="margin-top:8px"><div class="wa-bbl" id="wa-prev"></div></div>
+  <!-- Type tabs -->
+  <div class="chips" id="wa-tpl-tabs" style="margin-bottom:10px;overflow-x:auto;flex-wrap:nowrap">
+    <span class="chip on" onclick="switchWaTplTab('selesai',this)"><i data-lucide="check-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Pesanan Selesai</span>
+    <span class="chip" onclick="switchWaTplTab('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih DP</span>
+    <span class="chip" onclick="switchWaTplTab('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span>
+    <span class="chip" onclick="switchWaTplTab('konfirmasi',this)"><i data-lucide="clipboard-check" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span>
   </div>
 
+  <!-- Auto-send hint -->
+  <div id="wa-tpl-hint-wrap" style="font-size:12px;color:var(--am);background:var(--amb);border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+    <i data-lucide="info" style="width:14px;height:14px;stroke-width:2;flex-shrink:0;display:block"></i>
+    <span id="wa-tpl-hint">Dikirim otomatis saat status pesanan berubah ke Selesai</span>
+  </div>
+
+  <!-- Split layout: editor (left) + preview (right) -->
+  <div class="wa-split">
+    <!-- LEFT: editor panel -->
+    <div>
+      <div class="card">
+        <div class="sh" style="margin-bottom:10px">
+          <div class="ct">Editor Template</div>
+          <button class="btn bg bsm bpill" onclick="resetWaTpl()"><i data-lucide="rotate-ccw" style="width:12px;height:12px;stroke-width:2;vertical-align:-1px;display:inline;margin-right:3px"></i>Reset Default</button>
+        </div>
+        <!-- Variable chips -->
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Variabel — klik untuk sisipkan</div>
+        <div class="wa-var-chips">
+          <span class="wa-var-chip" onclick="insertWaVar('{nama}')">{nama}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{id}')">{id}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{total}')">{total}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{layanan}')">{layanan}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{est}')">{est}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{link}')">{link}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{bayar}')">{bayar}</span>
+        </div>
+        <!-- Toolbar -->
+        <div class="wa-toolbar">
+          <button class="wa-tb-btn" title="Bold" onclick="waTplWrap('*','*')"><b>B</b></button>
+          <button class="wa-tb-btn" title="Italic" onclick="waTplWrap('_','_')"><i>I</i></button>
+          <button class="wa-tb-btn" title="Coret" onclick="waTplWrap('~','~')"><s>S</s></button>
+          <div style="width:1px;background:var(--b1);margin:2px 4px;align-self:stretch"></div>
+          <button class="wa-tb-btn" title="Bullet list" onclick="waTplList()">• List</button>
+        </div>
+        <textarea id="wa-tpl" rows="9" style="font-size:13px;line-height:1.7;resize:vertical" oninput="prevTpl()"></textarea>
+        <div class="wa-char-row">
+          <span class="wa-char" id="wa-char-count">0 karakter</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn bg bsm bpill" onclick="renderWaCenter()">Batal</button>
+            <button class="btn bp bsm bpill" onclick="saveTpl()"><i data-lucide="save" style="width:12px;height:12px;stroke-width:2;vertical-align:-1px;display:inline;margin-right:3px"></i>Simpan</button>
+          </div>
+        </div>
+      </div>
+      <!-- Toggle settings -->
+      <div class="card" style="margin-top:0">
+        <div class="ct" style="margin-bottom:10px">Pengaturan Notifikasi</div>
+        <div class="wa-toggle-row">
+          <div style="flex:1">
+            <div class="wa-toggle-title">Link Tracking</div>
+            <div class="wa-toggle-desc">Sertakan link tracking pesanan dalam pesan. Variabel <code style="font-size:10px">{link}</code></div>
+          </div>
+          <button id="wa-link-toggle" class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off');prevTpl()"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: preview + reference -->
+    <div>
+      <div class="card">
+        <div class="ct" style="margin-bottom:12px">Preview WhatsApp</div>
+        <div class="wa-phone">
+          <div class="wa-phone-bar">
+            <div class="wa-phone-avatar">B</div>
+            <div class="wa-phone-name">
+              <div class="wa-phone-nametxt">Budi Santoso</div>
+              <div class="wa-phone-sub">online</div>
+            </div>
+            <div style="display:flex;gap:14px;color:#fff;opacity:.85;font-size:16px;cursor:pointer">
+              <i data-lucide="phone" style="width:16px;height:16px;stroke-width:2;display:block"></i>
+              <i data-lucide="more-vertical" style="width:16px;height:16px;stroke-width:2;display:block"></i>
+            </div>
+          </div>
+          <div class="wa-chat-area">
+            <div class="wa-chat-bubble-wrap">
+              <div class="wa-chat-msg" id="wa-prev"></div>
+              <div class="wa-chat-ts">09:41 ✓✓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:0">
+        <div class="ct" style="margin-bottom:8px">Referensi Variabel</div>
+        <table class="wa-ref-tbl">
+          <thead><tr><th>Variabel</th><th>Contoh Nilai</th></tr></thead>
+          <tbody>
+            <tr><td>{nama}</td><td>Budi Santoso</td></tr>
+            <tr><td>{id}</td><td>LDRY-001</td></tr>
+            <tr><td>{total}</td><td>Rp 21.000</td></tr>
+            <tr><td>{layanan}</td><td>kiloan regular</td></tr>
+            <tr><td>{est}</td><td>2-3 hari</td></tr>
+            <tr><td>{link}</td><td>Link tracking pesanan</td></tr>
+            <tr><td>{bayar}</td><td>Lunas / Belum Lunas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Belum Dinotifikasi -->
   <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="wa-pend-cnt" class="badge gam">0</span></div><div id="wa-pend-list"></div></div>
 </div>
 
@@ -1582,6 +1708,24 @@ tr:hover td{background:#F6F7F9}
     <div class="div_"></div>
     <button class="btn bp bfull bpill" onclick="saveEmpSettings()">Simpan Pengaturan Karyawan</button>
   </div>
+  <div class="card">
+    <div class="ct"><i data-lucide="package" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Pesanan</div>
+    <label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px">Kenaikan Berat Kiloan</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="s-kgstep-opts">
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .12s" id="s-kgstep-lbl-0.1">
+        <input type="radio" name="s-kgstep" value="0.1" style="accent-color:var(--p)" onchange="_syncKgStepLabels()"> 0,1 kg
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .12s" id="s-kgstep-lbl-0.5">
+        <input type="radio" name="s-kgstep" value="0.5" style="accent-color:var(--p)" onchange="_syncKgStepLabels()"> 0,5 kg
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .12s" id="s-kgstep-lbl-1">
+        <input type="radio" name="s-kgstep" value="1" style="accent-color:var(--p)" onchange="_syncKgStepLabels()"> 1 kg
+      </label>
+    </div>
+    <div style="font-size:11px;color:var(--t2);margin-top:6px;margin-bottom:10px">Mengatur nilai kenaikan saat menekan tombol +/- pada input berat kiloan di form pesanan.</div>
+    <div class="div_"></div>
+    <button class="btn bp bfull bpill" onclick="saveOrderSettings()">Simpan Pengaturan Pesanan</button>
+  </div>
   <div class="card" id="membership-settings-card">
     <div class="ct"><i data-lucide="credit-card" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Membership &amp; Saldo Pelanggan</div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
@@ -1814,6 +1958,10 @@ tr:hover td{background:#F6F7F9}
                 <div id="sno-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
               </div>
               <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="sno-est" readonly style="color:var(--t2)"></div>
+            </div>
+            <div class="fg" style="margin-bottom:0;margin-top:8px">
+              <label>Jumlah Item <span style="font-size:10px;font-weight:400;color:var(--t2)">(opsional)</span></label>
+              <input type="number" id="sno-item-count" min="1" step="1" placeholder="Cth: 5" style="max-width:140px">
             </div>
             <div class="div_"></div>
           </div>

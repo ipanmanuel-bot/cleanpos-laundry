@@ -68,6 +68,7 @@ let waTplNew = {
 let curWaNewType = 'konfirmasi'; let curWaNewOrder = null; let curRcptOrderId = null; let curRcptOrder = null;
 let storeName = 'CleanPOS Laundry'; let storeAddr = ''; let storeWa = ''; let storeFooter = 'Terima kasih atas kepercayaan Anda! \uD83D\uDE4F';
 let cutiPerBulan = 2;
+let kgStep = 0.5; // increment step for kiloan weight input (0.1 / 0.5 / 1)
 let curWaTplTab = 'selesai';
 let kasLog = []; let kasCtr = 1; let kasType = 'setor';
 let kasTypeFilter = 'all'; let kasDateFilter = 'today'; let _kasPage = 1;
@@ -526,6 +527,10 @@ function renderSettings(){
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
   if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
+  // kg step radio
+  const kgRadio=document.querySelector(`input[name="s-kgstep"][value="${kgStep}"]`);
+  if(kgRadio){kgRadio.checked=true;_syncKgStepLabels();}
+  else{const def=document.querySelector('input[name="s-kgstep"][value="0.5"]');if(def){def.checked=true;_syncKgStepLabels();}}
   const isElite=(currentPlan==='elite'||currentPlan==='enterprise')&&currentPlanStatus==='active';
   const mCard=g('membership-settings-card');
   if(mCard){
@@ -928,6 +933,29 @@ function saveEmpSettings(){
   renderEmployees();
   syncSettings();
   toast('\u2713 Pengaturan karyawan tersimpan!');
+}
+
+function _syncKgStepLabels(){
+  document.querySelectorAll('input[name="s-kgstep"]').forEach(r=>{
+    const lbl=r.closest('label');if(!lbl)return;
+    lbl.style.borderColor=r.checked?'var(--p)':'var(--b1)';
+    lbl.style.background=r.checked?'var(--pl)':'';
+    lbl.style.color=r.checked?'var(--p)':'';
+  });
+}
+
+function _applyKgStep(){
+  const inp=g('no-kg');if(inp){inp.step=String(kgStep);inp.min=String(kgStep);}
+  const inp2=g('sno-qty');if(inp2){inp2.step=String(kgStep);inp2.min=String(kgStep);}
+}
+
+function saveOrderSettings(){
+  const sel=document.querySelector('input[name="s-kgstep"]:checked');
+  if(!sel){toast('\u26A0\uFE0F Pilih kenaikan berat');return;}
+  kgStep=parseFloat(sel.value)||0.5;
+  _applyKgStep();
+  syncSettings();
+  toast('\u2713 Pengaturan pesanan tersimpan!');
 }
 
 // ===== DASHBOARDS =====
@@ -3449,17 +3477,28 @@ function renderSatuanItemsList(){}
 // ─── New Order: visual type/tier cards ───
 function _noRebuildSvcCards(){
   const el=g('no-stype-cards');if(!el)return;
-  const curType=g('no-type')?.value||'kiloan';
-  const types=[
-    {key:'kiloan',label:'Kiloan',desc:'Layanan berbasis berat (kg)'},
-    {key:'satuan',label:'Satuan',desc:'Layanan berbasis item / pcs'}
-  ];
+  const noTypeInp=g('no-type');
+  let curType=noTypeInp?.value||'';
+  // If current type is not a valid service ID and not 'satuan', default to first service
+  const validIds=serviceTypes.map(s=>s.id);
+  if(!validIds.includes(curType)&&curType!=='satuan'){
+    curType=serviceTypes[0]?.id||'kiloan';
+    if(noTypeInp)noTypeInp.value=curType;
+    const kgSect=g('no-kg-sect');const satSect=g('no-satuan-sect');
+    if(kgSect)kgSect.style.display='block';
+    if(satSect)satSect.style.display='none';
+  }
+  // One card per service type, plus Satuan at the end
+  const types=serviceTypes.map(s=>({key:s.id,label:s.name,desc:s.desc||(s.unit==='kg'?'Layanan berbasis berat (kg)':'Layanan berbasis item')}));
+  types.push({key:'satuan',label:'Satuan',desc:'Layanan berbasis item / pcs'});
+  // Adjust grid columns (max 3 per row)
+  el.style.gridTemplateColumns=`repeat(${Math.min(types.length,3)},1fr)`;
   el.innerHTML=types.map(t=>`
     <div class="no-type-card${curType===t.key?' on':''}" onclick="_noPickType('${t.key}')">
       <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
       <div class="no-type-body">
-        <div class="no-type-lbl">${t.label}</div>
-        <div class="no-type-desc">${t.desc}</div>
+        <div class="no-type-lbl">${esc(t.label)}</div>
+        <div class="no-type-desc">${esc(t.desc)}</div>
       </div>
       <div class="no-type-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
@@ -3492,7 +3531,7 @@ function _noPickType(key){
   const inp=g('no-type');if(inp)inp.value=key;
   // Show/hide kg vs satuan sections
   const kgSect=g('no-kg-sect');const satSect=g('no-satuan-sect');
-  if(kgSect)kgSect.style.display=(key==='kiloan'?'block':'none');
+  if(kgSect)kgSect.style.display=(key!=='satuan'?'block':'none');
   if(satSect)satSect.style.display=(key==='satuan'?'block':'none');
   // Update card styling (only service type cards, not tier cards)
   const svcGrid=g('no-stype-cards');
