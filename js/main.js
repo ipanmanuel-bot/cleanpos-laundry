@@ -3190,7 +3190,13 @@ const _DAY_VALS = ['0','1','2','3','4','5','6'];
 
 function isPromoToday(p){if(!p.active)return false;const dm=p.days.length===0||p.days.includes(String(TODAY_DAY));return dm&&(!p.from||TODAY_ISO>=p.from)&&(!p.to||TODAY_ISO<=p.to);}
 function isPromoScheduled(p){if(!p.active)return false;if(!p.from)return false;return p.from>TODAY_ISO;}
-function promoDiscLbl(p){if(p.discType==='persen')return `-${p.discVal}%`;if(p.discType==='flat')return `-${fmt(p.discVal)}`;return `-${fmt(p.discVal)}/qty`;}
+function promoDiscLbl(p){
+  if(p.discType==='persen')return `-${p.discVal}%`;
+  if(p.discType==='persen_qty')return `-${p.discVal}%/qty`;
+  if(p.discType==='flat')return `-${fmt(p.discVal)}`;
+  if(p.discType==='per_qty')return `-${fmt(p.discVal)}/qty`;
+  return `-${fmt(p.discVal)}`;
+}
 
 function _promoTabClick(el){
   document.querySelectorAll('#promo-filter-tabs .promo-ftab').forEach(b=>b.classList.remove('on'));
@@ -3251,7 +3257,8 @@ function _promoCard(p){
   const dayLbl=_promoDayLbl(p);
   const outLbl=_promoOutletLbl(p);
   const discLbl=promoDiscLbl(p);
-  const discType=p.discType==='persen'?'Diskon Persen':p.discType==='flat'?'Diskon Nominal':'Diskon Per Qty';
+  const _dtMap={flat:'Diskon Nominal',persen:'Persentase Total',persen_qty:'Persentase Satuan',per_qty:'Rp per Kg/Unit'};
+  const discType=_dtMap[p.discType]||p.discType||'—';
   const period=p.from||p.to?`${p.from||'—'} — ${p.to||'—'}`:'Tanpa batas';
   return `<div class="promo-card">
     <div style="display:flex;align-items:flex-start;gap:14px">
@@ -3464,20 +3471,30 @@ function _mpStep2Html(){
 
 function _mpStep3Html(){
   const s=_mpState;
-  const dt=s.discType||'persen';
-  const helpers={persen:'Masukkan nilai dalam persen. Contoh: 10 untuk diskon 10%.',flat:'Masukkan nominal dalam Rupiah. Contoh: 5000 untuk diskon Rp 5.000.',per_qty:'Masukkan nominal per kg atau pcs.'};
-  const labels={persen:'Nilai (%)',flat:'Nominal (Rp)',per_qty:'Per Kg/Pcs (Rp)'};
+  const dt=s.discType||'flat';
+  const types=[
+    {v:'flat',       l:'Rp Nominal',           desc:'Potongan tetap dalam Rupiah dari total harga.'},
+    {v:'persen',     l:'Persentase Total',      desc:'Potongan persen dari total harga pesanan.'},
+    {v:'persen_qty', l:'Persentase Satuan',     desc:'Potongan persen per kg atau per item.'},
+    {v:'per_qty',    l:'Rp per Kg / Unit',      desc:'Potongan nominal tetap per kg atau per item.'},
+  ];
+  const labels={flat:'Nominal (Rp)',persen:'Persentase (%)',persen_qty:'Persentase per Kg/Unit (%)',per_qty:'Nominal per Kg/Unit (Rp)'};
+  const helpers={flat:'Contoh: 5000 untuk potongan Rp 5.000 dari total.',persen:'Contoh: 10 untuk potongan 10% dari total pesanan.',persen_qty:'Contoh: 5 untuk potongan 5% per kg atau per item.',per_qty:'Contoh: 2000 untuk potongan Rp 2.000 per kg atau item.'};
   return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">3. Diskon</div>
   <div class="fg" style="margin-bottom:16px">
-    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Jenis Diskon <span style="color:#e53935">*</span></label>
-    <div style="display:flex;gap:8px">
-      ${[{v:'flat',l:'Rp Nominal'},{v:'persen',l:'Persen'}].map(x=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 14px;border:1.5px solid ${dt===x.v?'var(--p)':'var(--b1)'};border-radius:8px;background:${dt===x.v?'var(--pl)':'var(--ca)'};flex:1">
-        <input type="radio" name="mp-dt-r" value="${x.v}" ${dt===x.v?'checked':''} onchange="_mpDiscTypeChg('${x.v}')"> ${x.l}
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Jenis Diskon <span style="color:#e53935">*</span></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${types.map(x=>`<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;padding:10px 12px;border:1.5px solid ${dt===x.v?'var(--p)':'var(--b1)'};border-radius:9px;background:${dt===x.v?'var(--pl)':'var(--ca)'}">
+        <input type="radio" name="mp-dt-r" value="${x.v}" ${dt===x.v?'checked':''} onchange="_mpDiscTypeChg('${x.v}')" style="margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-weight:600;color:${dt===x.v?'var(--p)':'var(--t1)'}">${x.l}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.4">${x.desc}</div>
+        </div>
       </label>`).join('')}
     </div>
   </div>
   <div class="fg" style="margin-bottom:0">
-    <label id="mp-dv-lbl" style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
     <input type="number" id="mp-dv" placeholder="0" min="0" value="${s.discVal||''}" oninput="_mpState.discVal=parseFloat(this.value)||0">
     <div style="font-size:11px;color:var(--t2);margin-top:5px">${helpers[dt]||''}</div>
   </div>`;

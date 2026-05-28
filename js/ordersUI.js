@@ -313,8 +313,10 @@ function getActivePromo(type, cat) {
 
 function calcPromoDisc(p, base, qty) {
   if (!p) return 0;
-  if (p.discType === 'persen') return base * (p.discVal / 100);
-  if (p.discType === 'flat')   return p.discVal;
+  if (p.discType === 'persen')     return base * (p.discVal / 100);
+  if (p.discType === 'flat')       return p.discVal;
+  if (p.discType === 'persen_qty') return base * (p.discVal / 100) * qty;
+  if (p.discType === 'per_qty')    return p.discVal * qty;
   return p.discVal * qty;
 }
 
