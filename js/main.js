@@ -1752,15 +1752,16 @@ function _renderCustTable(list) {
     }
     const acts = membershipEnabled
       ? `<div style="display:flex;gap:5px;align-items:center">
+           <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
            <button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button>
            <button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Membership Card" style="padding:5px 8px">${_C_IC_CARD}</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
-           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`
       : `<div style="display:flex;gap:5px;align-items:center">
            <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
-           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`;
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:10px">
@@ -1802,9 +1803,10 @@ function _renderCustCards(list) {
         <span>${esc(c.lastDate||'—')}</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
         ${membershipEnabled?`<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" style="gap:4px;padding:5px 9px">${IC_CARD14}</button>`:''}
         <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" style="gap:4px;padding:5px 9px">${IC_WA14}</button>
-        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
+        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${IC_MORE14}</button></div>
       </div>
     </div>`;
   }).join(''); } catch(e) { console.error('[renderCusts cards]', e); wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--re,#c62828);font-size:13px">Error rendering. Coba refresh halaman.</div>`; }
@@ -1827,9 +1829,9 @@ function _renderCustPager(total, totalPages) {
   </div>`;
 }
 
-function _custMoreMenu(phone) {
+function _custMoreMenu(phone, anchorEl) {
   document.querySelectorAll('.cust-dd').forEach(d => d.remove());
-  const anchor = g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
+  const anchor = anchorEl || g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
   const c = customers[phone];
   const items = [
     {label:'Edit', fn:`openEditCust('${phone}')`},
