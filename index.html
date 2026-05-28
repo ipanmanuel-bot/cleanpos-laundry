@@ -20,11 +20,11 @@
 :root{
   --p:#8DC440;--pd:#6FA32E;--pl:#EDF5D8;--p20:#8DC44033;
   --dk:#1A1A1A;--dk2:#232323;--dk3:#2E2E2E;
-  --bg:#FFFFFF;--ca:#FFFFFF;--b1:#E8E8E4;--b2:#D0D0CB;
+  --bg:#F4F5F0;--ca:#FFFFFF;--b1:#E8E8E4;--b2:#D0D0CB;
   --t1:#1A1A1A;--t2:#6B6B65;--t3:#ABABAB;
   --re:#E53935;--reb:#FFEBEE;--am:#F57C00;--amb:#FFF8E1;
   --bl:#1976D2;--blb:#E3F2FD;--pu:#7B1FA2;--pub:#F3E5F5;
-  --r:16px;--rs:22px;--rp:100px;
+  --r:16px;--rs:10px;--rp:100px;
   --sh:0 2px 12px rgba(0,0,0,.06);--sh2:0 8px 32px rgba(0,0,0,.14)
 }
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;font-size:15px;color:var(--t1);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -54,7 +54,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text'
 .nk{padding:18px;border-radius:14px;border:2px solid var(--b1);background:var(--ca);cursor:pointer;font-size:22px;font-weight:600;text-align:center;font-family:inherit;color:var(--t1);transition:all .12s;min-height:64px;display:flex;align-items:center;justify-content:center}
 .nk:hover{background:var(--pl);border-color:var(--p)}
 .nk:active{transform:scale(.93);background:var(--p);color:#fff;border-color:var(--p)}
-input,select,textarea{padding:16px 18px;border:2px solid var(--b1);border-radius:var(--rs);background:var(--ca);color:var(--t1);font-size:13px;font-family:inherit;width:100%;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+input,select,textarea{padding:12px 14px;border:2px solid var(--b1);border-radius:var(--rs);background:var(--ca);color:var(--t1);font-size:16px;font-family:inherit;width:100%;transition:border-color .15s;-webkit-appearance:none;appearance:none}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--p20)}
 input[type="checkbox"],input[type="radio"]{width:17px;height:17px;min-width:17px;padding:0;border:2px solid var(--b2);background:var(--ca);-webkit-appearance:none;appearance:none;border-radius:4px;cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s;vertical-align:middle;box-shadow:none}
 input[type="checkbox"]:checked,input[type="radio"]:checked{background:var(--p);border-color:var(--p)}
@@ -62,8 +62,8 @@ input[type="checkbox"]:checked::after{content:'';display:block;width:4px;height:
 input[type="radio"]{border-radius:50%}
 input[type="radio"]:checked::after{content:'';display:block;width:7px;height:7px;background:#fff;border-radius:50%;margin:3px}
 input[type="checkbox"]:focus,input[type="radio"]:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p20)}
-textarea{resize:vertical;line-height:1.6;font-size:13px}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6B65' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;padding-right:40px}
+textarea{resize:vertical;line-height:1.6;font-size:15px}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6B65' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .lnk{text-align:center;font-size:13px;color:var(--t2);cursor:pointer;margin-top:14px;display:block;padding:8px}
 .lnk:hover{color:var(--t1)}
 .perr{text-align:center;font-size:12px;color:var(--re);min-height:16px;margin-top:6px}
@@ -108,7 +108,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .role-ic svg{width:28px;height:28px;stroke-width:1.5;display:block}
 #plan-badge-emoji svg{width:20px;height:20px;stroke-width:1.75;display:block}
 .page{display:none}.page.on{display:block}
-.card{background:var(--ca);border:1px solid var(--b1);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card{background:var(--ca);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
 .ct{font-weight:700;font-size:14px;margin-bottom:12px}
 .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .pt{font-size:20px;font-weight:800;margin-bottom:16px;letter-spacing:-.3px}
@@ -134,10 +134,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .gam{background:var(--amb);color:var(--am)}.gbl{background:var(--blb);color:var(--bl)}
 .gpu{background:var(--pub);color:var(--pu)}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:11px 16px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--b1);background:var(--bg);white-space:nowrap}
-td{padding:12px 16px;border-bottom:1px solid var(--b1);vertical-align:middle}
+th{text-align:left;padding:10px 12px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--b1);background:var(--bg);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--b1);vertical-align:middle}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:#F6F7F9}
+tr:hover td{background:#FAFAF7}
 .tw{overflow-x:auto;border-radius:var(--r);box-shadow:var(--sh)}
 .tw table{background:var(--ca)}
 .toggle{width:42px;height:24px;border-radius:20px;cursor:pointer;position:relative;border:none;flex-shrink:0;transition:background .2s}
@@ -356,190 +356,6 @@ tr:hover td{background:#F6F7F9}
 .out-dd button{display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--t1)}
 .out-dd button:hover{background:var(--bg)}
 .out-dd button.danger{color:var(--re)}
-/* ── Pricing page ── */
-.ptab-bar{display:flex;border-bottom:2px solid var(--b1);margin-bottom:18px;gap:0}
-.ptab-btn{padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:var(--t2);border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit;transition:color .2s,border-color .2s;white-space:nowrap}
-.ptab-btn.on{color:var(--p);border-bottom-color:var(--p)}
-.ptab-pane{display:none}.ptab-pane.on{display:block}
-.pricing-split{display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start}
-@media(max-width:900px){.pricing-split{grid-template-columns:1fr}}
-.prc-tbl{width:100%;border-collapse:collapse}
-.prc-tbl th{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;padding:11px 16px;border-bottom:2px solid var(--b1);text-align:left;white-space:nowrap}
-.prc-tbl td{padding:13px 16px;border-bottom:1px solid var(--b1);font-size:13px;vertical-align:middle}
-.prc-tbl tr:last-child td{border-bottom:none}
-.prc-tbl tbody tr:hover td{background:var(--bg)}
-.prc-badge-on{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32}
-.prc-badge-off{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--t2)}
-.prc-banner{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:14px}
-.prc-banner.warn{background:#fffde7;border:1px solid #f9a825;color:#795504}
-.prc-banner.info{background:#e3f2fd;border:1px solid #90caf9;color:#1565c0}
-.prc-opts-panel{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;overflow:hidden;position:sticky;top:16px}
-.prc-opts-hdr{padding:14px 16px;border-bottom:1px solid var(--b1)}
-.svc-card{border:1.5px solid var(--b1);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .15s}
-.svc-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
-/* ── Kiloan tab redesign ─────────────────────── */
-.prc-svc-wrap{border:1.5px solid var(--b1);border-radius:12px;margin-bottom:10px;overflow:hidden;background:var(--ca)}
-.prc-svc-wrap.dragging{opacity:.5}
-.prc-svc-row{display:flex;align-items:center;gap:10px;padding:12px 14px}
-.prc-svc-drag{flex-shrink:0;cursor:grab;color:var(--t2);opacity:.4;display:flex;align-items:center;padding:2px}
-.prc-svc-drag:hover{opacity:.8}
-.prc-svc-col-name{flex:1;min-width:0}
-.prc-svc-col-unit{width:48px;font-size:12px;color:var(--t2);flex-shrink:0;text-align:center}
-.prc-svc-col-price{width:150px;font-size:12px;color:var(--t1);flex-shrink:0}
-.prc-svc-col-status{width:72px;flex-shrink:0;text-align:center}
-.prc-svc-col-aksi{display:flex;gap:5px;flex-shrink:0}
-.prc-svc-settings{background:#fafafa;border-top:1px dashed var(--b1);padding:12px 14px 14px}
-.prc-svc-settings-hdr{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.prc-svc-settings-body{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
-.prc-minkg-group{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.prc-minkg-lbl{font-size:12px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:4px}
-.prc-minkg-input{width:60px;text-align:center;padding:5px 6px!important;font-size:13px;font-weight:700}
-.prc-tier-apply-group{flex:1;min-width:0}
-.prc-tier-apply-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.prc-tier-chips{display:flex;gap:6px;flex-wrap:wrap}
-.prc-tier-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px 4px 7px;border:1.5px solid var(--b1);border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;background:var(--ca);color:var(--t1);user-select:none;line-height:1}
-.prc-tier-chip:hover{border-color:var(--p);background:var(--pl)}
-.prc-tier-chip.on{border-color:var(--p);background:var(--pl);color:var(--p);font-weight:600}
-.prc-tier-chip svg.chip-off{display:block;opacity:.35}
-.prc-tier-chip svg.chip-on{display:none;color:var(--p)}
-.prc-tier-chip.on svg.chip-off{display:none}
-.prc-tier-chip.on svg.chip-on{display:block}
-.prc-svc-save-row{display:flex;justify-content:flex-end;margin-top:12px}
-.prc-col-hdr{display:flex;align-items:center;gap:10px;padding:7px 14px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--b1)}
-.prc-po-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1.5px solid var(--b1);border-radius:10px;margin-bottom:8px;background:var(--ca);transition:border-color .15s}
-.prc-po-row.prc-po-active{border-color:var(--p)}
-.prc-po-row.dragging{opacity:.4;box-shadow:0 4px 12px rgba(0,0,0,.12)}
-.prc-po-drag{flex-shrink:0;cursor:grab;opacity:.35;display:flex;align-items:center;padding:2px}
-.prc-po-drag:hover{opacity:.8}
-.prc-po-icon-cell{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.prc-po-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.prc-po-name-block{min-width:0}
-.prc-po-name{font-size:13px;font-weight:700;color:var(--t1)}
-.prc-po-est-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;display:inline-flex;margin-top:3px;white-space:nowrap}
-.prc-po-est-col{width:90px;font-size:12px;color:var(--t2);flex-shrink:0}
-.prc-po-order-col{width:40px;text-align:center;font-size:13px;font-weight:600;color:var(--t2);flex-shrink:0}
-.prc-po-status-col{display:flex;align-items:center;gap:6px;width:110px;flex-shrink:0}
-.prc-po-status-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
-.prc-po-aksi-col{display:flex;gap:4px;align-items:center;flex-shrink:0}
-.prc-po-add-btn{width:100%;padding:11px;border:1.5px dashed var(--b1);border-radius:10px;background:none;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;font-family:inherit;margin-bottom:10px}
-.prc-po-add-btn:hover{background:var(--pl);border-color:var(--p)}
-.prc-po-info-box{background:#e8f4fd;border:1px solid #bee3f8;border-radius:8px;padding:12px 14px;font-size:12px;color:#1a6ea8;line-height:1.6}
-.prc-po-info-box ul{margin:4px 0 0;padding-left:16px}
-/* ── New Order page ─────────────────────────── */
-.no-layout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
-@media(max-width:960px){.no-layout{grid-template-columns:1fr}}
-.no-step-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:16px 20px;margin-bottom:14px}
-.no-step-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.no-step-num{width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.no-step-title{font-size:13px;font-weight:700;color:var(--t1)}
-.no-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.no-type-card{border:2px solid var(--b1);border-radius:12px;padding:14px 16px;cursor:pointer;position:relative;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:12px}
-.no-type-card.on{border-color:var(--p);background:var(--pl)}
-.no-type-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:border-color .15s}
-.no-type-card.on .no-type-radio{border-color:var(--p)}
-.no-type-radio-dot{width:8px;height:8px;border-radius:50%;background:var(--p);display:none}
-.no-type-card.on .no-type-radio-dot{display:block}
-.no-type-check{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;background:var(--p);display:none;align-items:center;justify-content:center}
-.no-type-card.on .no-type-check{display:flex}
-.no-type-body{flex:1;min-width:0}
-.no-type-lbl{font-size:13px;font-weight:700;color:var(--t1)}
-.no-type-desc{font-size:11px;color:var(--t2);margin-top:2px}
-.sat-add-row{display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:8px;align-items:center;margin-bottom:12px}
-@media(max-width:700px){.sat-add-row{grid-template-columns:1fr 1fr;row-gap:8px}}
-.sat-est-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;white-space:nowrap}
-.sat-price-lbl{font-size:12px;color:var(--t2);white-space:nowrap}
-.sat-cart-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.sat-cart-tbl th{text-align:left;padding:9px 10px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;border-bottom:2px solid var(--b1);white-space:nowrap}
-.sat-cart-tbl td{padding:9px 10px;border-bottom:1px solid var(--b1);vertical-align:middle}
-.sat-cart-tbl tr:last-child td{border-bottom:none}
-.sat-cart-tbl tr:hover td{background:#F6F7F9}
-.sat-cart-wrap{border:1.5px solid var(--b1);border-radius:10px;overflow:hidden;margin-top:8px}
-.sat-info-tip{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;background:#e3f2fd;border-radius:8px;font-size:12px;color:#1565c0;margin-top:8px}
-.no-addon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-@media(max-width:600px){.no-addon-grid{grid-template-columns:1fr 1fr}}
-.no-addon-card{border:2px solid var(--b1);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
-.no-addon-card.on{border-color:var(--p);background:var(--pl)}
-.no-addon-name{font-size:12px;font-weight:700;color:var(--t1)}
-.no-addon-price{font-size:11px;color:var(--t2);margin-top:2px}
-.no-addon-check{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--p);display:none;align-items:center;justify-content:center}
-.no-addon-card.on .no-addon-check{display:flex}
-/* Summary sidebar */
-.no-sum-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;overflow:hidden;position:sticky;top:16px}
-.no-sum-hdr{padding:16px 20px;border-bottom:1.5px solid var(--b1);font-size:14px;font-weight:700;color:var(--t1)}
-.no-sum-body{padding:16px 20px}
-.no-sum-cust{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--b1)}
-.no-sum-av{width:40px;height:40px;border-radius:50%;background:var(--p);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.no-sum-av-info{flex:1;min-width:0}
-.no-sum-av-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.no-sum-av-phone{font-size:11px;color:var(--t2)}
-.no-sum-edit-btn{font-size:11px;color:var(--p);cursor:pointer;font-weight:600;white-space:nowrap}
-.no-sum-sect-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:12px}
-.no-sum-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0;gap:8px}
-.no-sum-row>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.no-sum-row>span:last-child{flex-shrink:0}
-.no-sum-row.total{font-size:16px;font-weight:800;color:var(--p);padding:8px 0;border-top:2px solid var(--b1);margin-top:4px}
-.no-sum-item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b1)}
-.no-sum-item-row:last-child{border-bottom:none}
-.no-sum-item-name{flex:1;min-width:0;overflow:hidden}
-.no-sum-item-badge{font-size:10px;color:var(--t2);display:block;margin-top:1px}
-.no-sum-item-val{font-weight:600;text-align:right;white-space:nowrap;flex-shrink:0}
-.no-sum-discount{color:var(--p);font-size:12px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;margin:8px 0}
-.no-sum-pay{padding:16px 20px;border-top:1.5px solid var(--b1)}
-.no-sum-savebtn{width:100%;padding:14px;border:none;border-radius:10px;background:var(--p);color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-top:12px;font-family:inherit;transition:opacity .15s}
-.no-sum-savebtn:hover{opacity:.9}
-/* ── m-svc modal redesign ─────────────────── */
-@media(min-width:600px){.msvc-modal{max-width:800px!important;width:calc(100vw - 40px)}}
-.msvc-body{display:grid;grid-template-columns:1fr 1px 1fr;min-height:0}
-@media(max-width:700px){.msvc-body{grid-template-columns:1fr}}
-.msvc-left{padding:24px}
-.msvc-right{padding:24px}
-.msvc-divider{background:var(--b1)}
-@media(max-width:700px){.msvc-divider{height:1px;width:100%}}
-.msvc-sec-hdr{display:flex;align-items:center;gap:8px;margin-bottom:16px}
-.msvc-sec-num{width:22px;height:22px;border-radius:50%;background:var(--p);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.msvc-sec-title{font-size:13px;font-weight:700;color:var(--t1)}
-.msvc-sub{font-size:11px;color:var(--t2);margin-top:3px}
-.msvc-status-card{border:1.5px solid var(--b1);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .15s,background .15s}
-.msvc-status-card.active{border-color:var(--p);background:var(--pl)}
-.msvc-status-lbl{font-size:13px;font-weight:600;color:var(--p)}
-.msvc-info-banner{background:#e8f4fd;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px;font-size:12px;color:#1a6ea8;display:flex;align-items:flex-start;gap:7px;margin-bottom:12px;line-height:1.5}
-.msvc-tier-card{border:1.5px solid var(--b1);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--ca);transition:border-color .15s,box-shadow .15s;cursor:default}
-.msvc-tier-card.has-price{border-color:var(--p);background:var(--pl)}
-.msvc-tier-card.dragging{opacity:.5;box-shadow:0 4px 12px rgba(0,0,0,.15)}
-.msvc-tier-drag{display:flex;flex-direction:column;gap:3px;cursor:grab;padding:2px 4px;flex-shrink:0;opacity:.4}
-.msvc-tier-drag:hover{opacity:.8}
-.msvc-tier-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.msvc-tier-info{flex:1;min-width:0}
-.msvc-tier-name{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.msvc-tier-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;white-space:nowrap}
-.msvc-tier-est{font-size:11px;color:var(--t2);margin-top:1px}
-.msvc-price-side{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
-.msvc-price-lbl{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
-.msvc-price-row{display:flex;align-items:center;border:1.5px solid var(--b1);border-radius:7px;overflow:hidden;background:var(--ca)}
-.msvc-price-rp{padding:5px 8px;font-size:12px;font-weight:700;background:var(--bg);border-right:1.5px solid var(--b1);color:var(--t2);flex-shrink:0;line-height:1.4}
-.msvc-price-input{border:none!important;border-radius:0!important;width:72px;text-align:right;font-size:13px;font-weight:700;padding:5px 7px!important;background:transparent!important;box-shadow:none!important}
-.msvc-price-input:focus{outline:none!important;border:none!important;box-shadow:none!important}
-.msvc-tier-del{width:26px;height:26px;border:none;background:none;cursor:pointer;color:#e53935;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s;flex-shrink:0;padding:0}
-.msvc-tier-del:hover{background:#ffebee}
-.msvc-add-tier{width:100%;padding:10px;border:1.5px dashed var(--b1);border-radius:10px;background:none;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;font-family:inherit;margin-top:4px}
-.msvc-add-tier:hover{background:var(--pl);border-color:var(--p)}
-.msvc-hint{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:5px;margin-top:10px;line-height:1.4}
-.msvc-icon-wrap{position:relative}
-.msvc-icon-wrap svg.msvc-field-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--t2)}
-.msvc-icon-wrap input,.msvc-icon-wrap select{padding-left:34px!important}
-/* ── Legacy New Order (keep for SNO compatibility) ── */
-.no-stype{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
-.no-stype-card{border:2px solid var(--b1);border-radius:12px;padding:14px 10px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--ca)}
-.no-stype-card.on{border-color:var(--p);background:var(--pl)}
-.no-tier{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-.no-tier-card{border:2px solid var(--b1);border-radius:10px;padding:10px 6px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;background:var(--ca)}
-.no-tier-card.on{border-color:var(--p);background:var(--pl)}
-.sat-picker{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-.sat-picker select{flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none}
-.sat-picker select:focus{border-color:var(--p)}
-.sat-cart-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:13px}
-.no-sum-item{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
-.no-sum-item span:last-child{font-weight:600}
 /* ── Tracking page ── */
 #scr-track{background:#EAECF0}
 @media(min-width:640px){
@@ -551,52 +367,6 @@ tr:hover td{background:#F6F7F9}
   #trk-refresh-info{color:rgba(255,255,255,.4)!important}
   #trk-expired,#trk-notfound{box-shadow:0 8px 40px rgba(0,0,0,.35)!important}
 }
-/* ===== PROMO REDESIGN ===== */
-/* Promo page filter tabs */
-.promo-ftab{padding:6px 14px;border-radius:20px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;display:inline-flex;align-items:center;gap:6px;line-height:1}
-.promo-ftab.on{border-color:var(--p);background:var(--pl);color:var(--p)}
-.promo-ftab .pcnt{background:var(--p);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;line-height:1.4;min-width:18px;text-align:center}
-.promo-ftab.on .pcnt{background:var(--p);color:#fff}
-/* Promo cards */
-.promo-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:18px 20px;margin-bottom:10px}
-.promo-icon-wrap{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--pl)}
-.promo-meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding-top:12px;border-top:1px solid var(--b1);margin-top:12px}
-.promo-meta-item .pml{font-size:10px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:4px;margin-bottom:2px}
-.promo-meta-item .pmv{font-size:12px;color:var(--t1);font-weight:500}
-.promo-card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px;margin-top:12px;border-top:1px solid var(--b1)}
-/* Step modal */
-.mp-modal-body{display:flex;flex:1;min-height:0;overflow:hidden}
-.mp-sidebar{width:210px;min-width:210px;border-right:1px solid var(--b1);padding:20px 14px;background:var(--bg);display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex-shrink:0}
-.mp-content{flex:1;overflow-y:auto;padding:24px}
-.mp-step-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;transition:background .1s;user-select:none}
-.mp-step-item.act{background:var(--pl)}
-.mp-step-item.done .mp-sn,.mp-step-item.act .mp-sn{border-color:var(--p);background:var(--p);color:#fff}
-.mp-sn{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;border:2px solid var(--b1);background:var(--ca);color:var(--t2);transition:all .15s;margin-top:1px}
-.mp-sl{font-size:12px;font-weight:600;color:var(--t2);line-height:1.35}
-.mp-step-item.act .mp-sl{color:var(--p)}
-.mp-step-item.done .mp-sl{color:var(--p)}
-/* Accordion */
-.mp-accord{border:1.5px solid var(--b1);border-radius:10px;overflow:hidden;margin-bottom:10px}
-.mp-accord-hd{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;user-select:none;background:var(--ca);transition:background .1s}
-.mp-accord-hd:hover{background:var(--bg)}
-.mp-accord-bd{padding:14px;border-top:1px solid var(--b1)}
-/* Matrix */
-.mp-matrix{width:100%;border-collapse:collapse;font-size:12px}
-.mp-matrix th{padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--t2);border-bottom:2px solid var(--b1);background:var(--bg);text-align:center}
-.mp-matrix th:first-child{text-align:left}
-.mp-matrix td{padding:8px 10px;border-bottom:1px solid var(--b1);text-align:center;vertical-align:middle}
-.mp-matrix td:first-child{text-align:left;font-weight:500;color:var(--t1)}
-.mp-matrix tr:last-child td{border-bottom:none}
-/* Day pills v2 */
-.dpill{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--b1);background:var(--ca);cursor:pointer;font-size:11px;font-weight:600;color:var(--t2);transition:all .15s;font-family:inherit}
-.dpill.sel{border-color:var(--p);background:var(--p);color:#fff}
-/* Outlet option card */
-.outlet-opt{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:1.5px solid var(--b1);cursor:pointer;transition:all .15s;background:var(--ca);flex:1}
-.outlet-opt.sel{border-color:var(--p);background:var(--pl)}
-.outlet-opt-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--b1);flex-shrink:0;color:var(--t2)}
-.outlet-opt.sel .outlet-opt-icon{background:rgba(76,153,0,.12);color:var(--p)}
-/* Inline toggle row */
-.inline-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
 </style>
 </head>
 <body>
@@ -897,152 +667,72 @@ tr:hover td{background:#F6F7F9}
 
 <!-- NEW ORDER -->
 <div class="page" id="o-p-new-order">
-  <div class="sh" style="margin-bottom:20px">
-    <div><div class="pt">Buat Pesanan Baru</div></div>
-    <button class="btn" onclick="saveDraft()" style="flex-shrink:0">Simpan sebagai Draft</button>
-  </div>
-  <div class="no-layout">
-    <!-- ── LEFT: Steps ───────────────────────── -->
+  <div class="pt">Buat Pesanan Baru</div>
+  <div class="g2 og">
     <div>
-      <!-- Step 1: Data Pelanggan -->
-      <div class="no-step-card">
-        <div class="no-step-hdr">
-          <div class="no-step-num">1</div>
-          <div class="no-step-title">Data Pelanggan</div>
+      <div class="card"><div class="ct">Data Pelanggan</div>
+        <div class="fg"><label>Outlet</label><select id="no-outlet"></select></div>
+        <div class="fg" style="position:relative;margin-bottom:10px">
+          <label>Cari Pelanggan Lama</label>
+          <input id="no-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('no')" autocomplete="off">
+          <div id="no-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
         </div>
-        <div class="g2" style="margin-bottom:12px">
-          <div class="fg"><label>Outlet *</label><select id="no-outlet" onchange="calcO()"></select></div>
-          <div class="fg" style="position:relative;overflow:visible"><label>Cari Pelanggan Lama</label><input id="no-cust-srch" placeholder="Nama / No. WA..." oninput="custSearch('no')" autocomplete="off"><div id="no-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div></div>
-        </div>
-        <div class="g2" style="margin-bottom:12px">
-          <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan" oninput="calcO()"></div>
-          <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="calcO()"></div>
-        </div>
-        <div class="fg"><label>Catatan</label><input id="no-note" placeholder="Catatan pesanan (opsional)" oninput="calcO()"></div>
+        <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
+        <div class="fg"><label>No. WhatsApp</label><input id="no-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('no')"></div>
+        <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="no-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
       </div>
-
-      <!-- Step 2: Jenis Pesanan -->
-      <div class="no-step-card">
-        <div class="no-step-hdr">
-          <div class="no-step-num">2</div>
-          <div class="no-step-title">Jenis Pesanan</div>
+      <div class="card"><div class="ct">Detail Layanan</div>
+        <div class="g2">
+          <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="no-type" onchange="typeChange('no')"></select></div>
+          <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="no-cat" onchange="catChange('no')"><option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option></select></div>
         </div>
-        <div class="no-type-grid" id="no-stype-cards">
-          <!-- Rendered by _noRebuildSvcCards() -->
-        </div>
-        <!-- hidden state inputs -->
-        <input type="hidden" id="no-type" value="kiloan">
-        <input type="hidden" id="no-cat" value="regular">
-        <input type="hidden" id="no-est">
-      </div>
-
-      <!-- Step 3: Detail Layanan -->
-      <div class="no-step-card" id="no-detail-step">
-        <div class="no-step-hdr">
-          <div class="no-step-num">3</div>
-          <div class="no-step-title" id="no-detail-step-title">Detail Layanan</div>
-        </div>
-
-        <!-- Kiloan section -->
-        <div id="no-kg-sect">
-          <div class="fg" style="margin-bottom:12px">
-            <label>Berat (kg)</label>
-            <input type="number" id="no-kg" step="0.1" min="0" value="1" oninput="calcO()" style="max-width:140px">
-          </div>
-        </div>
-
-        <!-- Satuan section -->
+        <div class="div_"></div>
         <div id="no-satuan-sect" style="display:none">
-          <div class="sat-add-row">
-            <select id="no-sat-sel" onchange="_noUpdateSatPrice()"><option value="">-- Pilih Item --</option></select>
-            <select id="no-sat-tier" onchange="_noUpdateSatPrice()" style="min-width:110px"><option value="">-- Opsi Harga --</option></select>
-            <span class="sat-est-badge" id="no-sat-est" style="display:none">2-3 Hari</span>
-            <input type="number" id="no-sat-qty" value="1" min="1" style="width:60px;text-align:center">
-            <span class="sat-price-lbl" id="no-sat-price"></span>
-            <button class="btn bp bsm" onclick="addToSatuanCart('no')">+ Tambah Item</button>
-          </div>
-          <div id="no-satuan-items">
-            <div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah Item.</div>
-          </div>
-          <div class="sat-info-tip">
-            <span>ℹ️</span>
-            <span>Pilih item, tentukan opsi harga dan qty, lalu klik 'Tambah Item'.</span>
-          </div>
+          <div id="no-satuan-items"></div>
+          <div class="div_"></div>
         </div>
-
-        <!-- Tier selection (shown for kiloan) -->
-        <div id="no-tier-sect" style="margin-top:4px">
-          <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Opsi Harga</div>
-          <div id="no-tier-cards" style="display:grid;gap:8px"></div>
+        <div id="no-kg-sect">
+          <div class="g2">
+            <div class="fg" style="margin-bottom:0"><label id="no-qty-lbl">Berat (kg) <span id="no-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
+              <input type="number" id="no-qty" value="1" min="0.5" step="0.5" oninput="calcO()">
+              <div id="no-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
+            </div>
+            <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="no-est" readonly style="color:var(--t2)"></div>
+          </div>
+          <div class="div_"></div>
         </div>
-      </div>
-
-      <!-- Step 4: Layanan Tambahan -->
-      <div class="no-step-card">
-        <div class="no-step-hdr">
-          <div class="no-step-num">4</div>
-          <div class="no-step-title">Layanan Tambahan</div>
-        </div>
-        <div class="no-addon-grid" id="no-addons"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Layanan Tambahan</div>
+        <div id="no-addons" class="g2"></div>
       </div>
     </div>
-
-    <!-- ── RIGHT: Summary ─────────────────────── -->
     <div>
-      <div class="no-sum-card">
-        <div class="no-sum-hdr">Ringkasan Pesanan</div>
-        <div id="no-sum-body" class="no-sum-body">
-          <!-- Rendered by _noUpdateSummary() -->
-          <div style="padding:20px;color:var(--t2);font-size:13px;text-align:center">Isi form di sebelah kiri untuk melihat ringkasan pesanan.</div>
+      <div id="no-promo-box"></div>
+      <div class="card"><div class="ct">Diskon Manual</div>
+        <div class="g2">
+          <div class="fg" style="margin-bottom:0"><label>Jenis Diskon</label>
+            <select id="no-disc-type" onchange="calcO();discTypeChange('no')"><option value="none">— Tidak ada</option><option value="persen">% Persentase</option><option value="flat">Rp Nominal</option><option value="per_qty">Rp Per Kg/Pcs</option></select>
+          </div>
+          <div class="fg" id="no-dv-w" style="margin-bottom:0;display:none"><label id="no-dv-lbl">Nilai</label><input type="number" id="no-disc-val" value="0" min="0" oninput="calcO()"></div>
         </div>
-        <div class="no-sum-pay">
-          <div class="fg" style="margin-bottom:10px">
-            <label>Metode Pembayaran</label>
-            <select id="no-pm" onchange="calcO()">
-              <option value="cash">Tunai</option>
-              <option value="transfer">Transfer</option>
-              <option value="qris">QRIS</option>
-              <option value="other">Lainnya</option>
-            </select>
-          </div>
-          <div class="fg" style="margin-bottom:10px">
-            <label>Status Pembayaran</label>
-            <select id="no-ps" onchange="calcO()">
-              <option value="paid">Lunas</option>
-              <option value="dp">DP / Cicilan</option>
-              <option value="unpaid">Belum Bayar</option>
-            </select>
-          </div>
-          <div id="no-cash-sect">
-            <div class="fg" style="margin-bottom:6px">
-              <label>Uang Diterima</label>
-              <input type="number" id="no-cash" placeholder="0" oninput="calcO()">
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0">
-              <span style="color:var(--t2)">Kembalian</span>
-              <span id="no-chg" style="font-weight:700">Rp 0</span>
-            </div>
-          </div>
-          <button class="no-sum-savebtn" onclick="submitOrder()">Simpan Pesanan</button>
+      </div>
+      <div class="card"><div class="ct">Ringkasan</div>
+        <div id="no-preview"></div><div class="div_"></div>
+        <div class="sr tot"><span>Total</span><span id="no-total" style="color:var(--p)">Rp 0</span></div>
+      </div>
+      <div class="card"><div class="ct">Pembayaran</div>
+        <div class="g2">
+          <div class="fg" style="margin-bottom:0"><label>Metode</label><select id="no-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select></div>
+          <div class="fg" style="margin-bottom:0"><label>Status</label><select id="no-ps" onchange="dpTgl('no')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select></div>
         </div>
+        <div id="no-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-top:6px;margin-bottom:0"></div>
+        <div class="fg" id="no-dp-g" style="display:none;margin-top:8px;margin-bottom:0"><label>Jumlah DP</label><input type="number" id="no-dp" placeholder="0"></div>
+        <div class="div_"></div>
+        <div class="fg"><label>Uang Diterima</label><input type="number" id="no-cash" oninput="calcChg('no')" placeholder="0"></div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px;display:flex;justify-content:space-between;font-size:14px;margin-bottom:12px"><span>Kembalian</span><span id="no-chg" style="font-weight:700">Rp 0</span></div>
+        <button class="btn bp bfull bpill" onclick="submitO('o')">Simpan Pesanan</button>
       </div>
     </div>
   </div>
-
-  <!-- hidden promo/discount box (not visible by default) -->
-  <div id="no-promo-box" style="display:none">
-    <div class="fg"><label>Diskon / Promo</label>
-      <select id="no-promo" onchange="calcO()"><option value="">Tidak ada diskon</option></select>
-    </div>
-  </div>
-  <!-- hidden discount display -->
-  <span id="no-disc-display" style="display:none"></span>
-  <!-- hidden legacy elements for calcBase compatibility -->
-  <input type="hidden" id="no-qty" value="1">
-  <input type="hidden" id="no-total" value="">
-  <input type="hidden" id="no-disc-type" value="none">
-  <input type="hidden" id="no-disc-val" value="0">
-  <input type="hidden" id="no-preview">
 </div>
 
 <!-- TRACKING -->
@@ -1246,59 +936,27 @@ tr:hover td{background:#F6F7F9}
 
 <!-- PRICING -->
 <div class="page" id="o-p-pricing">
-
-  <!-- ── Sub-page: per-item settings ── -->
-  <div id="prc-item-page" style="display:none">
-    <div id="prc-item-content"></div>
+  <div class="pt">Harga &amp; Layanan</div>
+  <div class="card">
+    <div class="sh"><div class="ct" style="margin-bottom:0">Layanan Kiloan</div><button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan</button></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Harga per kg · Regular → Same-day → Express. Min. berat per layanan dapat diatur di bawah tiap baris.</div>
+    <div id="svc-type-list"></div>
   </div>
-
-  <!-- ── Main pricing page ── -->
-  <div id="prc-main-page">
-    <div class="sh" style="align-items:flex-start;margin-bottom:14px">
-      <div>
-        <div class="pt" style="margin-bottom:2px">Harga &amp; Layanan</div>
-        <div style="font-size:13px;color:var(--t2)">Kelola layanan dan harga sesuai kebutuhan bisnis Anda.</div>
-      </div>
-      <div id="prc-header-actions" style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap"></div>
-    </div>
-
-    <!-- Tab bar (underline) -->
-    <div class="ptab-bar">
-      <button class="ptab-btn on" onclick="setPricingTab('kiloan',this)">Kiloan</button>
-      <button class="ptab-btn" onclick="setPricingTab('satuan',this)">Satuan</button>
-      <button class="ptab-btn" onclick="setPricingTab('tambahan',this)">Tambahan</button>
-    </div>
-
-    <!-- Tab panes (content injected by JS) -->
-    <div class="ptab-pane on" id="ptab-kiloan"></div>
-    <div class="ptab-pane" id="ptab-satuan"></div>
-    <div class="ptab-pane" id="ptab-tambahan"></div>
-
-    <!-- Hidden containers kept for backward-compat (renderSvcTypeList etc.) -->
-    <div style="display:none"><div id="svc-type-list"></div><div id="satuan-items-list"></div><div id="addon-list"></div><div id="price-options-list"></div></div>
+  <div class="card">
+    <div class="sh"><div class="ct" style="margin-bottom:0">Item Satuan</div><button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Item</button></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Item per pcs · pilih beberapa item sekaligus saat buat pesanan. Harga Regular → Same-day → Express.</div>
+    <div id="satuan-items-list"></div>
+  </div>
+  <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Layanan Tambahan</div><button class="btn bp bsm" onclick="openAddAddon()">+ Tambah</button></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Otomatis muncul di form Buat Pesanan</div>
+    <div id="addon-list"></div>
   </div>
 </div>
 
 <!-- PROMO -->
 <div class="page" id="o-p-promo">
-  <div class="sh" style="margin-bottom:4px">
-    <div>
-      <div class="pt" style="margin-bottom:2px">Promo</div>
-      <div style="font-size:12px;color:var(--t2)">Kelola semua promo yang aktif di form pesanan.</div>
-    </div>
-    <button class="btn bp bsm" onclick="openAddPromo()" style="gap:5px"><i data-lucide="plus" style="width:14px;height:14px;stroke-width:2.5;display:block"></i> Tambah Promo</button>
-  </div>
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-    <div style="display:flex;gap:6px" id="promo-filter-tabs">
-      <button class="promo-ftab on" data-tab="aktif" onclick="_promoTabClick(this)">Aktif <span class="pcnt" id="pcnt-aktif">0</span></button>
-      <button class="promo-ftab" data-tab="terjadwal" onclick="_promoTabClick(this)">Terjadwal <span class="pcnt" id="pcnt-terjadwal">0</span></button>
-      <button class="promo-ftab" data-tab="nonaktif" onclick="_promoTabClick(this)">Nonaktif <span class="pcnt" id="pcnt-nonaktif">0</span></button>
-    </div>
-    <div style="flex:1;min-width:160px;position:relative">
-      <i data-lucide="search" style="width:13px;height:13px;stroke-width:2;position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t2);pointer-events:none"></i>
-      <input id="promo-search" placeholder="Cari nama promo..." style="padding-left:30px;font-size:12px;height:36px" oninput="renderPromo()">
-    </div>
-  </div>
+  <div class="sh"><div class="pt" style="margin-bottom:0">Promo</div><button class="btn bp bsm" onclick="openAddPromo()">+ Tambah Promo</button></div>
+  <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Hari ini: <strong id="today-lbl"></strong> · Promo aktif otomatis teraplikasi di form pesanan</div>
   <div id="promo-list"></div>
 </div>
 
@@ -1549,11 +1207,6 @@ tr:hover td{background:#F6F7F9}
           </div>
           <div class="div_"></div>
           <div id="sno-satuan-sect" style="display:none">
-            <div class="sat-picker">
-              <select id="sno-sat-sel" style="flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none"></select>
-              <input type="number" id="sno-sat-qty" value="1" min="1" step="1" style="width:62px;text-align:center;font-size:14px;font-weight:700;padding:7px 8px">
-              <button class="btn bp bsm" onclick="addToSatuanCart('sno')">+ Tambah</button>
-            </div>
             <div id="sno-satuan-items"></div>
             <div class="div_"></div>
           </div>
@@ -1678,75 +1331,18 @@ tr:hover td{background:#F6F7F9}
 <div class="mbg" id="m-wa-new"><div class="mbox"><div class="mhd"><div class="mht"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kirim WA ke Pelanggan</div><button class="xb" onclick="cm('m-wa-new')">×</button></div><div class="mbd"><div class="chips" id="wa-new-chips"><span class="chip on" onclick="setWaNewType('konfirmasi',this)"><i data-lucide="check-circle" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span><span class="chip" onclick="setWaNewType('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Minta DP</span><span class="chip" onclick="setWaNewType('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span></div><div class="wa-bg"><div class="wa-bbl" id="wa-new-preview">-</div></div></div><div class="mft"><button class="btn" onclick="cm('m-wa-new')">Lewati</button><button class="btn bwa" id="m-wa-new-send"><i data-lucide="send" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:4px"></i>Kirim WA</button></div></div></div>
 <div class="mbg" id="m-emp"><div class="mbox"><div class="mhd"><span class="mht" id="m-emp-title">Tambah Karyawan</span><button class="xb" onclick="cm('m-emp')">×</button></div><div class="mbd"><div class="fg"><label>Nama *</label><input id="me-n" placeholder="Nama lengkap"></div><div id="me-role-pin-row" class="g2"><div class="fg" style="margin-bottom:0"><label>Role</label><select id="me-r"><option>Kasir</option><option>Staff</option></select></div><div class="fg" id="me-pin-wrap" style="margin-bottom:0"><label>PIN (4 digit)</label><input type="password" id="me-p" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"></div></div><div class="fg" style="margin-top:10px;margin-bottom:0"><label>Outlet</label><select id="me-o"></select></div></div><div class="mft"><button class="btn" onclick="cm('m-emp')">Batal</button><button class="btn bp" onclick="saveEmp()">Simpan</button></div></div></div>
 <div class="mbg" id="m-outlet"><div class="mbox"><div class="mhd"><span class="mht" id="mo-title">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd"><div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div><div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Jl. Contoh No.12, Kota"></div><div class="fg"><label>Jam Operasional</label><input id="mo-h" placeholder="08.00 – 22.00"></div><div class="fg"><label>Warna Penanda</label><div style="display:flex;gap:10px;margin-top:6px" id="mo-colors"></div></div></div><div class="mft"><button class="btn" onclick="cm('m-outlet')">Batal</button><button class="btn bp" onclick="saveOutlet()">Simpan</button></div></div></div>
-<div class="mbg" id="m-promo"><div class="mbox" style="max-width:760px;display:flex;flex-direction:column;max-height:90vh">
-  <div class="mhd" style="flex-shrink:0;border-radius:20px 20px 0 0">
-    <span class="mht" id="m-promo-title">Tambah Promo</span>
-    <button class="xb" onclick="cm('m-promo')">&#x2715;</button>
+<div class="mbg" id="m-promo"><div class="mbox"><div class="mhd"><span class="mht" id="m-promo-title">Tambah Promo</span><button class="xb" onclick="cm('m-promo')">×</button></div>
+  <div class="mbd">
+    <div class="fg"><label>Nama Promo *</label><input id="mp-n" placeholder="Contoh: Promo Selasa Hemat"></div>
+    <div class="g2"><div class="fg" style="margin-bottom:0"><label>Berlaku Untuk</label><select id="mp-svc"></select></div>
+    <div class="fg" style="margin-bottom:0"><label>Jenis Diskon</label><select id="mp-dt" onchange="promoDiscChange()"><option value="persen">% Persentase</option><option value="flat">Rp Nominal</option><option value="per_qty">Rp Per Kg/Pcs</option></select></div></div>
+    <div class="fg" style="margin-top:10px"><label id="mp-dv-lbl">Nilai (%)</label><input type="number" id="mp-dv" placeholder="0" min="0"></div>
+    <div class="fg"><label>Berlaku Hari (kosong = setiap hari)</label><div id="mp-days" style="margin-top:6px"><span class="day-pill" onclick="tDay(this,'1')">Sen</span><span class="day-pill" onclick="tDay(this,'2')">Sel</span><span class="day-pill" onclick="tDay(this,'3')">Rab</span><span class="day-pill" onclick="tDay(this,'4')">Kam</span><span class="day-pill" onclick="tDay(this,'5')">Jum</span><span class="day-pill" onclick="tDay(this,'6')">Sab</span><span class="day-pill" onclick="tDay(this,'0')">Min</span></div></div>
+    <div class="g2"><div class="fg" style="margin-bottom:0"><label>Mulai (Opsional)</label><input type="date" id="mp-from"></div><div class="fg" style="margin-bottom:0"><label>Berakhir (Opsional)</label><input type="date" id="mp-to"></div></div>
+    <div class="fg" style="margin-top:10px"><label>Berlaku di Outlet</label><div id="mp-outlet-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"></div><div style="font-size:10px;color:var(--t2);margin-top:4px">Kosong = berlaku di semua outlet</div></div>
+    <div class="fg" style="margin-bottom:0"><label>Catatan</label><input id="mp-note" placeholder="Keterangan untuk kasir..."></div>
   </div>
-  <div class="mp-modal-body" style="flex:1;overflow:hidden">
-    <div class="mp-sidebar" id="mp-sidebar">
-      <div class="mp-step-item act" data-step="1" onclick="_mpGo(1)">
-        <div class="mp-sn" id="mpn-1">1</div>
-        <div class="mp-sl">Informasi Promo</div>
-      </div>
-      <div class="mp-step-item" data-step="2" onclick="_mpGo(2)">
-        <div class="mp-sn" id="mpn-2">2</div>
-        <div class="mp-sl">Berlaku untuk Layanan</div>
-      </div>
-      <div class="mp-step-item" data-step="3" onclick="_mpGo(3)">
-        <div class="mp-sn" id="mpn-3">3</div>
-        <div class="mp-sl">Diskon</div>
-      </div>
-      <div class="mp-step-item" data-step="4" onclick="_mpGo(4)">
-        <div class="mp-sn" id="mpn-4">4</div>
-        <div class="mp-sl">Catatan (Opsional)</div>
-      </div>
-    </div>
-    <div class="mp-content" id="mp-content"></div>
-  </div>
-  <div class="mft" style="flex-shrink:0;gap:8px">
-    <button class="btn" id="mp-btn-back" onclick="_mpPrev()" style="display:none">Kembali</button>
-    <div style="flex:1"></div>
-    <button class="btn" onclick="cm('m-promo')">Batal</button>
-    <button class="btn bp" id="mp-btn-next" onclick="_mpNext()">Lanjutkan</button>
-  </div>
-</div></div>
-<div class="mbg" id="m-price-opt"><div class="mbox" style="max-width:580px">
-  <div class="mhd" style="align-items:flex-start;padding:20px 24px 16px">
-    <div style="flex:1;min-width:0">
-      <div id="m-po-title" style="font-size:17px;font-weight:700;color:var(--t1);letter-spacing:-.3px;line-height:1.3">Tambah Opsi Harga</div>
-      <div id="m-po-subtitle" style="font-size:12px;color:var(--t2);margin-top:4px;line-height:1.5">Buat tier baru untuk opsi harga kiloan yang berlaku untuk semua layanan.</div>
-    </div>
-    <button class="xb" onclick="cm('m-price-opt')" style="flex-shrink:0;margin-left:12px;margin-top:-2px">&#x2715;</button>
-  </div>
-  <div class="mbd" style="padding:22px 24px">
-    <div style="margin-bottom:18px">
-      <label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px">Nama Tier <span style="color:#e53935">*</span></label>
-      <input id="mpo-label" placeholder="Contoh: Regular / Express / Next Day">
-      <div style="font-size:11.5px;color:var(--t2);margin-top:5px">Nama ini akan ditampilkan di form order.</div>
-    </div>
-    <div>
-      <label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px">Estimasi Pengerjaan <span style="color:#e53935">*</span></label>
-      <input id="mpo-est" placeholder="Contoh: 2–3 Hari / 6 Jam / Hari yang sama">
-      <div style="font-size:11.5px;color:var(--t2);margin-top:5px">Estimasi waktu akan ditampilkan ke pelanggan.</div>
-    </div>
-    <div style="border-top:1px solid var(--b1);margin:20px -24px"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">Status</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.4">Aktifkan tier ini untuk digunakan di semua layanan kiloan.</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <button class="toggle on" id="mpo-active-btn" onclick="_toggleMpoActive()"></button>
-        <span id="mpo-active-lbl" style="font-size:13px;font-weight:500;color:var(--p);white-space:nowrap">Aktif digunakan</span>
-        <input type="hidden" id="mpo-active" value="1">
-      </div>
-    </div>
-  </div>
-  <div class="mft" style="padding:14px 24px">
-    <button class="btn" onclick="cm('m-price-opt')" style="min-width:90px">Batal</button>
-    <button class="btn bp" onclick="savePriceOpt()" style="min-width:120px;font-weight:600">Simpan Tier</button>
-  </div>
+  <div class="mft"><button class="btn" onclick="cm('m-promo')">Batal</button><button class="btn bp" onclick="savePromo()">Simpan Promo</button></div>
 </div></div>
 <div class="mbg" id="m-addon"><div class="mbox"><div class="mhd"><span class="mht">Tambah Layanan Tambahan</span><button class="xb" onclick="cm('m-addon')">×</button></div><div class="mbd"><div class="fg"><label>Nama Layanan *</label><input id="mad-n" placeholder="Contoh: Parfum Premium"></div><div class="g2"><div class="fg" style="margin-bottom:0"><label>Harga (Rp)</label><input type="number" id="mad-p" placeholder="0"></div><div class="fg" style="margin-bottom:0"><label>Satuan</label><select id="mad-u"><option value="flat">per pesanan</option><option value="per_qty">per kg/pcs</option></select></div></div></div><div class="mft"><button class="btn" onclick="cm('m-addon')">Batal</button><button class="btn bp" onclick="saveAddon()">Simpan</button></div></div></div>
 <div class="mbg" id="m-kas"><div class="mbox"><div class="mhd"><span class="mht" id="m-kas-title">Setor Modal</span><button class="xb" onclick="cm('m-kas')">×</button></div><div class="mbd"><div class="fg"><label>Nominal (Rp)</label><input type="number" id="mk-nom" placeholder="0" min="0" oninput="kasNomHint()"></div><div id="mk-hint" style="font-size:12px;color:var(--t2);margin-top:-8px;margin-bottom:10px"></div><div class="fg" style="margin-bottom:0"><label>Keterangan</label><input id="mk-note" placeholder="Contoh: modal kembalian pagi"></div></div><div class="mft"><button class="btn" onclick="cm('m-kas')">Batal</button><button class="btn bp" onclick="submitKas()">Simpan</button></div></div></div>
@@ -1778,103 +1374,30 @@ tr:hover td{background:#F6F7F9}
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-printer')">Batal</button><button class="btn bp" onclick="savePrinter()">Simpan Printer</button></div>
 </div></div>
-<div class="mbg" id="m-svc"><div class="mbox msvc-modal">
-  <div class="mhd" style="border-radius:20px 20px 0 0">
-    <div>
-      <div class="mht" id="m-svc-title">Tambah Layanan Kiloan</div>
-      <div style="font-size:12px;color:var(--t2);margin-top:2px;display:flex;align-items:center;gap:5px">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-        <span id="m-svc-subtitle">Layanan berbasis berat. Harga dihitung per kilogram.</span>
-      </div>
+<div class="mbg" id="m-svc"><div class="mbox"><div class="mhd"><span class="mht" id="m-svc-title">Tambah Jenis Layanan</span><button class="xb" onclick="cm('m-svc')">×</button></div>
+  <div class="mbd">
+    <div class="fg"><label>Nama Layanan *</label><input id="msvc-name" placeholder="Contoh: Cuci Karpet"></div>
+    <div class="fg"><label>Satuan</label>
+      <select id="msvc-unit"><option value="kg">kg (berlaku minimum berat)</option><option value="pcs">pcs / item</option><option value="set">set</option><option value="m2">m²</option></select>
     </div>
-    <button class="xb" onclick="cm('m-svc')">×</button>
-  </div>
-  <div class="msvc-body">
-    <!-- ── LEFT ───────────────────────────────── -->
-    <div class="msvc-left">
-      <!-- 1. Informasi Layanan -->
-      <div class="msvc-sec-hdr"><div class="msvc-sec-num">1</div><div class="msvc-sec-title">Informasi Layanan</div></div>
-      <div class="fg">
-        <label>Nama Layanan *</label>
-        <div class="msvc-icon-wrap">
-          <svg class="msvc-field-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg>
-          <input id="msvc-name" placeholder="Contoh: Cuci Kiloan">
-        </div>
-      </div>
-      <div class="fg">
-        <label>Satuan *</label>
-        <div class="msvc-icon-wrap">
-          <svg class="msvc-field-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <select id="msvc-unit" onchange="_msvcUnitChange()">
-            <option value="kg">kg</option>
-            <option value="pcs">pcs</option>
-            <option value="pasang">pasang</option>
-            <option value="meter">meter</option>
-          </select>
-        </div>
-        <div class="msvc-sub" id="msvc-unit-helper">Harga akan dihitung berdasarkan per kilogram.</div>
-      </div>
-      <div class="fg" style="margin-bottom:0">
-        <label>Deskripsi (opsional)</label>
-        <textarea id="msvc-desc" rows="4" placeholder="Contoh: Setrika dan lipat pakaian rapi." maxlength="150" oninput="document.getElementById('msvc-desc-cnt').textContent=this.value.length"></textarea>
-        <div style="text-align:right;font-size:11px;color:var(--t2);margin-top:2px"><span id="msvc-desc-cnt">0</span>/150</div>
-      </div>
-      <!-- 2. Status Layanan -->
-      <div style="margin-top:20px">
-        <div class="msvc-sec-hdr"><div class="msvc-sec-num">2</div><div class="msvc-sec-title">Status Layanan</div></div>
-        <div class="msvc-status-card active" id="msvc-status-card">
-          <div>
-            <div class="msvc-status-lbl">Aktifkan layanan di form pesanan</div>
-            <div class="msvc-sub" style="margin-top:3px">Layanan akan muncul saat membuat pesanan baru.</div>
-          </div>
-          <button class="toggle on" id="msvc-active-btn" onclick="_toggleMsvcActive()"></button>
-          <input type="hidden" id="msvc-active" value="1">
-        </div>
-      </div>
-    </div>
-    <!-- ── DIVIDER ─────────────────────────────── -->
-    <div class="msvc-divider"></div>
-    <!-- ── RIGHT ──────────────────────────────── -->
-    <div class="msvc-right">
-      <div class="msvc-sec-hdr"><div class="msvc-sec-num">3</div><div class="msvc-sec-title">Harga per Tier</div></div>
-      <div class="msvc-info-banner">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <span>Tambah tier sesuai kebutuhan laundry Anda.<br>Kosongkan harga atau set 0 jika tidak ingin menyediakan tier tersebut.</span>
-      </div>
-      <div id="msvc-price-rows"></div>
-      <button class="msvc-add-tier" onclick="openAddPriceOpt();_msvcPendingRefresh=true">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Tambah Tier
-      </button>
-      <div class="msvc-hint">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        Urutan tier akan ditampilkan sesuai posisi di atas (dari atas ke bawah).
-      </div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Kategori</div>
+    <div class="g3">
+      <div class="fg" style="margin-bottom:0"><label>Regular</label><input type="number" id="msvc-r" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msvc-sd" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Express</label><input type="number" id="msvc-e" placeholder="0" min="0"></div>
     </div>
   </div>
-  <div class="mft">
-    <button class="btn" onclick="cm('m-svc')">Batal</button>
-    <button class="btn bp" onclick="saveSvc()" style="display:inline-flex;align-items:center;gap:6px">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-      Simpan Layanan
-    </button>
-  </div>
+  <div class="mft"><button class="btn" onclick="cm('m-svc')">Batal</button><button class="btn bp" onclick="saveSvc()">Simpan</button></div>
 </div></div>
 <div class="mbg" id="m-satuan-item"><div class="mbox"><div class="mhd"><span class="mht" id="m-sat-title">Tambah Item Satuan</span><button class="xb" onclick="cm('m-satuan-item')">×</button></div>
   <div class="mbd">
     <div class="fg"><label>Nama Item *</label><input id="msat-name" placeholder="Contoh: Bed Cover"></div>
-    <div class="fg"><label>Satuan</label>
-      <select id="msat-unit"><option value="pcs">pcs</option><option value="item">item</option><option value="lembar">lembar</option><option value="pasang">pasang</option><option value="kg">kg</option></select>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Kategori (per pcs)</div>
+    <div class="g3">
+      <div class="fg" style="margin-bottom:0"><label>Regular</label><input type="number" id="msat-r" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Same-day</label><input type="number" id="msat-sd" placeholder="0" min="0"></div>
+      <div class="fg" style="margin-bottom:0"><label>Express</label><input type="number" id="msat-e" placeholder="0" min="0"></div>
     </div>
-    <div class="fg"><label>Deskripsi (opsional)</label><input id="msat-desc" placeholder="Contoh: Termasuk cuci, kering, lipat"></div>
-    <div class="fg" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
-      <label style="margin-bottom:0">Tampilkan di pesanan</label>
-      <button class="toggle on" id="msat-active-btn" onclick="_toggleMsatActive()"></button>
-      <input type="hidden" id="msat-active" value="1">
-    </div>
-    <div class="div_" style="margin:12px 0 10px"></div>
-    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Harga per Tier</div>
-    <div id="msat-price-rows"></div>
   </div>
   <div class="mft"><button class="btn" onclick="cm('m-satuan-item')">Batal</button><button class="btn bp" onclick="saveSatuanItem()">Simpan</button></div>
 </div></div>
