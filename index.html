@@ -637,14 +637,134 @@ tr:hover td{background:#F6F7F9}
 .btn-clkout{border-color:var(--re);color:var(--re)}
 .btn-clkout:hover{background:#fff3f3}
 .btn-cuti-dd{display:flex;align-items:center;gap:3px}
+/* Employee responsive toggle */
+.emp-desktop-only{display:block}
+.emp-mobile-only{display:none}
+/* Employee mobile card classes */
+.emp-mob-item{border-bottom:1px solid var(--b1)}
+.emp-mob-item:last-child{border-bottom:none}
+.emp-mob-row{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;transition:background .1s}
+.emp-mob-row:active{background:var(--bg)}
+.emp-mob-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.emp-mob-meta{flex:1;min-width:0}
+.emp-mob-name{font-size:14px;font-weight:700;color:var(--t1)}
+.emp-mob-phone{font-size:12px;color:var(--t2);margin-top:1px}
+.emp-mob-status-col{text-align:right;flex-shrink:0}
+.emp-mob-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;white-space:nowrap}
+.emp-mob-badge-in{background:#DCFCE7;color:#15803D}
+.emp-mob-badge-off{background:#F3F4F6;color:#6B7280}
+.emp-mob-badge-cuti{background:#F3E5F5;color:#9C27B0}
+.emp-mob-badge-sakit{background:#FFF3E0;color:#F57C00}
+.emp-mob-badge-nonaktif{background:#F3F4F6;color:#9CA3AF}
+.emp-mob-time{font-size:11px;color:var(--t2);margin-top:3px}
+.emp-mob-detail{padding:0 16px 14px}
+.emp-mob-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;padding:12px 0;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);margin-bottom:12px}
+.emp-mob-info-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);margin-bottom:3px}
+.emp-mob-info-val{font-size:13px;font-weight:600;color:var(--t1)}
+.emp-mob-actions-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);margin-bottom:8px}
+.emp-mob-actions{display:flex;align-items:center;gap:7px;flex-wrap:nowrap}
+.emp-mob-act-btn{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--t1);font-family:inherit;white-space:nowrap;transition:border-color .12s,background .12s}
+.emp-mob-act-btn:hover{border-color:var(--p)}
+.emp-mob-act-clkin{border-color:var(--p);color:var(--p)}
+.emp-mob-act-clkin:hover{background:var(--pl)}
+.emp-mob-act-clkout{border-color:var(--re);color:var(--re)}
+.emp-mob-act-clkout:hover{background:#fff3f3}
+.emp-mob-act-more{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;cursor:pointer;color:var(--t2);padding:0;transition:border-color .12s;flex-shrink:0}
+.emp-mob-act-more:hover{border-color:var(--t2)}
 @media(max-width:768px){
-  .emp-tbl thead{display:none}
-  .emp-tbl,.emp-tbl tbody,.emp-tbl tr,.emp-tbl td{display:block;width:100%}
-  .emp-tbl tr{padding:12px 14px;border-bottom:1px solid var(--b1)}
-  .emp-tbl td{padding:3px 0;border:none}
-  .emp-tbl td::before{content:attr(data-label);font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t2);display:block;margin-bottom:2px}
-  .emp-actions{flex-wrap:wrap}
+  .emp-desktop-only{display:none}
+  .emp-mobile-only{display:block}
 }
+/* ===== KAS KASIR REDESIGN ===== */
+.kas-ph{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.kas-psub{font-size:13px;color:var(--t2);margin-top:3px}
+.kas-phr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.kas-date-btn-wrap{position:relative}
+.kas-date-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;font-weight:500;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;cursor:pointer;color:var(--t1);white-space:nowrap;transition:border-color .15s,color .15s}
+.kas-date-btn:hover{border-color:var(--p);color:var(--p)}
+.kas-date-dd{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1.5px solid var(--b1);border-radius:var(--rs);box-shadow:0 4px 16px rgba(0,0,0,.10);z-index:200;min-width:168px;padding:4px}
+.kas-date-dd button{display:block;width:100%;text-align:left;padding:8px 12px;font-size:13px;font-family:inherit;background:none;border:none;cursor:pointer;border-radius:6px;color:var(--t1)}
+.kas-date-dd button:hover,.kas-date-dd button.on{background:var(--pl);color:var(--p);font-weight:600}
+.kas-sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kas-sc{border-radius:var(--r);padding:18px;border:1.5px solid transparent;position:relative;overflow:hidden}
+.kas-sc-ico{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kas-sc-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.kas-sc-val{font-size:22px;font-weight:800;line-height:1.2;margin-bottom:5px}
+.kas-sc-sub{font-size:11px;opacity:.78}
+.kas-sc-main{background:var(--p);border-color:var(--p);color:#fff}
+.kas-sc-main .kas-sc-ico{background:rgba(255,255,255,.2);color:#fff}
+.kas-sc-main .kas-sc-val{font-size:26px}
+.kas-sc-orange{background:#FFF7ED;border-color:#FED7AA}
+.kas-sc-orange .kas-sc-lbl{color:#C2410C}
+.kas-sc-orange .kas-sc-val{color:#EA580C}
+.kas-sc-orange .kas-sc-ico{background:#FFEDD5;color:#EA580C}
+.kas-sc-orange .kas-sc-sub{color:#9A3412}
+.kas-sc-softgreen{background:#F0FDF4;border-color:#BBF7D0}
+.kas-sc-softgreen .kas-sc-lbl{color:#15803D}
+.kas-sc-softgreen .kas-sc-val{color:#16A34A}
+.kas-sc-softgreen .kas-sc-ico{background:#DCFCE7;color:#16A34A}
+.kas-sc-softgreen .kas-sc-sub{color:#166534}
+.kas-sc-red{background:#FFF1F2;border-color:#FECDD3}
+.kas-sc-red .kas-sc-lbl{color:#BE123C}
+.kas-sc-red .kas-sc-val{color:#E11D48}
+.kas-sc-red .kas-sc-ico{background:#FFE4E6;color:#E11D48}
+.kas-sc-red .kas-sc-sub{color:#9F1239}
+.kas-qa-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.kas-qa-card{padding:18px 20px}
+.kas-qa-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);margin-bottom:14px}
+.kas-qa-btns{display:flex;flex-direction:column;gap:8px}
+.kas-qa-btn{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;cursor:pointer;text-align:left;transition:border-color .15s,background .15s;font-family:inherit}
+.kas-qa-btn:hover{border-color:var(--p);background:var(--pl)}
+.kas-qa-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kas-qa-ico-g{background:#DCFCE7;color:#16A34A}
+.kas-qa-ico-r{background:#FFE4E6;color:#E11D48}
+.kas-qa-ico-n{background:#F1F5F9;color:#475569}
+.kas-qa-lbl{font-size:13px;font-weight:600;color:var(--t1)}
+.kas-qa-desc{font-size:11px;color:var(--t2);margin-top:1px}
+.kas-insight-card{border-radius:var(--r);padding:22px 20px;background:#F0FDF4;border:1.5px solid #BBF7D0;display:flex;align-items:center;gap:16px;overflow:hidden}
+.kas-insight-ico{width:52px;height:52px;background:#DCFCE7;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#16A34A}
+.kas-insight-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#15803D;margin-bottom:6px}
+.kas-insight-val{font-size:20px;font-weight:800;color:#16A34A;line-height:1.2}
+.kas-insight-sub{font-size:11px;color:#166534;margin-top:4px}
+.kas-log-card{padding:0;overflow:hidden}
+.kas-log-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 0}
+.kas-log-title{font-size:15px;font-weight:700;color:var(--t1)}
+.kas-log-hd-r{display:flex;align-items:center;gap:8px}
+.kas-cashier-sel{font-size:12px;padding:6px 10px;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;color:var(--t1);outline:none;cursor:pointer;font-family:inherit}
+.kas-cashier-sel:focus{border-color:var(--p)}
+.kas-search-btn{width:32px;height:32px;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);transition:border-color .15s,color .15s;padding:0}
+.kas-search-btn:hover{border-color:var(--p);color:var(--p)}
+.kas-search-inp{width:100%;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);font-size:13px;outline:none;font-family:inherit}
+.kas-search-inp:focus{border-color:var(--p)}
+.kas-type-chips{display:flex;align-items:center;gap:6px;padding:14px 20px 12px;flex-wrap:wrap;border-bottom:1px solid var(--b1)}
+.kas-type-chips .chip{font-size:12px;padding:5px 12px;cursor:pointer}
+.kas-tx-group{padding:0 20px}
+.kas-tx-date-hd{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;padding:14px 0 8px;display:flex;align-items:center;gap:8px}
+.kas-tx-date-hd::after{content:'';flex:1;height:1px;background:var(--b1)}
+.kas-tx-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F5F5F5}
+.kas-tx-row:last-child{border-bottom:none}
+.kas-tx-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kas-tx-ico-in{background:#DCFCE7;color:#16A34A}
+.kas-tx-ico-out{background:#FFE4E6;color:#E11D48}
+.kas-tx-ico-modal{background:#FFEDD5;color:#EA580C}
+.kas-tx-body{flex:1;min-width:0}
+.kas-tx-name{font-size:13px;font-weight:600;color:var(--t1)}
+.kas-tx-meta{font-size:11px;color:var(--t2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kas-tx-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.kas-tx-badge-in{background:#DCFCE7;color:#15803D}
+.kas-tx-badge-out{background:#FFE4E6;color:#BE123C}
+.kas-tx-badge-modal{background:#FFEDD5;color:#C2410C}
+.kas-tx-right{text-align:right;flex-shrink:0}
+.kas-tx-time{font-size:11px;color:var(--t2);margin-bottom:3px}
+.kas-tx-amt{font-size:13px;font-weight:700}
+.kas-tx-amt-in{color:#16A34A}
+.kas-tx-amt-out{color:#E11D48}
+.kas-load-more-wrap{text-align:center;padding:14px 20px 18px;border-top:1px solid var(--b1)}
+.kas-load-more-btn{padding:9px 28px;font-size:13px;font-weight:600;border:1.5px solid var(--b1);border-radius:var(--rs);background:#fff;cursor:pointer;color:var(--t2);font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,color .15s}
+.kas-load-more-btn:hover{border-color:var(--p);color:var(--p)}
+@media(max-width:900px){.kas-sum-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.kas-qa-row{grid-template-columns:1fr}.kas-ph{margin-bottom:14px}}
+@media(max-width:500px){.kas-sum-grid{grid-template-columns:1fr 1fr}.kas-sc-main .kas-sc-val{font-size:22px}.kas-tx-badge{display:none}}
 </style>
 </head>
 <body>
@@ -1127,16 +1247,86 @@ tr:hover td{background:#F6F7F9}
 
 <!-- KAS -->
 <div class="page" id="o-p-kas">
-  <div class="pt">Kas Kasir</div>
-  <div class="chips" id="kas-outlet-chips"></div>
-  <div id="kas-metrics" class="g2" style="margin-bottom:12px"></div>
-  <div class="g2" style="margin-bottom:12px">
-    <button class="btn bfull bpill" style="border-color:var(--p);color:var(--p);font-weight:700;font-size:14px;padding:16px" onclick="openKas('setor')"><i data-lucide="plus-circle" style="width:16px;height:16px;stroke-width:2;vertical-align:-3px;display:inline;margin-right:6px"></i>Setor Modal</button>
-    <button class="btn bfull bpill" style="border-color:var(--re);color:var(--re);font-weight:700;font-size:14px;padding:16px" onclick="openKas('tarik')"><i data-lucide="minus-circle" style="width:16px;height:16px;stroke-width:2;vertical-align:-3px;display:inline;margin-right:6px"></i>Tarik Kas</button>
+  <!-- Header -->
+  <div class="kas-ph">
+    <div>
+      <div class="pt" style="margin-bottom:4px">Kas Kasir</div>
+      <div class="kas-psub">Kelola kas kasir, setor modal, tarik kas, dan riwayat transaksi.</div>
+    </div>
+    <div class="kas-phr">
+      <div class="chips" id="kas-outlet-chips" style="margin-bottom:0"></div>
+      <div class="kas-date-btn-wrap">
+        <button class="kas-date-btn" id="kas-date-btn" onclick="toggleKasDateDd()">
+          <i data-lucide="calendar" style="width:14px;height:14px;stroke-width:2;display:block;flex-shrink:0"></i>
+          <span id="kas-date-lbl">Hari ini</span>
+          <i data-lucide="chevron-down" style="width:14px;height:14px;stroke-width:2;display:block;flex-shrink:0"></i>
+        </button>
+        <div class="kas-date-dd" id="kas-date-dd" style="display:none"></div>
+      </div>
+    </div>
   </div>
-  <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Riwayat Kas</div>
-    <select id="kas-filter" onchange="renderKas()" style="width:110px;padding:6px 8px;font-size:12px"><option value="all">Semua</option><option value="modal">Setor</option><option value="in">Cash Masuk</option><option value="out">Tarik</option></select>
-  </div><div id="kas-log"></div></div>
+
+  <!-- Summary Cards -->
+  <div class="kas-sum-grid" id="kas-metrics"></div>
+
+  <!-- Quick Action + Insight -->
+  <div class="kas-qa-row">
+    <div class="card kas-qa-card">
+      <div class="kas-qa-title">Quick Action</div>
+      <div class="kas-qa-btns">
+        <button class="kas-qa-btn" onclick="openKas('setor')">
+          <span class="kas-qa-ico kas-qa-ico-g"><i data-lucide="plus-circle" style="width:18px;height:18px;stroke-width:2;display:block"></i></span>
+          <div>
+            <div class="kas-qa-lbl">Setor Modal</div>
+            <div class="kas-qa-desc">Masukkan uang ke kas</div>
+          </div>
+        </button>
+        <button class="kas-qa-btn" onclick="openKas('tarik')">
+          <span class="kas-qa-ico kas-qa-ico-r"><i data-lucide="minus-circle" style="width:18px;height:18px;stroke-width:2;display:block"></i></span>
+          <div>
+            <div class="kas-qa-lbl">Tarik Kas</div>
+            <div class="kas-qa-desc">Ambil uang dari kas</div>
+          </div>
+        </button>
+        <button class="kas-qa-btn" onclick="openKasDeposit()">
+          <span class="kas-qa-ico kas-qa-ico-n"><i data-lucide="clipboard-list" style="width:18px;height:18px;stroke-width:2;display:block"></i></span>
+          <div>
+            <div class="kas-qa-lbl">Riwayat Deposit</div>
+            <div class="kas-qa-desc">Lihat semua deposit</div>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div class="kas-insight-card" id="kas-insight"></div>
+  </div>
+
+  <!-- Riwayat Kas -->
+  <div class="card kas-log-card" id="kas-log-card">
+    <div class="kas-log-hd">
+      <div class="kas-log-title">Riwayat Kas</div>
+      <div class="kas-log-hd-r">
+        <select id="kas-filter" class="kas-cashier-sel" onchange="renderKasLog()"><option value="all">Semua Kasir</option></select>
+        <button class="kas-search-btn" onclick="toggleKasSearch()"><i data-lucide="search" style="width:15px;height:15px;stroke-width:2;display:block"></i></button>
+      </div>
+    </div>
+    <div id="kas-search-wrap" style="display:none;padding:12px 20px 0">
+      <input id="kas-search" class="kas-search-inp" placeholder="Cari transaksi..." oninput="renderKasLog()">
+    </div>
+    <div class="kas-type-chips" id="kas-type-chips">
+      <span class="chip on" data-v="all" onclick="_kasTypeChip(this,'all')">Semua</span>
+      <span class="chip" data-v="in" onclick="_kasTypeChip(this,'in')">Pemasukan</span>
+      <span class="chip" data-v="out" onclick="_kasTypeChip(this,'out')">Pengeluaran</span>
+      <span class="chip" data-v="modal" onclick="_kasTypeChip(this,'modal')">Deposit</span>
+      <span class="chip" data-v="penjualan" onclick="_kasTypeChip(this,'penjualan')">Penjualan</span>
+    </div>
+    <div id="kas-log"></div>
+    <div id="kas-load-more-wrap" class="kas-load-more-wrap" style="display:none">
+      <button class="kas-load-more-btn" onclick="kasLoadMore()">
+        Muat lebih banyak
+        <i data-lucide="chevron-down" style="width:14px;height:14px;stroke-width:2;display:block"></i>
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- EXPENSES -->

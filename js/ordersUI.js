@@ -630,7 +630,7 @@ function buildOrder(pre) {
   orders.push(o); orderCtr++;
   if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
-    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId });
+    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
   if (membershipEnabled && o.payMethod === 'Dompet Member' && phone !== '—') {
     const cust = customers[phone];
     if (cust) {

@@ -98,7 +98,7 @@ function syncKas(l) {
   sbUpsert('kas_log', {
     user_id: currentUserId,
     id: String(l.id), type: l.type, desc: l.desc, note: l.note,
-    amount: l.amount, time: l.time, outlet_id: l.outletId
+    amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId
   });
 }
 
@@ -180,7 +180,7 @@ async function supaLoadAll() {
     // Use max id to avoid collisions (length-based counter fails if ids aren't sequential)
     empCtr = employees.reduce((mx, e) => Math.max(mx, e.id || 0), 0) + 1;
   }
-  if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, outletId: r.outlet_id })); kasCtr = kasLog.reduce((mx,l)=>Math.max(mx,l.id||0),0)+1; }
+  if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, date: r.date||null, outletId: r.outlet_id })); kasCtr = kasLog.reduce((mx,l)=>Math.max(mx,l.id||0),0)+1; }
   if (expData)      { expenses = expData.map(r => ({ id: Number(r.id), cat: r.cat, label: r.label, nominal: r.nominal, date: r.date, note: r.note, src: r.src, outletId: r.outlet_id })); expCtr = expenses.reduce((mx,e)=>Math.max(mx,e.id||0),0)+1; }
   if (settingsData && settingsData.length) {
     const s = settingsData[0];
@@ -235,6 +235,8 @@ async function supaLoadAll() {
     sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'trial', expires_at: currentPlanExpiry }, 'user_id');
   }
   checkExpiredBalances();
+  if (typeof renderPlanBadge === 'function') renderPlanBadge();
+  if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
   toast('✅ Data cloud berhasil dimuat!');
   supaSubscribeOrders();
 }
@@ -270,7 +272,7 @@ async function supaPushAll() {
     ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null })),
     ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color })),
     ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
-    ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, outlet_id: l.outletId })),
+    ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId })),
     ...expenses.map(e => sbUpsert('expenses', { user_id: currentUserId, id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),
     ...printers.map(p => sbUpsert('printers', { user_id: currentUserId, id: p.id, name: p.name, conn: p.conn, ip: p.ip, width: p.width, role: p.role, status: p.status })),
     ...memberTxns.map(t => syncMemberTxn(t)),

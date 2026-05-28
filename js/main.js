@@ -70,6 +70,8 @@ let storeName = 'CleanPOS Laundry'; let storeAddr = ''; let storeWa = ''; let st
 let cutiPerBulan = 2;
 let curWaTplTab = 'selesai';
 let kasLog = []; let kasCtr = 1; let kasType = 'setor';
+let kasTypeFilter = 'all'; let kasDateFilter = 'today'; let _kasPage = 1;
+const _KAS_PAGE = 20;
 let expenses = []; let expCtr = 1;
 let printers = [];
 let printerCtr = 1; let btDevice = null; let _editPrinterId = null;
@@ -1210,6 +1212,7 @@ function refreshSDash(){
 
 // ===== EMPLOYEES =====
 let _empCollapsed = {}; // tracks which outlet sections are collapsed
+let _empExpanded = {}; // tracks which mobile employee cards are expanded
 
 function buildEmpChips(){
   const el=g('emp-filter-chips');if(!el)return;
@@ -1275,6 +1278,7 @@ function renderEmployees(){
     if(!grp.length&&empFilter==='all'&&!q)return;
     const collapsed=_empCollapsed[o.id]===true;
     const sc=safeColor(o.color);
+    const isCompact=grp.length>1; // multi-employee outlets use compact collapsed rows
     html+=`<div class="emp-sec" id="emp-sec-${o.id}">
       <div class="emp-sec-hd" onclick="_empToggleSec('${o.id}')">
         <div class="emp-sec-dot" style="background:${sc}"></div>
@@ -1284,7 +1288,7 @@ function renderEmployees(){
         <i data-lucide="${collapsed?'chevron-down':'chevron-up'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
       </div>
       ${collapsed?'':`<div id="emp-wrap-${o.id}">
-        <div class="emp-table-wrap">
+        <div class="emp-table-wrap emp-desktop-only">
           <table class="emp-tbl">
             <thead><tr>
               <th>Karyawan</th><th>Role</th><th>PIN</th><th>Akses</th><th>Sisa Cuti</th><th>Last Login</th><th>Actions</th>
@@ -1292,6 +1296,7 @@ function renderEmployees(){
             <tbody>${grp.map(e=>_empRow(e)).join('')}</tbody>
           </table>
         </div>
+        <div class="emp-mobile-only">${grp.map(e=>_empMobCard(e,isCompact)).join('')}</div>
         <div class="emp-add-row" onclick="openAddEmpOutlet('${o.id}')">
           <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2.5;display:block"></i> Tambah Karyawan di ${esc(o.name)}
         </div>
@@ -1347,6 +1352,80 @@ function _empRow(e){
       </div>
     </td>
   </tr>`;
+}
+
+function _empMobCard(e, isCompact){
+  const av=_empAvatarColor(e.name);
+  const sisaCuti=Math.max(0,cutiPerBulan-(e.cutiUsed||0));
+  // Status badge
+  let badgeCls='emp-mob-badge-off',badgeDot='#9CA3AF',badgeLbl='Belum Masuk';
+  if(e.status==='in'){badgeCls='emp-mob-badge-in';badgeDot='#16A34A';badgeLbl='Masuk';}
+  else if(e.status==='cuti'){badgeCls='emp-mob-badge-cuti';badgeDot='#9C27B0';badgeLbl='Cuti';}
+  else if(e.status==='sakit'){badgeCls='emp-mob-badge-sakit';badgeDot='#F57C00';badgeLbl='Sakit';}
+  else if(e.status==='nonaktif'){badgeCls='emp-mob-badge-nonaktif';badgeDot='#9CA3AF';badgeLbl='Nonaktif';}
+  const timeStr=(e.status==='in'&&e.clockIn)?e.clockIn:'';
+  // Default: single-emp outlets start expanded; multi-emp outlets start collapsed
+  const isExpanded=isCompact?(_empExpanded[e.id]===true):(_empExpanded[e.id]!==false);
+  const chevIcon=isExpanded?'chevron-down':'chevron-right';
+  const clkBtn=e.status==='in'
+    ?`<button class="emp-mob-act-btn emp-mob-act-clkout" onclick="empAct(${e.id},'clkout')">Clock Out</button>`
+    :`<button class="emp-mob-act-btn emp-mob-act-clkin" onclick="empAct(${e.id},'clkin')">Clock In</button>`;
+  return`<div class="emp-mob-item" id="emp-mob-item-${e.id}">
+    <div class="emp-mob-row" onclick="_empToggleExpand(${e.id})">
+      <div class="emp-mob-av" style="background:${av}">${esc(ini(e.name))}</div>
+      <div class="emp-mob-meta">
+        <div class="emp-mob-name">${esc(e.name)}</div>
+        <div class="emp-mob-phone">${esc(e.phone||'—')}</div>
+      </div>
+      <div class="emp-mob-status-col">
+        <span class="emp-mob-badge ${badgeCls}"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${badgeDot}"></span>${esc(badgeLbl)}</span>
+        ${timeStr?`<div class="emp-mob-time">${esc(timeStr)}</div>`:''}
+      </div>
+      <i data-lucide="${chevIcon}" id="emp-mob-chev-${e.id}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block;flex-shrink:0;margin-left:4px"></i>
+    </div>
+    <div class="emp-mob-detail" id="emp-mob-detail-${e.id}" style="display:${isExpanded?'block':'none'}">
+      <div class="emp-mob-info-grid">
+        <div><div class="emp-mob-info-lbl">Role</div><div class="emp-mob-info-val">${esc(e.role||'—')}</div></div>
+        <div><div class="emp-mob-info-lbl">PIN</div><div class="emp-mob-info-val">${e.pin?'••••':'<span style="color:var(--re);font-size:11px;font-weight:400">Belum diset</span>'}</div></div>
+        <div><div class="emp-mob-info-lbl">Sisa Cuti</div><div class="emp-mob-info-val">${sisaCuti}x</div></div>
+        <div><div class="emp-mob-info-lbl">Last Login</div><div class="emp-mob-info-val">${esc(_empLastLoginLbl(e))}</div></div>
+      </div>
+      <div class="emp-mob-actions-lbl">Actions</div>
+      <div class="emp-mob-actions">
+        ${clkBtn}
+        <div class="emp-cuti-wrap" style="position:relative">
+          <button class="emp-mob-act-btn btn-cuti-dd" onclick="_empCutiDd(event,${e.id})">Cuti <i data-lucide="chevron-down" style="width:11px;height:11px;stroke-width:2;display:block"></i></button>
+          <div class="emp-kebab-dd" id="emp-cuti-dd-${e.id}">
+            <button onclick="_empCutiAct(${e.id},'cuti')">Ambil Cuti${e.cutiUsed>=cutiPerBulan?' (Habis)':''}</button>
+            <button onclick="_empCutiAct(${e.id},'sakit')">Sakit</button>
+            <button onclick="_empCutiAct(${e.id},'off')">Reset ke Off</button>
+          </div>
+        </div>
+        <button class="emp-mob-act-btn" onclick="openEditEmp(${e.id})">Edit</button>
+        <div style="position:relative">
+          <button class="emp-mob-act-more" onclick="_empKebab(event,${e.id})"><i data-lucide="more-vertical" style="width:14px;height:14px;stroke-width:2;display:block"></i></button>
+          <div class="emp-kebab-dd" id="emp-kbb-${e.id}">
+            <button onclick="resetEmpPin(${e.id});_closeAllEmpDd()">Reset PIN</button>
+            <button onclick="_empToggleAktif(${e.id});_closeAllEmpDd()">${e.status==='nonaktif'?'Aktifkan':'Nonaktifkan'}</button>
+            <button class="danger" onclick="delEmp(${e.id});_closeAllEmpDd()">Hapus</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function _empToggleExpand(id){
+  const detail=g('emp-mob-detail-'+id);
+  const chev=g('emp-mob-chev-'+id);
+  if(!detail)return;
+  const isOpen=detail.style.display!=='none';
+  detail.style.display=isOpen?'none':'block';
+  _empExpanded[id]=!isOpen;
+  if(chev){
+    chev.setAttribute('data-lucide',isOpen?'chevron-right':'chevron-down');
+    if(typeof lucide!=='undefined')lucide.createIcons();
+  }
 }
 
 function _empToggleSec(oid){
@@ -2358,7 +2437,7 @@ function saveDeposit(){
   syncMemberTxn(txn);
   syncCustomer(c);
   if(payMethod==='Tunai'){
-    const kasEntry={id:kasCtr++,type:'in',desc:'Deposit Member – '+c.name,note:note||null,amount:base,time:NOW(),outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||'')};
+    const kasEntry={id:kasCtr++,type:'in',desc:'Deposit Member – '+c.name,note:note||null,amount:base,time:NOW(),date:TODAY_ISO,outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||'')};
     kasLog.push(kasEntry);
     syncKas(kasEntry);
   }
@@ -3980,25 +4059,199 @@ function togglePromoOutlet(id){}
 function rebuildPromoSvcSelect(){}
 
 // ===== KAS KASIR =====
-function setKasOutlet(id){kasOutlet=id;renderKas();}
+function setKasOutlet(id){kasOutlet=id;_kasPage=1;renderKas();}
+
+function _kasDateRange(){
+  if(kasDateFilter==='today')return{from:TODAY_ISO,to:TODAY_ISO};
+  if(kasDateFilter==='yesterday'){const y=new Date(TODAY);y.setDate(y.getDate()-1);const ys=y.toISOString().split('T')[0];return{from:ys,to:ys};}
+  if(kasDateFilter==='week'){const w=new Date(TODAY);w.setDate(w.getDate()-6);return{from:w.toISOString().split('T')[0],to:TODAY_ISO};}
+  if(kasDateFilter==='month')return{from:TODAY_ISO.slice(0,7)+'-01',to:TODAY_ISO};
+  return null;
+}
+
+function _kasFilteredList(){
+  const range=_kasDateRange();
+  let fl=kasOutlet==='all'?[...kasLog]:kasLog.filter(l=>!l.outletId||l.outletId===kasOutlet);
+  if(range)fl=fl.filter(l=>{if(!l.date)return kasDateFilter==='today';return l.date>=range.from&&l.date<=range.to;});
+  if(kasTypeFilter==='in')fl=fl.filter(l=>l.type==='in'&&!(l.desc||'').toLowerCase().includes('deposit'));
+  else if(kasTypeFilter==='out')fl=fl.filter(l=>l.type==='out');
+  else if(kasTypeFilter==='modal')fl=fl.filter(l=>l.type==='modal'||(l.type==='in'&&(l.desc||'').toLowerCase().includes('deposit')));
+  else if(kasTypeFilter==='penjualan')fl=fl.filter(l=>l.type==='in'&&(l.desc||'').toLowerCase().includes('penjualan'));
+  const q=(g('kas-search')?.value||'').toLowerCase().trim();
+  if(q)fl=fl.filter(l=>(l.desc+' '+(l.note||'')).toLowerCase().includes(q));
+  return fl;
+}
+
+function _kasTypeChip(el,val){
+  kasTypeFilter=val;_kasPage=1;
+  document.querySelectorAll('#kas-type-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  renderKasLog();
+}
+
+function toggleKasSearch(){
+  const w=g('kas-search-wrap');if(!w)return;
+  const vis=w.style.display!=='none';
+  w.style.display=vis?'none':'block';
+  if(!vis){g('kas-search')?.focus();}
+  else{if(g('kas-search'))g('kas-search').value='';renderKasLog();}
+}
+
+function toggleKasDateDd(){
+  const dd=g('kas-date-dd');if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+  const opts=[{v:'today',l:'Hari ini'},{v:'yesterday',l:'Kemarin'},{v:'week',l:'7 Hari Terakhir'},{v:'month',l:'Bulan Ini'},{v:'all',l:'Semua'}];
+  dd.innerHTML=opts.map(o=>`<button class="${kasDateFilter===o.v?'on':''}" onclick="_setKasDate('${o.v}')">${esc(o.l)}</button>`).join('');
+  dd.style.display='block';
+  setTimeout(()=>document.addEventListener('click',function _cl(e){if(!g('kas-date-btn-wrap')?.contains(e.target)){dd.style.display='none';document.removeEventListener('click',_cl,true);}},true),0);
+}
+
+function _setKasDate(v){
+  kasDateFilter=v;_kasPage=1;
+  const lbl={today:'Hari ini',yesterday:'Kemarin',week:'7 Hari Terakhir',month:'Bulan Ini',all:'Semua'};
+  const el=g('kas-date-lbl');if(el)el.textContent=lbl[v]||'Hari ini';
+  const dd=g('kas-date-dd');if(dd)dd.style.display='none';
+  renderKas();
+}
+
+function kasLoadMore(){_kasPage++;renderKasLog();}
+
+function openKasDeposit(){
+  kasTypeFilter='modal';_kasPage=1;
+  document.querySelectorAll('#kas-type-chips .chip').forEach(c=>{c.classList.toggle('on',c.dataset.v==='modal');});
+  renderKasLog();
+  g('kas-log-card')?.scrollIntoView({behavior:'smooth'});
+}
+
+function renderKasLog(){
+  const allFl=_kasFilteredList().sort((a,b)=>{
+    const da=(a.date||'0000-00-00')+' '+(a.time||'00:00');
+    const db=(b.date||'0000-00-00')+' '+(b.time||'00:00');
+    return db.localeCompare(da);
+  });
+  const pageItems=allFl.slice(0,_kasPage*_KAS_PAGE);
+  const hasMore=allFl.length>pageItems.length;
+  const groups={};
+  pageItems.forEach(l=>{const dk=l.date||'unknown';if(!groups[dk])groups[dk]=[];groups[dk].push(l);});
+  const sortedDates=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  const yestISO=(()=>{const y=new Date(TODAY);y.setDate(y.getDate()-1);return y.toISOString().split('T')[0];})();
+  const _dlbl=d=>{
+    if(d==='unknown')return 'Tanggal tidak diketahui';
+    const dd=new Date(d+'T00:00:00');
+    const s=dd.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+    if(d===TODAY_ISO)return s+' (Hari ini)';
+    if(d===yestISO)return s+' (Kemarin)';
+    return s;
+  };
+  const _icoClass=l=>l.type==='modal'?'kas-tx-ico-modal':l.type==='out'?'kas-tx-ico-out':'kas-tx-ico-in';
+  const _icoSvg=l=>{
+    if(l.type==='out')return '<i data-lucide="arrow-up-circle" style="width:16px;height:16px;stroke-width:2;display:block"></i>';
+    if(l.type==='modal')return '<i data-lucide="arrow-down-to-line" style="width:16px;height:16px;stroke-width:2;display:block"></i>';
+    return '<i data-lucide="arrow-down-circle" style="width:16px;height:16px;stroke-width:2;display:block"></i>';
+  };
+  const _badge=l=>{
+    if(l.type==='modal')return '<span class="kas-tx-badge kas-tx-badge-modal">Deposit</span>';
+    if(l.type==='out')return '<span class="kas-tx-badge kas-tx-badge-out">Pengeluaran</span>';
+    if((l.desc||'').toLowerCase().includes('penjualan'))return '<span class="kas-tx-badge kas-tx-badge-in">Penjualan</span>';
+    return '<span class="kas-tx-badge kas-tx-badge-in">Pemasukan</span>';
+  };
+  const _amt=l=>{
+    const cls=l.type==='out'?'kas-tx-amt-out':'kas-tx-amt-in';
+    return `<div class="kas-tx-amt ${cls}">${l.type==='out'?'-':'+'}${fmt(l.amount)}</div>`;
+  };
+  const kl=g('kas-log');if(!kl)return;
+  if(!sortedDates.length){
+    kl.innerHTML='<div style="text-align:center;padding:32px 20px;color:var(--t2);font-size:13px">Belum ada riwayat kas</div>';
+    if(g('kas-load-more-wrap'))g('kas-load-more-wrap').style.display='none';
+    return;
+  }
+  kl.innerHTML=sortedDates.map(dk=>`<div class="kas-tx-group"><div class="kas-tx-date-hd">${_dlbl(dk)}</div>${groups[dk].map(l=>`<div class="kas-tx-row"><span class="kas-tx-ico ${_icoClass(l)}">${_icoSvg(l)}</span><div class="kas-tx-body"><div class="kas-tx-name">${esc(l.desc)}</div><div class="kas-tx-meta">${esc(l.note||'—')}</div></div>${_badge(l)}<div class="kas-tx-right"><div class="kas-tx-time">${esc(l.time||'—')}</div>${_amt(l)}</div></div>`).join('')}</div>`).join('');
+  const lmw=g('kas-load-more-wrap');if(lmw)lmw.style.display=hasMore?'block':'none';
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
 function renderKas(){
   const kc=g('kas-outlet-chips');
-  if(kc){if(kasOutlet==='all'&&outlets.length>0)kasOutlet=outlets[0].id;kc.innerHTML=outlets.map(o=>{const sc=safeColor(o.color);return `<span class="chip${kasOutlet===o.id?' on':''}" onclick="setKasOutlet('${o.id}')" style="${kasOutlet===o.id?`background:${sc}18;border-color:${sc};color:${sc}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc};margin-right:5px;vertical-align:middle"></span>${esc(o.name)}</span>`;}).join('');}
-  const fl=kasLog.filter(l=>!l.outletId||l.outletId===kasOutlet);
-  const modal=fl.filter(x=>x.type==='modal').reduce((s,x)=>s+x.amount,0);
-  const cashIn=fl.filter(x=>x.type==='in').reduce((s,x)=>s+x.amount,0);
-  const cashOut=fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);
-  const saldo=modal+cashIn-cashOut;
-  const km=g('kas-metrics');if(km)km.innerHTML=`<div class="mc2 cp" style="grid-column:span 2"><div class="ml">\uD83D\uDCB0 Saldo Kas Saat Ini</div><div class="mv" style="font-size:28px">${fmt(saldo)}</div></div><div class="mc2 cam"><div class="ml">Modal Awal</div><div class="mv" style="font-size:16px">${fmt(modal)}</div></div><div class="mc2 cg"><div class="ml">Penjualan Cash</div><div class="mv" style="font-size:16px">${fmt(cashIn)}</div></div>`;
-  const filter=g('kas-filter')?.value||'all';
-  const list=[...fl].reverse().filter(x=>filter==='all'||x.type===filter);
-  const kl=g('kas-log');if(!kl)return;
-  const icons={modal:'\uD83D\uDCB5',in:'\uD83D\uDFE2',out:'\uD83D\uDD34'};
-  kl.innerHTML=list.length?list.map(l=>`<div class="li_"><div class="lic">${icons[l.type]||'\uD83D\uDCB5'}</div><div style="flex:1"><div style="font-weight:600">${esc(l.desc)}</div><div style="font-size:11px;color:var(--t2)">${esc(l.note||'\u2014')}</div></div><div style="text-align:right"><div style="font-weight:700;color:${l.type==='out'?'var(--re)':'var(--p)'}">${l.type==='out'?'-':'+'}${fmt(l.amount)}</div><div style="font-size:10px;color:var(--t2)">${esc(l.time)}</div></div></div>`).join(''):'<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Belum ada riwayat</div>';
+  if(kc){
+    if(kasOutlet==='all'&&outlets.length>0)kasOutlet=outlets[0].id;
+    kc.innerHTML=outlets.map(o=>{const sc=safeColor(o.color);return `<span class="chip${kasOutlet===o.id?' on':''}" onclick="setKasOutlet('${o.id}')" style="${kasOutlet===o.id?`background:${sc}18;border-color:${sc};color:${sc}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc};margin-right:5px;vertical-align:middle"></span>${esc(o.name)}</span>`;}).join('');
+  }
+  // Running balance (all-time, outlet-filtered)
+  const allOtl=kasLog.filter(l=>kasOutlet==='all'||!l.outletId||l.outletId===kasOutlet);
+  const saldo=allOtl.reduce((s,l)=>l.type==='out'?s-l.amount:s+l.amount,0);
+  // Period metrics
+  const range=_kasDateRange();
+  let periodOtl=allOtl;
+  if(range)periodOtl=allOtl.filter(l=>{if(!l.date)return kasDateFilter==='today';return l.date>=range.from&&l.date<=range.to;});
+  const modal=periodOtl.filter(x=>x.type==='modal').reduce((s,x)=>s+x.amount,0);
+  const cashIn=periodOtl.filter(x=>x.type==='in').reduce((s,x)=>s+x.amount,0);
+  const cashOut=periodOtl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);
+  // Insight: compare today vs yesterday
+  const yestISO=(()=>{const y=new Date(TODAY);y.setDate(y.getDate()-1);return y.toISOString().split('T')[0];})();
+  const todayNet=allOtl.filter(l=>l.date===TODAY_ISO).reduce((s,l)=>l.type==='out'?s-l.amount:s+l.amount,0);
+  const yestNet=allOtl.filter(l=>l.date===yestISO).reduce((s,l)=>l.type==='out'?s-l.amount:s+l.amount,0);
+  const diff=todayNet-yestNet;
+  const isPos=diff>=0;
+  // Summary cards
+  const km=g('kas-metrics');
+  if(km)km.innerHTML=`
+    <div class="kas-sc kas-sc-main">
+      <span class="kas-sc-ico"><i data-lucide="wallet" style="width:16px;height:16px;stroke-width:2;display:block"></i></span>
+      <div class="kas-sc-lbl">Kas Saat Ini</div>
+      <div class="kas-sc-val">${fmt(saldo)}</div>
+      <div class="kas-sc-sub">Saldo tersedia di laci kas</div>
+    </div>
+    <div class="kas-sc kas-sc-orange">
+      <span class="kas-sc-ico"><i data-lucide="coins" style="width:16px;height:16px;stroke-width:2;display:block"></i></span>
+      <div class="kas-sc-lbl">Modal Awal</div>
+      <div class="kas-sc-val">${fmt(modal)}</div>
+      <div class="kas-sc-sub">Total modal yang disetor</div>
+    </div>
+    <div class="kas-sc kas-sc-softgreen">
+      <span class="kas-sc-ico"><i data-lucide="trending-up" style="width:16px;height:16px;stroke-width:2;display:block"></i></span>
+      <div class="kas-sc-lbl">Pemasukan Cash</div>
+      <div class="kas-sc-val">+${fmt(cashIn)}</div>
+      <div class="kas-sc-sub">Total pemasukan hari ini</div>
+    </div>
+    <div class="kas-sc kas-sc-red">
+      <span class="kas-sc-ico"><i data-lucide="trending-down" style="width:16px;height:16px;stroke-width:2;display:block"></i></span>
+      <div class="kas-sc-lbl">Pengeluaran Cash</div>
+      <div class="kas-sc-val">-${fmt(cashOut)}</div>
+      <div class="kas-sc-sub">Total pengeluaran hari ini</div>
+    </div>`;
+  // Insight card
+  const ki=g('kas-insight');
+  if(ki)ki.innerHTML=`
+    <span class="kas-insight-ico"><i data-lucide="${isPos?'trending-up':'trending-down'}" style="width:24px;height:24px;stroke-width:2;display:block"></i></span>
+    <div style="flex:1;min-width:0">
+      <div class="kas-insight-title">Insight Hari Ini</div>
+      <div class="kas-insight-val">Kas ${isPos?'bertambah':'berkurang'} ${fmt(Math.abs(diff))}</div>
+      <div class="kas-insight-sub">Dibandingkan kemarin (${new Date(yestISO+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})})</div>
+    </div>`;
+  renderKasLog();
+  if(typeof lucide!=='undefined')lucide.createIcons();
 }
-function openKas(type){kasType=type;g('m-kas-title').textContent=type==='setor'?'\u2795 Setor Modal':'\u2796 Tarik Kas';g('mk-nom').value='';g('mk-note').value='';g('mk-hint').textContent='';openModal('m-kas');}
+
+function openKas(type){
+  kasType=type;
+  g('m-kas-title').textContent=type==='setor'?'Setor Modal':'Tarik Kas';
+  g('mk-nom').value='';g('mk-note').value='';g('mk-hint').textContent='';
+  openModal('m-kas');
+}
 function kasNomHint(){const v=parseInt(g('mk-nom').value)||0;g('mk-hint').textContent=v>0?'= '+fmt(v):'';}
-function submitKas(){const nom=parseInt(g('mk-nom').value)||0;if(!nom||nom<=0){toast('\u26A0\uFE0F Masukkan nominal yang valid');return;}if(kasType==='tarik'){const fl=kasLog.filter(l=>!l.outletId||l.outletId===kasOutlet);const s=fl.filter(x=>x.type!=='out').reduce((s,x)=>s+x.amount,0)-fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);if(nom>s){toast('\u26A0\uFE0F Nominal melebihi saldo ('+fmt(s)+')');return;}}kasLog.push({id:kasCtr++,type:kasType==='setor'?'modal':'out',desc:kasType==='setor'?'Setor Modal':'Tarik Kas',note:g('mk-note').value||'\u2014',amount:nom,time:NOW(),outletId:kasOutlet!=='all'?kasOutlet:(curStaff?.oid||null)});cm('m-kas');renderKas();toast(kasType==='setor'?'\u2713 Modal disetor: '+fmt(nom):'\u2713 Kas ditarik: '+fmt(nom));}
+function submitKas(){
+  const nom=parseInt(g('mk-nom').value)||0;
+  if(!nom||nom<=0){toast('\u26A0\uFE0F Masukkan nominal yang valid');return;}
+  if(kasType==='tarik'){
+    const fl=kasLog.filter(l=>kasOutlet==='all'||!l.outletId||l.outletId===kasOutlet);
+    const s=fl.reduce((s,l)=>l.type==='out'?s-l.amount:s+l.amount,0);
+    if(nom>s){toast('\u26A0\uFE0F Nominal melebihi saldo ('+fmt(s)+')');return;}
+  }
+  const oid=kasOutlet!=='all'?kasOutlet:(curStaff?.oid||null);
+  kasLog.push({id:kasCtr++,type:kasType==='setor'?'modal':'out',desc:kasType==='setor'?'Setor Modal':'Tarik Kas',note:g('mk-note').value||'—',amount:nom,time:NOW(),date:TODAY_ISO,outletId:oid});
+  cm('m-kas');renderKas();
+  toast(kasType==='setor'?'\u2713 Modal disetor: '+fmt(nom):'\u2713 Kas ditarik: '+fmt(nom));
+}
 
 // ===== EXPENSES =====
 function setExpOutlet(id){expOutlet=id;renderExpenses();}
@@ -4026,7 +4279,7 @@ function delExpense(id){confirm_('Hapus Pengeluaran?','Data ini akan dihapus per
 function exCatChg(){g('ex-lain-w').style.display=g('ex-cat').value==='lain'?'block':'none';}
 function exNomChg(){exSrcChg();}
 function exSrcChg(){const src=g('ex-src').value,nom=parseInt(g('ex-nom').value)||0;const w=g('ex-kas-w');if(!w)return;if(src==='cash'){const oid=g('ex-outlet')?.value||kasOutlet;const fl=kasLog.filter(l=>!l.outletId||l.outletId===oid);const s=fl.filter(x=>x.type!=='out').reduce((s,x)=>s+x.amount,0)-fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);if(nom>s){w.style.display='block';w.style.background='var(--reb)';w.style.color='var(--re)';w.style.border='1px solid var(--re)';w.textContent='\u26A0\uFE0F Saldo kas tidak cukup. Saldo: '+fmt(s);}else if(nom>0){w.style.display='block';w.style.background='var(--pl)';w.style.color='#3d6b10';w.style.border='1px solid var(--p)';w.textContent='\u2713 Saldo mencukupi. Setelah: '+fmt(s-nom);}else w.style.display='none';}else w.style.display='none';}
-function submitExpense(){const cat=g('ex-cat').value,nom=parseInt(g('ex-nom').value)||0,date=g('ex-date').value,src=g('ex-src').value,note=g('ex-note').value;if(!nom||nom<=0){toast('\u26A0\uFE0F Masukkan nominal yang valid');return;}if(!date){toast('\u26A0\uFE0F Pilih tanggal');return;}if(cat==='lain'&&!g('ex-lain-n').value.trim()){toast('\u26A0\uFE0F Isi nama pengeluaran');return;}const expOut=g('ex-outlet')?.value||outlets[0]?.id||'o1';if(src==='cash'){const fl=kasLog.filter(l=>!l.outletId||l.outletId===expOut);const s=fl.filter(x=>x.type!=='out').reduce((s,x)=>s+x.amount,0)-fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);if(nom>s){toast('\u26A0\uFE0F Saldo kas tidak cukup!');return;}kasLog.push({id:kasCtr++,type:'out',desc:'Pengeluaran: '+(CAT_LBL[cat]||cat),note:note||'\u2014',amount:nom,time:NOW(),outletId:expOut});}const label=cat==='lain'?g('ex-lain-n').value.trim():CAT_LBL[cat];expenses.push({id:expCtr++,cat,label,nominal:nom,date,note,src,outletId:expOut});['ex-nom','ex-note','ex-lain-n'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('ex-kas-w'))g('ex-kas-w').style.display='none';renderExpenses();renderKas();toast(src==='cash'?'\u2713 Pengeluaran dicatat \u00B7 Kas berkurang '+fmt(nom):'\u2713 Pengeluaran dicatat via Transfer');}
+function submitExpense(){const cat=g('ex-cat').value,nom=parseInt(g('ex-nom').value)||0,date=g('ex-date').value,src=g('ex-src').value,note=g('ex-note').value;if(!nom||nom<=0){toast('\u26A0\uFE0F Masukkan nominal yang valid');return;}if(!date){toast('\u26A0\uFE0F Pilih tanggal');return;}if(cat==='lain'&&!g('ex-lain-n').value.trim()){toast('\u26A0\uFE0F Isi nama pengeluaran');return;}const expOut=g('ex-outlet')?.value||outlets[0]?.id||'o1';if(src==='cash'){const fl=kasLog.filter(l=>!l.outletId||l.outletId===expOut);const s=fl.filter(x=>x.type!=='out').reduce((s,x)=>s+x.amount,0)-fl.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);if(nom>s){toast('\u26A0\uFE0F Saldo kas tidak cukup!');return;}kasLog.push({id:kasCtr++,type:'out',desc:'Pengeluaran: '+(CAT_LBL[cat]||cat),note:note||'—',amount:nom,time:NOW(),date:TODAY_ISO,outletId:expOut});}const label=cat==='lain'?g('ex-lain-n').value.trim():CAT_LBL[cat];expenses.push({id:expCtr++,cat,label,nominal:nom,date,note,src,outletId:expOut});['ex-nom','ex-note','ex-lain-n'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('ex-kas-w'))g('ex-kas-w').style.display='none';renderExpenses();renderKas();toast(src==='cash'?'\u2713 Pengeluaran dicatat \u00B7 Kas berkurang '+fmt(nom):'\u2713 Pengeluaran dicatat via Transfer');}
 
 // ===== REPORTS =====
 const _RPT_PERIODS=[
