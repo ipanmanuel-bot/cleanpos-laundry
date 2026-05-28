@@ -2,6 +2,12 @@
 // Covers: order form, order list, kanban tracking, receipt/detail modals, WA notifications
 // Depends on global state and helpers defined in main.js (resolved at call-time).
 
+// ─── Satuan cart state ───
+let _noSatuanCart = [];
+let _snoSatuanCart = [];
+function _getSatuanCart(pre){ return pre==='no' ? _noSatuanCart : _snoSatuanCart; }
+function _setSatuanCart(pre, cart){ if(pre==='no') _noSatuanCart=cart; else _snoSatuanCart=cart; }
+
 // ===== ORDER FORM =====
 function buildOrderForm(pre) {
   buildOrderTypeDropdowns();
@@ -12,10 +18,30 @@ function buildOrderForm(pre) {
     else oel.value = outlets[0]?.id || '';
   }
   const el = g(pre + '-addons'); if (!el) return;
-  const ch = pre === 'no' ? 'calcO' : 'calcS';
-  el.innerHTML = addons.map(a =>
-    `<label id="${pre}-lbl-${a.id}" style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1);transition:all .15s"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}();toggleAddonLbl('${pre}','${a.id}',this.checked)"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit === 'per_qty' ? '/qty' : ''})</span></label>`
-  ).join('');
+  if (pre === 'no') {
+    // Build addons grid
+    const addGrid = g('no-addons');
+    if (addGrid) {
+      addGrid.innerHTML = addons.filter(a => a.active !== false).map(a => {
+        const unit = a.unit === 'order' ? '/order' : `/${a.unit||'pcs'}`;
+        return `<div class="no-addon-card" id="no-addon-card-${a.id}" onclick="_noToggleAddon('${a.id}')">
+          <div class="no-addon-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="no-addon-name">${esc(a.name)}</div>
+          <div class="no-addon-price">${fmt(a.price||0)}${unit}</div>
+        </div>`;
+      }).join('') || '<div style="color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';
+    }
+  } else {
+    const ch = 'calcS';
+    el.innerHTML = addons.map(a =>
+      `<label id="${pre}-lbl-${a.id}" style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1);transition:all .15s"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}();toggleAddonLbl('${pre}','${a.id}',this.checked)"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit === 'per_qty' ? '/qty' : ''})</span></label>`
+    ).join('');
+  }
+  // Rebuild visual type/tier cards for new order page
+  if (pre === 'no' && typeof _noRebuildSvcCards === 'function') {
+    _noRebuildSvcCards();
+    _noRebuildTierCards();
+  }
 }
 
 function updWalletOption(pre) {
@@ -81,6 +107,7 @@ function pickCust(pre, phone) {
 // Close customer dropdowns when clicking outside
 document.addEventListener('click', e => {
   ['no','sno'].forEach(pre => {
+    // Legacy (SNO) dropdown
     const wrap = g(pre+'-cust-srch')?.parentElement;
     if (wrap && !wrap.contains(e.target)) {
       const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
@@ -104,20 +131,142 @@ function bQty(type, cat, qty) {
 }
 
 function buildSatuanOrderItems(pre) {
+  const selId = pre + '-sat-sel';
+  const satSel = g(selId);
+  if (satSel) {
+    const activeItems = satuanItems.filter(x => x.active !== false);
+    satSel.innerHTML = activeItems.length
+      ? '<option value="">-- Pilih Item --</option>' + activeItems.map(item => `<option value="${item.id}">${esc(item.name)} — ${esc(item.unit || 'pcs')}</option>`).join('')
+      : '<option value="">Belum ada item satuan</option>';
+  }
+  // Populate tier dropdown for new order
+  if (pre === 'no') {
+    const tierSel = g('no-sat-tier');
+    if (tierSel) {
+      const activeTiers = typeof _activePoOptions === 'function' ? _activePoOptions() : [];
+      tierSel.innerHTML = '<option value="">-- Opsi Harga --</option>' + activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
+    }
+  }
+  _renderSatuanCartTable(pre);
+}
+
+function _renderSatuanCartTable(pre) {
   const el = g(pre + '-satuan-items'); if (!el) return;
-  const cat = g(pre + '-cat')?.value || 'regular';
-  if (!satuanItems.length) {
-    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:8px 0">Belum ada item satuan. Tambah di menu Harga.</div>';
+  const cart = _getSatuanCart(pre);
+  if (!cart.length) {
+    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah Item.</div>';
     return;
   }
-  const ch = pre === 'no' ? 'calcO()' : 'calcS()';
-  el.innerHTML = satuanItems.map(item => {
-    const price = item.prices[cat] || 0;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)">
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(item.name)}</div><div style="font-size:11px;color:var(--t2)">${fmt(price)} / pcs</div></div>
-      <input type="number" id="${pre}-sat-${item.id}" value="0" min="0" step="1" style="width:60px;text-align:center;font-size:16px;font-weight:700;padding:6px 8px" oninput="${ch}">
+  if (pre === 'no') {
+    // Full table with OPSI HARGA + ESTIMASI columns
+    el.innerHTML = `<div class="sat-cart-wrap">
+      <table class="sat-cart-tbl">
+        <thead><tr>
+          <th>Item</th><th>Opsi Harga</th><th>Estimasi</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${cart.map((line, idx) => `<tr>
+            <td><span style="font-weight:600">${esc(line.name)}</span></td>
+            <td><span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 7px;border-radius:20px;font-weight:700">${esc(line.tierLabel||line.tierKey||'–')}</span></td>
+            <td><span style="font-size:11px;color:var(--t2)">${esc(line.tierEst||'–')}</span></td>
+            <td>${line.qty} ${esc(line.unit||'pcs')}</td>
+            <td>${fmt(line.unitPrice)}</td>
+            <td style="font-weight:700">${fmt(line.lineTotal)}</td>
+            <td><button onclick="removeFromSatuanCart('${pre}',${idx})" style="border:none;background:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Hapus">×</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
     </div>`;
-  }).join('');
+  } else {
+    // Simple table for staff/SNO
+    el.innerHTML = `<div class="sat-cart-wrap">
+      <table class="sat-cart-tbl">
+        <thead><tr><th>Item</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody>
+          ${cart.map((line, idx) => `<tr>
+            <td><span style="font-weight:600">${esc(line.name)}</span><br><span style="font-size:10px;color:var(--t2)">${esc(line.unit||'pcs')}</span></td>
+            <td>${line.qty}</td>
+            <td>${fmt(line.unitPrice)}</td>
+            <td style="font-weight:700">${fmt(line.lineTotal)}</td>
+            <td><button onclick="removeFromSatuanCart('${pre}',${idx})" style="border:none;background:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Hapus">×</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
+}
+
+function _noUpdateSatPrice(){
+  const selEl=g('no-sat-sel');
+  const tierEl=g('no-sat-tier');
+  const estEl=g('no-sat-est');
+  const priceEl=g('no-sat-price');
+  if(!selEl||!tierEl) return;
+  const itemId=selEl.value;
+  const tierKey=tierEl.value;
+  const item=satuanItems.find(x=>x.id===itemId);
+  // Update estimasi badge
+  const po=typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===tierKey):null;
+  if(estEl){
+    if(po&&po.est){estEl.textContent=po.est;estEl.style.display='inline-flex';}
+    else estEl.style.display='none';
+  }
+  // Update price display
+  if(priceEl){
+    if(item&&tierKey){
+      const p=item.prices?.[tierKey]||0;
+      priceEl.textContent=p?'Harga Satuan '+fmt(p):'Harga: –';
+    } else {
+      priceEl.textContent='';
+    }
+  }
+}
+
+function addToSatuanCart(pre) {
+  const selEl = g(pre + '-sat-sel');
+  const qtyEl = g(pre + '-sat-qty');
+  if (!selEl || !selEl.value) { toast('⚠️ Pilih item terlebih dahulu'); return; }
+  if (!qtyEl || parseInt(qtyEl.value) < 1) { toast('⚠️ Qty harus minimal 1'); return; }
+  const qty = parseInt(qtyEl?.value) || 1;
+  const itemId = selEl.value;
+  const item = satuanItems.find(x => x.id === itemId); if (!item) return;
+  // Per-item tier for new order; global tier for staff order
+  let tierKey, tierLabel, tierEst;
+  if (pre === 'no') {
+    const tierEl = g('no-sat-tier');
+    if (!tierEl || !tierEl.value) { toast('⚠️ Pilih opsi harga terlebih dahulu'); return; }
+    tierKey = tierEl.value;
+    const po = typeof priceOptions !== 'undefined' ? priceOptions.find(p => p.key === tierKey) : null;
+    tierLabel = po?.label || tierKey;
+    tierEst = po?.est || '';
+  } else {
+    tierKey = g(pre + '-cat')?.value || 'regular';
+    const po = typeof priceOptions !== 'undefined' ? priceOptions.find(p => p.key === tierKey) : null;
+    tierLabel = po?.label || tierKey;
+    tierEst = po?.est || '';
+  }
+  const unitPrice = item.prices?.[tierKey] || 0;
+  const cart = _getSatuanCart(pre);
+  // For 'no' prefix, each item+tier combo is a separate line
+  if (pre === 'no') {
+    const existing = cart.find(l => l.id === itemId && l.tierKey === tierKey);
+    if (existing) { existing.qty += qty; existing.lineTotal = existing.unitPrice * existing.qty; }
+    else { cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty, tierKey, tierLabel, tierEst }); }
+  } else {
+    const existing = cart.find(l => l.id === itemId);
+    if (existing) { existing.qty += qty; existing.lineTotal = existing.unitPrice * existing.qty; }
+    else { cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty, tierKey, tierLabel, tierEst }); }
+  }
+  if (qtyEl) qtyEl.value = '1';
+  _renderSatuanCartTable(pre);
+  if (pre === 'no') { _noUpdateSatPrice(); calcO(); } else calcS();
+}
+
+function removeFromSatuanCart(pre, idx) {
+  const cart = _getSatuanCart(pre);
+  cart.splice(idx, 1);
+  _renderSatuanCartTable(pre);
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function typeChange(pre) {
@@ -142,16 +291,32 @@ function getActivePromo(type, cat) {
     if (!p.active) return false;
     const dm = p.days.length === 0 || p.days.includes(String(TODAY_DAY));
     const dateOk = (!p.from || TODAY_ISO >= p.from) && (!p.to || TODAY_ISO <= p.to);
-    const svcOk = p.svc === 'all' || p.svc === key;
     const outletOk = !p.outlets || p.outlets.length === 0 || p.outlets.includes(curOid);
-    return dm && dateOk && svcOk && outletOk;
+    if (!dm || !dateOk || !outletOk) return false;
+    if (p.targets) {
+      if (type === 'satuan') {
+        const st = p.targets.satuan || [];
+        if (!st.length) return false;
+        if (st[0] === 'all') return true;
+        return st.some(t => t.endsWith('-' + cat) || t === cat);
+      } else {
+        const kt = p.targets.kiloan || [];
+        if (!kt.length) return false;
+        if (kt[0] === 'all') return true;
+        return kt.includes(cat);
+      }
+    }
+    const svcOk = p.svc === 'all' || p.svc === key || p.svc === type + '-all';
+    return svcOk;
   });
 }
 
 function calcPromoDisc(p, base, qty) {
   if (!p) return 0;
-  if (p.discType === 'persen') return base * (p.discVal / 100);
-  if (p.discType === 'flat')   return p.discVal;
+  if (p.discType === 'persen')     return base * (p.discVal / 100);
+  if (p.discType === 'flat')       return p.discVal;
+  if (p.discType === 'persen_qty') return base * (p.discVal / 100) * qty;
+  if (p.discType === 'per_qty')    return p.discVal * qty;
   return p.discVal * qty;
 }
 
@@ -162,31 +327,49 @@ function discTypeChange(pre) {
 }
 
 function calcBase(pre) {
-  const type = g(pre + '-type').value, cat = g(pre + '-cat').value;
+  const typeEl = g(pre + '-type');
+  const catEl = g(pre + '-cat');
+  if (!typeEl || !catEl) return { type: 'kiloan', cat: 'regular', rawQty: 1, bq: 1, base: 0, addTotal: 0, addonLines: [], subtotal: 0, actPromo: null, satuanLines: [] };
+  const type = typeEl.value, cat = catEl.value;
+  // Use priceOptions for est if available
+  const poEst = (typeof priceOptions !== 'undefined' ? priceOptions.find(po => po.key === cat)?.est : null);
   const EST = { regular: '2-3 hari', sameday: '± 8 jam', express: '1 hari' };
-  const est = g(pre + '-est'); if (est) est.value = EST[cat] || '';
+  const est = g(pre + '-est'); if (est) est.value = poEst != null ? poEst : (EST[cat] || '');
+
+  // Helper to check addon selection (supports both checkbox and card)
+  function isAddonSelected(a) {
+    if (pre === 'no') {
+      const card = g('no-addon-card-' + a.id);
+      return card && card.classList.contains('on');
+    }
+    const ck = g(pre + '-ck-' + a.id);
+    return ck && ck.checked;
+  }
 
   if (type === 'satuan') {
-    const satuanLines = [];
-    satuanItems.forEach(item => {
-      const qEl = g(pre + '-sat-' + item.id);
-      const qty = parseInt(qEl?.value) || 0;
-      if (qty > 0) {
-        const unitPrice = item.prices[cat] || 0;
-        satuanLines.push({ id: item.id, name: item.name, qty, unitPrice, lineTotal: unitPrice * qty });
-      }
+    // Cart-based: read from _getSatuanCart
+    const cart = _getSatuanCart(pre);
+    // For 'no' prefix, use per-item tierKey; for others use global cat
+    const satuanLines = cart.map(line => {
+      const item = satuanItems.find(x => x.id === line.id);
+      const tierKey = (pre === 'no' && line.tierKey) ? line.tierKey : cat;
+      const unitPrice = item ? (item.prices?.[tierKey] || 0) : line.unitPrice;
+      return { id: line.id, name: line.name, unit: line.unit || 'pcs', qty: line.qty, unitPrice, lineTotal: unitPrice * line.qty, tierKey: line.tierKey };
     });
+    // Sync prices back to cart
+    cart.forEach((line, i) => { line.unitPrice = satuanLines[i].unitPrice; line.lineTotal = satuanLines[i].lineTotal; });
     const base = satuanLines.reduce((s, l) => s + l.lineTotal, 0);
     const bq = satuanLines.reduce((s, l) => s + l.qty, 0);
     let addTotal = 0; const addonLines = [];
     addons.forEach(a => {
-      const ck = g(pre + '-ck-' + a.id);
-      if (ck && ck.checked) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
+      if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
     });
     return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines };
   }
 
-  const rawQty = parseFloat(g(pre + '-qty').value) || 1;
+  // Kiloan: support both 'no-kg' (new UI) and 'no-qty' (legacy/SNO)
+  const qtyInput = pre === 'no' ? (g('no-kg') || g('no-qty')) : g(pre + '-qty');
+  const rawQty = parseFloat(qtyInput?.value) || 1;
   const bq = bQty(type, cat, rawQty);
   const svc = getSvcById(type);
   const apply = svc?.minKgApply || {};
@@ -198,8 +381,7 @@ function calcBase(pre) {
   const base = (getP()[type]?.[cat] || 0) * bq;
   let addTotal = 0; const addonLines = [];
   addons.forEach(a => {
-    const ck = g(pre + '-ck-' + a.id);
-    if (ck && ck.checked) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
+    if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
   });
   return { type, cat, rawQty, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines: [] };
 }
@@ -211,8 +393,9 @@ function doCalc(pre, hasDisc) {
   let promoAmt = actPromo && promoEnabled ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
   const pb = g(pre + '-promo-box');
   if (actPromo && pb) {
+    pb.style.display = 'block';
     pb.innerHTML = `<div class="${promoEnabled ? 'pb-act' : 'pb-off'}"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:${promoEnabled ? '#3d6b10' : 'var(--t2)'}">${actPromo.name}</div><div style="font-size:11px;color:${promoEnabled ? '#4a7a15' : 'var(--t3)'}">${actPromo.discType === 'persen' ? actPromo.discVal + '%' : fmt(calcPromoDisc(actPromo, subtotal, bq))} diskon</div></div></div><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="${pre}-promo-chk" ${promoEnabled ? 'checked' : ''} onchange="${pre === 'no' ? 'calcO' : 'calcS'}()"> Pakai promo</label></div></div>`;
-  } else if (pb) pb.innerHTML = '';
+  } else if (pb) { pb.style.display = 'none'; pb.innerHTML = ''; }
   let discType = 'none', discAmt = 0;
   if (hasDisc) {
     discType = g(pre + '-disc-type')?.value || 'none';
@@ -238,10 +421,152 @@ function doCalc(pre, hasDisc) {
     pv.innerHTML = html;
   }
   const tv = g(pre + '-total'); if (tv) tv.textContent = fmt(total);
-  return { type, cat, bq, rawQty: res.rawQty, base, addTotal, addonLines, promoAmt, discType, discAmt, total, actPromo };
+  return { type, cat, bq, rawQty: res.rawQty, base, addTotal, addonLines, promoAmt, discType, discAmt, total, actPromo, subtotal, satuanLines };
 }
 
-function calcO() { doCalc('no', true); calcChg('no'); }
+function _noToggleAddon(id) {
+  const card = g('no-addon-card-' + id);
+  if (card) card.classList.toggle('on');
+  calcO();
+}
+
+function _noTogglePromo() {
+  const box = g('no-promo-box');
+  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+function _noUpdateSummary(res) {
+  const el = g('no-sum-body'); if (!el) return;
+  const name = (g('no-name')?.value||'').trim();
+  const phone = (g('no-phone')?.value||'').trim();
+  const outletId = g('no-outlet')?.value;
+  const outletName = (typeof outlets !== 'undefined' ? outlets.find(o=>String(o.id)===String(outletId))?.name : null) || outletId || '–';
+
+  if (!res) {
+    el.innerHTML = '<div style="padding:20px;color:var(--t2);font-size:13px;text-align:center">Isi form di sebelah kiri untuk melihat ringkasan pesanan.</div>';
+    return;
+  }
+
+  // Customer avatar initials
+  const initials = name ? name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2) : '?';
+  const custHtml = `<div class="no-sum-cust">
+    <div class="no-sum-av">${initials}</div>
+    <div class="no-sum-av-info">
+      <div class="no-sum-av-name">${esc(name||'Pelanggan Baru')}</div>
+      <div class="no-sum-av-phone">${esc(phone||'–')}</div>
+    </div>
+  </div>`;
+
+  // Outlet row
+  const outletHtml = `<div class="no-sum-sect-lbl">Outlet</div>
+    <div class="no-sum-row"><span>${esc(outletName)}</span></div>`;
+
+  // Items section
+  let itemsHtml = '';
+  if (res.type === 'satuan' && res.satuanLines && res.satuanLines.length) {
+    const cnt = res.satuanLines.length;
+    itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan (${cnt})</div>
+      <div>${res.satuanLines.map(line=>{
+        const cartLine = _noSatuanCart.find(l=>l.id===line.id&&l.tierKey===line.tierKey);
+        const tierLbl = cartLine?.tierLabel || '';
+        const tierEst = cartLine?.tierEst || '';
+        return `<div class="no-sum-item-row">
+          <div class="no-sum-item-name">
+            <span>${esc(line.name)}</span>
+            <span class="no-sum-item-badge">${tierLbl?esc(tierLbl)+(tierEst?' · '+esc(tierEst):''):''} × ${line.qty} ${esc(line.unit||'pcs')}</span>
+          </div>
+          <div class="no-sum-item-val">${fmt(line.lineTotal)}</div>
+        </div>`;
+      }).join('')}</div>`;
+  } else if (res.type === 'kiloan' || (res.type !== 'satuan')) {
+    const tierLbl = (typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===res.cat)?.label:null)||res.cat||'';
+    itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan</div>
+      <div class="no-sum-item-row">
+        <div class="no-sum-item-name">
+          <span>Kiloan</span>
+          <span class="no-sum-item-badge">${esc(tierLbl)} · ${res.rawQty||0} kg</span>
+        </div>
+        <div class="no-sum-item-val">${fmt(res.base||0)}</div>
+      </div>`;
+  }
+
+  // Addons
+  let addonsHtml = '';
+  if (res.addonLines && res.addonLines.length) {
+    addonsHtml = `<div class="no-sum-sect-lbl">Layanan Tambahan (${res.addonLines.length})</div>
+      <div>${res.addonLines.map(a=>`<div class="no-sum-item-row">
+        <div class="no-sum-item-name">${esc(a.n||a.name)}</div>
+        <div class="no-sum-item-val">${fmt(a.v||a.total||0)}</div>
+      </div>`).join('')}</div>`;
+  }
+
+  // Subtotal + discount + total
+  const promoAmt = res.promoAmt || 0;
+  const manualDiscAmt = res.discAmt || 0;
+  const total = res.total || Math.max(0, (res.subtotal||0) - promoAmt - manualDiscAmt);
+
+  let financeHtml = `<div class="no-sum-row" style="margin-top:10px"><span style="color:var(--t2)">Subtotal</span><span style="font-weight:600">${fmt(res.subtotal||0)}</span></div>`;
+  if (promoAmt > 0 && res.actPromo) {
+    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon (${esc(res.actPromo?.name||'Promo')})</span><span style="color:#e53935;font-weight:600">–${fmt(promoAmt)}</span></div>`;
+  }
+  if (manualDiscAmt > 0) {
+    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon Manual</span><span style="color:#e53935;font-weight:600">–${fmt(manualDiscAmt)}</span></div>`;
+  }
+  financeHtml += `<a class="no-sum-discount" onclick="_noTogglePromo()">+ Tambah Diskon</a>`;
+  financeHtml += `<div class="no-sum-row total"><span>Total</span><span>${fmt(total)}</span></div>`;
+
+  el.innerHTML = custHtml + outletHtml + itemsHtml + addonsHtml + financeHtml;
+
+  // Update change
+  const cash = parseFloat(g('no-cash')?.value||'0')||0;
+  const chgEl = g('no-chg'); if(chgEl) chgEl.textContent = fmt(Math.max(0,cash-total));
+}
+
+// New order wrappers for new HTML
+function searchCust(pre, val) {
+  // Adapts the new no-cust-search input to work with custSearch/pickCust logic
+  const q = (val||'').toLowerCase().trim();
+  const resultsEl = g(pre + '-cust-results');
+  if (!resultsEl) { custSearch(pre); return; }
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const matches = Object.values(customers).filter(c =>
+    c.name.toLowerCase().includes(q) || c.phone.includes(q)
+  ).slice(0,8);
+  if (!matches.length) { resultsEl.innerHTML = ''; return; }
+  resultsEl.innerHTML = `<div style="position:absolute;top:0;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-radius:var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto">${
+    matches.map(c => {
+      const bal = c.balance||0;
+      const balBadge = typeof membershipEnabled !== 'undefined' && membershipEnabled && bal > 0
+        ? `<span style="font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:1px 8px;border-radius:10px;margin-left:6px">💳 ${fmt(bal)}</span>`
+        : '';
+      return `<div onclick="pickNewCust('${pre}','${esc(c.phone)}')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--b1)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-weight:600;font-size:13px">${esc(c.name)}${balBadge}</div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+function pickNewCust(pre, phone) {
+  const c = customers[phone]; if (!c) return;
+  const nameEl = g(pre+'-name'); if (nameEl) nameEl.value = c.name;
+  const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
+  const srchEl = g(pre+'-cust-search'); if (srchEl) srchEl.value = '';
+  const resEl = g(pre+'-cust-results'); if (resEl) resEl.innerHTML = '';
+  calcO();
+}
+
+function submitOrder() {
+  submitO('o');
+}
+
+function saveDraft() {
+  const name = (g('no-name')?.value||'').trim();
+  if (!name) { toast('⚠️ Isi nama pelanggan terlebih dahulu'); return; }
+  toast('✓ Draft disimpan: ' + name);
+}
+
+function calcO() { const res = doCalc('no', true); calcChg('no'); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res); }
 function calcS() { doCalc('sno', false); calcChg('sno'); }
 function calcChg(pre) {
   const tot = parseInt((g(pre + '-total')?.textContent || '').replace(/\D/g, '')) || 0;
@@ -257,14 +582,30 @@ function buildOrder(pre) {
   const _phoneRaw = (g(pre + '-phone')?.value || '').trim().replace(/^[-—]+$/, '');
   const phone = _phoneRaw || '—';
   const res = doCalc(pre, pre === 'no');
-  const addOns = []; addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck && ck.checked) addOns.push({ id: a.id, name: a.name }); });
+  // Read addons: card state for 'no', checkbox for others
+  const addOns = [];
+  addons.forEach(a => {
+    if (pre === 'no') {
+      const card = g('no-addon-card-' + a.id);
+      if (card && card.classList.contains('on')) addOns.push({ id: a.id, name: a.name });
+    } else {
+      const ck = g(pre + '-ck-' + a.id);
+      if (ck && ck.checked) addOns.push({ id: a.id, name: a.name });
+    }
+  });
+  // Normalize payment method and status for 'no' prefix (new values)
+  const pmRaw = g(pre + '-pm')?.value || 'Tunai';
+  const psRaw = g(pre + '-ps')?.value || 'Belum Bayar';
+  const pmMap = { cash: 'Tunai', transfer: 'Transfer', qris: 'QRIS', other: 'Lainnya' };
+  const psMap = { paid: 'Lunas', dp: 'DP', unpaid: 'Belum Bayar' };
+  const payMethod = (pre === 'no' ? (pmMap[pmRaw] || pmRaw) : pmRaw);
+  const payStatus = (pre === 'no' ? (psMap[psRaw] || psRaw) : psRaw);
   const o = {
     id: genId(), name, phone, svcType: res.type, svcCat: res.cat,
     qty: res.bq, rawQty: res.rawQty, satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
     base: res.base, discType: res.discType, discAmt: res.discAmt,
     promoAmt: res.promoAmt, total: res.total,
-    payMethod: g(pre + '-pm')?.value || 'Tunai',
-    payStatus: g(pre + '-ps')?.value || 'Belum Bayar',
+    payMethod, payStatus,
     status: 'Diterima', notes: g(pre + '-note')?.value || '',
     date: TODAY_STR, isoDate: new Date().toISOString(), pickupDate: null, waSent: false,
     handledBy: curStaff ? curStaff.name : 'Owner',
@@ -299,14 +640,21 @@ function buildOrder(pre) {
     }
   }
   [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
-  addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false; });
+  if (pre === 'no') {
+    addons.forEach(a => { const card = g('no-addon-card-' + a.id); if (card) card.classList.remove('on'); });
+    const kgEl = g('no-kg'); if (kgEl) kgEl.value = '1';
+  } else {
+    addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false; });
+  }
   const qq = g(pre + '-qty'); if (qq) qq.value = '1';
   const dt = g(pre + '-disc-type'); if (dt) dt.value = 'none';
   const dv = g(pre + '-disc-val'); if (dv) dv.value = '0';
   const dw = g(pre + '-dv-w');  if (dw) dw.style.display = 'none';
-  const ps = g(pre + '-ps');    if (ps) ps.value = 'Belum Bayar';
+  const ps = g(pre + '-ps');    if (ps) ps.value = pre === 'no' ? 'unpaid' : 'Belum Bayar';
   const dpg = g(pre + '-dp-g'); if (dpg) dpg.style.display = 'none';
-  if (res.type === 'satuan') satuanItems.forEach(item => { const el = g(pre + '-sat-' + item.id); if (el) el.value = '0'; });
+  // Reset satuan cart (new cart-based approach)
+  _setSatuanCart(pre, []);
+  if (res.type === 'satuan') buildSatuanOrderItems(pre);
   if (membershipEnabled) updWalletOption(pre);
   if (pre === 'no') calcO(); else calcS();
   return o;

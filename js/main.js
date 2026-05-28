@@ -85,6 +85,14 @@ let rptStatusFilter = ''; let rptPayFilter = ''; let _rptTxPage = 1;
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
 let editSvcId = null;
+let editSatItemId = null;
+let _pricingTab = 'kiloan';
+let _editPoKey = null;
+let priceOptions = [
+  {key:'regular',label:'Reguler',est:'2-3 Hari',order:1,active:true},
+  {key:'sameday',label:'Same Day',est:'± 8 jam',order:2,active:true},
+  {key:'express',label:'Express',est:'Hari yang sama',order:3,active:true}
+];
 
 // ===== MEMBER CARD TEMPLATE =====
 const _CARD_BG_KEY = 'cleanpos_mbr_card_bg';
@@ -273,7 +281,7 @@ async function renderTrackingPage(token) {
 const SL_STATUS = {Diterima:'gy',Mencuci:'gbl',Mengeringkan:'gam',Menyetrika:'gam',Selesai:'gp',Diambil:'gg'};
 const SL_PAY = {'Belum Bayar':'gr_',DP:'gam',Lunas:'gg'};
 const STATUS_LIST = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai','Diambil'];
-function getSvcLbl(key){if(key==='all')return 'Semua Layanan';const parts=key.split('-');if(parts[0]==='satuan'){const cl={regular:'Regular',sameday:'Same-day',express:'Express'};return 'Satuan '+(cl[parts[1]]||parts[1]||'');}const svc=getSvcById(parts[0]);const cat=parts[1];return svc?(svc.name+' '+(cat||'')).trim():key;}
+function getSvcLbl(key){if(key==='all')return 'Semua Layanan';const parts=key.split('-');const catKey=parts[1];const catLbl=(typeof priceOptions!=='undefined'?priceOptions.find(po=>po.key===catKey)?.label:null)||{regular:'Regular',sameday:'Same-day',express:'Express'}[catKey]||catKey||'';if(parts[0]==='satuan')return 'Satuan '+catLbl;const svc=getSvcById(parts[0]);return svc?(svc.name+' '+catLbl).trim():key;}
 const SVC_LBL = new Proxy({},{get:(t,k)=>getSvcLbl(k)});
 const CAT_ICONS = {gaji:'\uD83D\uDC64',bonus:'\uD83C\uDF81',listrik:'\u26A1',air:'\uD83D\uDCA7',deterjen:'\uD83E\uDDF4',transport:'\uD83D\uDE97',makan:'\uD83C\uDF71',lain:'\uD83D\uDCE6'};
 const CAT_LBL = {gaji:'Gaji Karyawan',bonus:'Bonus',listrik:'Listrik',air:'Air',deterjen:'Deterjen/Sabun',transport:'Transport',makan:'Uang Makan',lain:'Lain-Lain'};
@@ -1201,35 +1209,294 @@ function refreshSDash(){
 }
 
 // ===== EMPLOYEES =====
+let _empCollapsed = {}; // tracks which outlet sections are collapsed
+
+function buildEmpChips(){
+  const el=g('emp-filter-chips');if(!el)return;
+  const tabs=[{id:'all',label:'Semua Outlet',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];
+  el.innerHTML=tabs.map(t=>{
+    const on=empFilter===t.id;
+    const sc=t.color?safeColor(t.color):'';
+    const style=on&&sc?`background:${sc}18;border-color:${sc};color:${sc}`:'';
+    return `<span class="chip${on?' on':''}" style="${style}" onclick="setEmpFilter('${t.id}')">${sc?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc};margin-right:5px;vertical-align:middle"></span>`:''}${esc(t.label)}</span>`;
+  }).join('');
+}
+
+function setEmpFilter(id){empFilter=id;renderEmployees();}
+
+function _empLastLoginLbl(e){
+  if(!e.clockIn&&!e.lastLoginDate)return'—';
+  const d=e.lastLoginDate||TODAY_ISO;
+  const t=e.clockIn||'';
+  if(d===TODAY_ISO)return t?`Hari ini, ${t}`:'Hari ini';
+  const yest=new Date(new Date().getTime()-86400000).toISOString().slice(0,10);
+  if(d===yest)return t?`Kemarin, ${t}`:'Kemarin';
+  const diff=Math.round((new Date(TODAY_ISO)-new Date(d))/(1000*60*60*24));
+  if(diff>0&&diff<30)return`${diff} hari lalu`;
+  return d||'—';
+}
+
+function _empAvatarColor(name){
+  const colors=['#4CAF50','#2196F3','#9C27B0','#FF9800','#E91E63','#00BCD4','#795548','#607D8B'];
+  let h=0;for(let i=0;i<name.length;i++)h=(h+name.charCodeAt(i))%colors.length;
+  return colors[h];
+}
+
+function _empAksesHtml(e){
+  if(e.status==='in'){
+    return`<div class="emp-akses"><div class="emp-akses-dot" style="background:#4CAF50"></div><div><div class="emp-akses-lbl" style="color:#3d7a10">Masuk</div>${e.clockIn?`<div class="emp-akses-time">${esc(e.clockIn)}</div>`:''}</div></div>`;
+  }
+  if(e.status==='cuti'){
+    return`<div class="emp-akses"><div class="emp-akses-dot" style="background:#9C27B0"></div><div><div class="emp-akses-lbl" style="color:#9C27B0">Cuti</div></div></div>`;
+  }
+  if(e.status==='sakit'){
+    return`<div class="emp-akses"><div class="emp-akses-dot" style="background:#FF9800"></div><div><div class="emp-akses-lbl" style="color:#FF9800">Sakit</div></div></div>`;
+  }
+  return`<div class="emp-akses"><div class="emp-akses-dot" style="background:#bbb"></div><div><div class="emp-akses-lbl" style="color:var(--t2)">Belum Masuk</div><div class="emp-akses-time">—</div></div></div>`;
+}
+
 function renderEmployees(){
   buildEmpChips();
-  const _lbl=g('emp-cuti-lbl');if(_lbl)_lbl.textContent=cutiPerBulan+'x';
-  const list=empFilter==='all'?employees:employees.filter(e=>e.oid===empFilter);
+  const q=(g('emp-search')?.value||'').toLowerCase().trim();
+  const list=(empFilter==='all'?employees:employees.filter(e=>e.oid===empFilter))
+    .filter(e=>!q||e.name.toLowerCase().includes(q)||(e.phone||'').includes(q)||(e.role||'').toLowerCase().includes(q));
   const el=g('emp-list');if(!el)return;
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Tidak ada karyawan.</div>';return;}
+  const footer=g('emp-footer');
+  const outletList=empFilter==='all'?outlets:outlets.filter(o=>o.id===empFilter);
+  if(!list.length){
+    el.innerHTML=`<div style="text-align:center;padding:32px 24px;color:var(--t2)"><div style="font-size:13px;font-weight:500;margin-bottom:4px">Tidak ada karyawan</div><div style="font-size:12px">Klik + Tambah Karyawan untuk menambahkan.</div></div>`;
+    if(footer)footer.textContent='';
+    return;
+  }
   let html='';
-  if(empFilter==='all'){outlets.forEach(o=>{const grp=list.filter(e=>e.oid===o.id);if(!grp.length)return;html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--bg);border-radius:10px;margin-bottom:8px"><div style="width:10px;height:10px;border-radius:50%;background:${o.color}"></div><span style="font-weight:700;font-size:13px">${o.name}</span><span class="badge gy">${grp.length}x</span></div>`;grp.forEach(e=>{html+=empCard(e);});});}
-  else list.forEach(e=>{html+=empCard(e);});
+  outletList.forEach(o=>{
+    const grp=list.filter(e=>e.oid===o.id);
+    if(!grp.length&&empFilter!=='all')return;
+    if(!grp.length&&empFilter==='all'&&!q)return;
+    const collapsed=_empCollapsed[o.id]===true;
+    const sc=safeColor(o.color);
+    html+=`<div class="emp-sec" id="emp-sec-${o.id}">
+      <div class="emp-sec-hd" onclick="_empToggleSec('${o.id}')">
+        <div class="emp-sec-dot" style="background:${sc}"></div>
+        <span class="emp-sec-name">${esc(o.name)}</span>
+        <span class="emp-sec-cnt">${grp.length} karyawan</span>
+        <div style="flex:1"></div>
+        <i data-lucide="${collapsed?'chevron-down':'chevron-up'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
+      </div>
+      ${collapsed?'':`<div id="emp-wrap-${o.id}">
+        <div class="emp-table-wrap">
+          <table class="emp-tbl">
+            <thead><tr>
+              <th>Karyawan</th><th>Role</th><th>PIN</th><th>Akses</th><th>Sisa Cuti</th><th>Last Login</th><th>Actions</th>
+            </tr></thead>
+            <tbody>${grp.map(e=>_empRow(e)).join('')}</tbody>
+          </table>
+        </div>
+        <div class="emp-add-row" onclick="openAddEmpOutlet('${o.id}')">
+          <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2.5;display:block"></i> Tambah Karyawan di ${esc(o.name)}
+        </div>
+      </div>`}
+    </div>`;
+  });
   el.innerHTML=html;
+  if(footer)footer.textContent=`Menampilkan ${list.length} dari ${employees.length} karyawan`;
+  if(typeof lucide!=='undefined')lucide.createIcons();
 }
-function empCard(e){
-  const out=go(e.oid);const stB={in:'gg',off:'gy',cuti:'gpu',sakit:'gam'}[e.status]||'gy';
-  const stL={in:'Masuk',off:'Off',cuti:'Cuti',sakit:'Sakit'}[e.status];
-  const dots=Array.from({length:cutiPerBulan},(_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${i<e.cutiUsed?'var(--t3)':'var(--p)'};margin-right:3px"></span>`).join('');
-  return `<div class="ecrd"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div class="avatar">${esc(ini(e.name))}</div><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(e.name)}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap"><span class="badge gy">${esc(e.role)}</span><span class="badge ${stB}">${stL}</span>${out?`<span style="font-size:11px;color:var(--t2)">${esc(out.name)}</span>`:''}</div></div><div style="text-align:right;font-size:11px;color:var(--t2)"><div>Masuk: ${esc(e.clockIn||'\u2014')}</div><div>Pulang: ${esc(e.clockOut||'\u2014')}</div></div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--t2)">Sisa cuti: ${dots} ${cutiPerBulan-e.cutiUsed}x \u00B7 PIN: ${e.pin?'\u25CF\u25CF\u25CF\u25CF':'<span style="color:var(--re)">Belum diset</span>'}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.status==='in'?`<button class="btn bre bsm" onclick="empAct(${e.id},'clkout')">Clock Out</button>`:`<button class="btn bp bsm" onclick="empAct(${e.id},'clkin')">Clock In</button>`}${e.cutiUsed<cutiPerBulan?`<button class="btn bam bsm" onclick="empAct(${e.id},'cuti')">Cuti</button>`:`<button class="btn bsm" disabled style="opacity:.4">Cuti Habis</button>`}<button class="btn bsm${e.status==='sakit'?' bam':''}" onclick="empAct(${e.id},'sakit')">Sakit</button><button class="btn bsm" onclick="openEditEmp(${e.id})">Edit</button><button class="btn bsm" onclick="resetEmpPin(${e.id})">Reset PIN</button><button class="btn bre bsm" onclick="delEmp(${e.id})">Hapus</button></div></div>`;
+
+function _empRow(e){
+  const av=_empAvatarColor(e.name);
+  const sisaCuti=Math.max(0,cutiPerBulan-(e.cutiUsed||0));
+  const clkBtn=e.status==='in'
+    ?`<button class="btn bsm btn-clkout" onclick="empAct(${e.id},'clkout')">Clock Out</button>`
+    :`<button class="btn bsm btn-clkin" onclick="empAct(${e.id},'clkin')">Clock In</button>`;
+  return`<tr>
+    <td data-label="Karyawan">
+      <div class="emp-av-cell">
+        <div class="emp-av" style="background:${av}">${esc(ini(e.name))}</div>
+        <div>
+          <div class="emp-cell-name">${esc(e.name)}</div>
+          <div class="emp-cell-phone">${esc(e.phone||'—')}</div>
+        </div>
+      </div>
+    </td>
+    <td data-label="Role" style="font-size:13px;color:var(--t1)">${esc(e.role||'—')}</td>
+    <td data-label="PIN"><span class="emp-pin">${e.pin?'••••':'<span style="color:var(--re);font-size:11px">Belum diset</span>'}</span></td>
+    <td data-label="Akses">${_empAksesHtml(e)}</td>
+    <td data-label="Sisa Cuti"><span class="emp-cuti-val">${sisaCuti}x</span></td>
+    <td data-label="Last Login"><span class="emp-lastlogin">${esc(_empLastLoginLbl(e))}</span></td>
+    <td data-label="Actions">
+      <div class="emp-actions">
+        ${clkBtn}
+        <div class="emp-cuti-wrap" style="position:relative">
+          <button class="btn bsm btn-cuti-dd" onclick="_empCutiDd(event,${e.id})">Cuti <i data-lucide="chevron-down" style="width:11px;height:11px;stroke-width:2;display:block"></i></button>
+          <div class="emp-kebab-dd" id="emp-cuti-dd-${e.id}">
+            <button onclick="_empCutiAct(${e.id},'cuti')">Ambil Cuti${e.cutiUsed>=cutiPerBulan?' (Habis)':''}</button>
+            <button onclick="_empCutiAct(${e.id},'sakit')">Sakit</button>
+            <button onclick="_empCutiAct(${e.id},'off')">Reset ke Off</button>
+          </div>
+        </div>
+        <button class="btn bsm" onclick="openEditEmp(${e.id})">Edit</button>
+        <div style="position:relative">
+          <button class="emp-kebab" onclick="_empKebab(event,${e.id})"><i data-lucide="more-vertical" style="width:14px;height:14px;stroke-width:2;display:block"></i></button>
+          <div class="emp-kebab-dd" id="emp-kbb-${e.id}">
+            <button onclick="resetEmpPin(${e.id});_closeAllEmpDd()">Reset PIN</button>
+            <button onclick="_empToggleAktif(${e.id});_closeAllEmpDd()">Nonaktifkan</button>
+            <button class="danger" onclick="delEmp(${e.id});_closeAllEmpDd()">Hapus</button>
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>`;
 }
-function buildEmpChips(){const tabs=[{id:'all',label:'Semua',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];const el=g('emp-filter-chips');if(!el)return;el.innerHTML=tabs.map(t=>{const isOn=empFilter===t.id;const sc=t.color?safeColor(t.color):'';const colorStyle=isOn&&sc?`background:${sc}18;border-color:${sc};color:${sc}`:'';return `<span class="chip${isOn?' on':''}" style="${colorStyle}" onclick="setEmpFilter('${t.id}')">${sc?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc};margin-right:5px;vertical-align:middle"></span>`:''}${esc(t.label)}</span>`;}).join('');}
-function setEmpFilter(id){empFilter=id;renderEmployees();}
-function empAct(id,act){const e=employees.find(x=>x.id===id);if(!e)return;if(act==='clkin'){e.status='in';e.clockIn=NOW();e.clockOut=null;}else if(act==='clkout'){e.status='off';e.clockOut=NOW();}else if(act==='cuti'&&e.cutiUsed<cutiPerBulan){e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;}else if(act==='sakit'){e.status='sakit';e.clockIn=null;e.clockOut=null;}renderEmployees();toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/'+cutiPerBulan+')',sakit:'Sakit'}[act]);if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}}
+
+function _empToggleSec(oid){
+  _empCollapsed[oid]=!_empCollapsed[oid];
+  renderEmployees();
+}
+
+function _empKebab(e,id){
+  e.stopPropagation();
+  const dd=g('emp-kbb-'+id);if(!dd)return;
+  const wasOpen=dd.classList.contains('open');
+  _closeAllEmpDd();
+  if(!wasOpen)dd.classList.add('open');
+}
+
+function _empCutiDd(e,id){
+  e.stopPropagation();
+  const dd=g('emp-cuti-dd-'+id);if(!dd)return;
+  const wasOpen=dd.classList.contains('open');
+  _closeAllEmpDd();
+  if(!wasOpen)dd.classList.add('open');
+}
+
+function _closeAllEmpDd(){
+  document.querySelectorAll('.emp-kebab-dd').forEach(d=>d.classList.remove('open'));
+}
+
+function _empCutiAct(id,act){
+  _closeAllEmpDd();
+  if(act==='off'){
+    const e=employees.find(x=>x.id===id);if(!e)return;
+    e.status='off';
+    renderEmployees();
+    syncEmployee(e);
+    toast(e.name+' → Status direset ke Off');
+    return;
+  }
+  empAct(id,act);
+}
+
+function _empToggleAktif(id){
+  const e=employees.find(x=>x.id===id);if(!e)return;
+  if(e.status==='nonaktif'){e.status='off';toast(e.name+' → Diaktifkan kembali');}
+  else{e.status='nonaktif';toast(e.name+' → Dinonaktifkan');}
+  renderEmployees();
+  syncEmployee(e);
+}
+
+function empAct(id,act){
+  const e=employees.find(x=>x.id===id);if(!e)return;
+  if(act==='clkin'){
+    e.status='in';e.clockIn=NOW();e.clockOut=null;
+    e.lastLoginDate=TODAY_ISO;
+  }else if(act==='clkout'){
+    e.status='off';e.clockOut=NOW();
+  }else if(act==='cuti'){
+    if(e.cutiUsed>=cutiPerBulan){toast('Jatah cuti habis');return;}
+    e.status='cuti';e.cutiUsed++;e.clockIn=null;e.clockOut=null;
+  }else if(act==='sakit'){
+    e.status='sakit';e.clockIn=null;e.clockOut=null;
+  }
+  renderEmployees();syncEmployee(e);
+  toast(e.name+' \u2192 '+{clkin:'Clock In',clkout:'Clock Out',cuti:'Cuti ('+e.cutiUsed+'/'+cutiPerBulan+')',sakit:'Sakit'}[act]);
+  if(curStaff&&curStaff.id===id){curStaff=e;updStaffClk();}
+}
+
 let _pinResetEmpId=null; let _editEmpId=null;
-function resetEmpPin(id){const e=employees.find(x=>x.id===id);if(!e)return;_pinResetEmpId=id;const t=g('m-pin-reset-title');if(t)t.textContent='Reset PIN – '+e.name;['pr-pin','pr-pin2'].forEach(id=>{const el=g(id);if(el)el.value='';});const err=g('pr-err');if(err)err.style.display='none';openModal('m-pin-reset');setTimeout(()=>g('pr-pin')?.focus(),100);}
+
+function resetEmpPin(id){
+  const e=employees.find(x=>x.id===id);if(!e)return;
+  _pinResetEmpId=id;
+  const t=g('m-pin-reset-title');if(t)t.textContent='Reset PIN – '+e.name;
+  ['pr-pin','pr-pin2'].forEach(id=>{const el=g(id);if(el)el.value='';});
+  const err=g('pr-err');if(err)err.style.display='none';
+  openModal('m-pin-reset');
+  setTimeout(()=>g('pr-pin')?.focus(),100);
+}
+
 async function savePinReset(){const e=employees.find(x=>x.id===_pinResetEmpId);if(!e)return;const p=g('pr-pin')?.value||'',p2=g('pr-pin2')?.value||'';const err=g('pr-err');if(!/^\d{4}$/.test(p)){if(err){err.textContent='PIN harus 4 digit angka.';err.style.display='block';}return;}if(p!==p2){if(err){err.textContent='Konfirmasi PIN tidak cocok.';err.style.display='block';}return;}e.pin=await hashSecret(p);renderEmployees();syncEmployee(e);cm('m-pin-reset');toast('\u2713 PIN '+e.name+' diubah');}
-function delEmp(id){confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{employees=employees.filter(x=>x.id!==id);renderEmployees();deleteEmployee(id);toast('Karyawan dihapus');});}
-function openAddEmp(){_editEmpId=null;g('me-n').value='';g('me-p').value='';g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');if(empFilter!=='all'){g('me-o').value=empFilter;}const pw=g('me-pin-wrap');if(pw)pw.style.display='';const rr=g('me-role-pin-row');if(rr)rr.className='g2';g('m-emp-title').textContent='Tambah Karyawan';openModal('m-emp');}
-function openEditEmp(id){const e=employees.find(x=>x.id===id);if(!e)return;_editEmpId=id;g('me-n').value=e.name;g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');g('me-o').value=e.oid;g('me-r').value=e.role;const pw=g('me-pin-wrap');if(pw)pw.style.display='none';const rr=g('me-role-pin-row');if(rr)rr.className='fg';g('m-emp-title').textContent='Edit Karyawan';openModal('m-emp');}
-async function saveEmp(){const name=g('me-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}const oid=g('me-o').value;if(!oid){toast('\u26A0\uFE0F Pilih outlet terlebih dahulu');return;}const role=g('me-r').value;if(_editEmpId){const e=employees.find(x=>x.id===_editEmpId);if(!e)return;e.name=name;e.oid=oid;e.role=role;_editEmpId=null;cm('m-emp');renderEmployees();buildStaffBtns();syncEmployee(e);toast('\u2713 Data '+name+' diperbarui');return;}const pin=g('me-p').value;if(!pin){toast('\u26A0\uFE0F PIN wajib diisi');return;}if(!/^\d{4}$/.test(pin)){toast('\u26A0\uFE0F PIN harus 4 digit angka');return;}const newId=Date.now();const hashedPin=await hashSecret(pin);employees.push({id:newId,name,role,oid,pin:hashedPin,status:'off',cutiUsed:0,clockIn:null,clockOut:null});cm('m-emp');renderEmployees();buildStaffBtns();toast('\u2713 Karyawan '+name+' ditambahkan');}
+
+function delEmp(id){
+  confirm_('Hapus Karyawan?','Data ini akan dihapus permanen.',()=>{
+    employees=employees.filter(x=>x.id!==id);
+    renderEmployees();deleteEmployee(id);
+    toast('Karyawan dihapus');
+  });
+}
+
+function openAddEmp(){
+  _editEmpId=null;
+  ['me-n','me-ph','me-p'].forEach(id=>{const el=g(id);if(el)el.value='';});
+  if(g('me-r'))g('me-r').value='Kasir';
+  g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  if(empFilter!=='all'&&g('me-o'))g('me-o').value=empFilter;
+  const pw=g('me-pin-wrap');if(pw)pw.style.display='';
+  g('m-emp-title').textContent='Tambah Karyawan';
+  openModal('m-emp');
+}
+
+function openAddEmpOutlet(oid){
+  openAddEmp();
+  const sel=g('me-o');if(sel)sel.value=oid;
+}
+
+function openEditEmp(id){
+  const e=employees.find(x=>x.id===id);if(!e)return;
+  _editEmpId=id;
+  if(g('me-n'))g('me-n').value=e.name;
+  if(g('me-ph'))g('me-ph').value=e.phone||'';
+  if(g('me-r'))g('me-r').value=e.role;
+  g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  if(g('me-o'))g('me-o').value=e.oid;
+  const pw=g('me-pin-wrap');if(pw)pw.style.display='none';
+  g('m-emp-title').textContent='Edit Karyawan';
+  openModal('m-emp');
+}
+
+async function saveEmp(){
+  const name=(g('me-n')?.value||'').trim();
+  if(!name){toast('Nama wajib diisi');return;}
+  const oid=g('me-o')?.value;
+  if(!oid){toast('Pilih outlet terlebih dahulu');return;}
+  const role=g('me-r')?.value||'Kasir';
+  const phone=(g('me-ph')?.value||'').trim();
+  if(_editEmpId){
+    const e=employees.find(x=>x.id===_editEmpId);if(!e)return;
+    e.name=name;e.oid=oid;e.role=role;e.phone=phone;
+    _editEmpId=null;cm('m-emp');renderEmployees();buildStaffBtns();syncEmployee(e);
+    toast('Data '+name+' diperbarui');return;
+  }
+  const pin=g('me-p')?.value||'';
+  if(!pin){toast('PIN wajib diisi');return;}
+  if(!/^\d{4}$/.test(pin)){toast('PIN harus 4 digit angka');return;}
+  const newId=Date.now();
+  const hashedPin=await hashSecret(pin);
+  employees.push({id:newId,name,role,oid,phone,pin:hashedPin,status:'off',cutiUsed:0,clockIn:null,clockOut:null,lastLoginDate:null});
+  cm('m-emp');renderEmployees();buildStaffBtns();
+  syncEmployee(employees.find(x=>x.id===newId));
+  toast('Karyawan '+name+' ditambahkan');
+}
+
 function updStaffClk(){if(!curStaff)return;const e=employees.find(x=>x.id===curStaff.id);if(!e)return;const stM={in:'Sedang bekerja \u00B7 Masuk: '+e.clockIn,off:'Belum clock in hari ini',cuti:'Cuti hari ini',sakit:'Sakit hari ini'};const cs=g('s-clk-st');if(cs)cs.textContent=stM[e.status]||'';const cb=g('s-clk-btns');if(!cb)return;cb.innerHTML=e.status==='in'?`<button class="btn bre bsm bpill" onclick="staffClk('clkout')">Clock Out</button>`:e.status==='off'?`<button class="btn bp bsm bpill" onclick="staffClk('clkin')">Clock In</button>`:`<span class="badge ${e.status==='cuti'?'gpu':'gam'}">${e.status==='cuti'?'Cuti':'Sakit'}</span>`;}
 function staffClk(act){if(!curStaff)return;empAct(curStaff.id,act);}
+
+// Close employee dropdowns when clicking outside
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.emp-cuti-wrap')&&!e.target.closest('[id^="emp-kbb-"]')&&!e.target.closest('.emp-kebab')){
+    _closeAllEmpDd();
+  }
+});
 
 // ===== SUBSCRIPTION =====
 let _renewCycle = 'monthly'; // 'monthly' | 'annual'
@@ -1752,16 +2019,15 @@ function _renderCustTable(list) {
     }
     const acts = membershipEnabled
       ? `<div style="display:flex;gap:5px;align-items:center">
-           <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
            <button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button>
            <button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Membership Card" style="padding:5px 8px">${_C_IC_CARD}</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
-           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`
       : `<div style="display:flex;gap:5px;align-items:center">
            <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
-           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`;
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:10px">
@@ -1803,10 +2069,9 @@ function _renderCustCards(list) {
         <span>${esc(c.lastDate||'—')}</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
         ${membershipEnabled?`<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" style="gap:4px;padding:5px 9px">${IC_CARD14}</button>`:''}
         <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" style="gap:4px;padding:5px 9px">${IC_WA14}</button>
-        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${IC_MORE14}</button></div>
+        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
       </div>
     </div>`;
   }).join(''); } catch(e) { console.error('[renderCusts cards]', e); wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--re,#c62828);font-size:13px">Error rendering. Coba refresh halaman.</div>`; }
@@ -1829,9 +2094,9 @@ function _renderCustPager(total, totalPages) {
   </div>`;
 }
 
-function _custMoreMenu(phone, anchorEl) {
+function _custMoreMenu(phone) {
   document.querySelectorAll('.cust-dd').forEach(d => d.remove());
-  const anchor = anchorEl || g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
+  const anchor = g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
   const c = customers[phone];
   const items = [
     {label:'Edit', fn:`openEditCust('${phone}')`},
@@ -2262,85 +2527,1457 @@ function toggleMembershipExpiry(){
 }
 
 // ===== PRICING & ADDONS =====
-function renderPricing(){renderSvcTypeList();renderSatuanItemsList();renderAddonList();buildOrderTypeDropdowns();rebuildPromoSvcSelect();}
-function renderSvcTypeList(){
-  const el=g('svc-type-list');if(!el)return;
-  if(!serviceTypes.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada layanan.</div>';return;}
-  const hdr=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Layanan</span><span>Regular</span><span>Same-day</span><span>Express</span><span></span></div>`;
-  let rows='';
-  serviceTypes.forEach(s=>{
-    const isKg=s.unit==='kg';const ma=s.minKgApply||{regular:false,sameday:false,express:false};const mk=s.minKg||0;
-    rows+=`<div style="border:1px solid var(--b1);border-radius:10px;padding:10px;margin-bottom:8px">`;
-    rows+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;${isKg?'margin-bottom:10px':''}">`;
-    rows+=`<div><div style="font-weight:600;font-size:13px">${esc(s.name)}</div><div style="font-size:10px;color:var(--t2)">per ${esc(s.unit)}</div></div>`;
-    rows+=`<input type="number" value="${s.prices.regular}" min="0" onchange="updSvcPrice('${s.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${s.prices.sameday}" min="0" onchange="updSvcPrice('${s.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${s.prices.express}" min="0" onchange="updSvcPrice('${s.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSvc('${s.id}')">Edit</button>${serviceTypes.length>1?`<button class="btn bre bsm" onclick="delSvc('${s.id}')">\u2715</button>`:''}</div>`;
-    rows+=`</div>`;
-    if(isKg){
-      rows+=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg);border-radius:8px">`;
-      rows+=`<span style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em">Min. Berat:</span>`;
-      rows+=`<input type="number" id="mkg-${s.id}" value="${mk}" min="0" max="20" step="0.5" style="width:64px;font-size:14px;font-weight:700;text-align:center">`;
-      rows+=`<span style="font-size:13px;font-weight:600">kg &nbsp; Berlaku:</span>`;
-      ['regular','sameday','express'].forEach(c=>{const lbl={regular:'Regular',sameday:'Same-day',express:'Express'}[c];rows+=`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="mka-${s.id}-${c}" ${ma[c]?'checked':''} onchange="saveSvcMinKg('${s.id}')">&nbsp;${lbl}</label>`;});
-      rows+=`<button class="btn bp bsm bpill" onclick="saveSvcMinKg('${s.id}')">Simpan</button>`;
-      rows+=`</div>`;
-    }
-    rows+=`</div>`;
-  });
-  el.innerHTML=hdr+rows;
+function _activePoOptions(){return priceOptions.filter(po=>po.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));}
+function _getPoLabel(key){return priceOptions.find(po=>po.key===key)?.label||key;}
+function _getPoEst(key){return priceOptions.find(po=>po.key===key)?.est||'';}
+function _minPrice(prices){const vals=priceOptions.filter(po=>po.active!==false).map(po=>prices?.[po.key]||0).filter(v=>v>0);return vals.length?Math.min(...vals):0;}
+
+// ─── Main entry ───
+function renderPricing(){
+  _renderPricingTab(_pricingTab);
+  buildOrderTypeDropdowns();
+  rebuildPromoSvcSelect();
+  _noRebuildSvcCards();
+  _noRebuildTierCards();
 }
-function saveSvcMinKg(id){const s=getSvcById(id);if(!s)return;const val=parseFloat(g('mkg-'+id)?.value)||0;s.minKg=val;s.minKgApply={regular:!!(g('mka-'+id+'-regular')?.checked),sameday:!!(g('mka-'+id+'-sameday')?.checked),express:!!(g('mka-'+id+'-express')?.checked)};calcO();calcS();syncSettings();toast('\u2713 Min. berat '+s.name+' diperbarui');}
-function renderSatuanItemsList(){
-  const el=g('satuan-items-list');if(!el)return;
-  const hdr=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em"><span>Item</span><span>Regular</span><span>Same-day</span><span>Express</span><span></span></div>`;
-  if(!satuanItems.length){el.innerHTML=hdr+'<div style="text-align:center;padding:16px;color:var(--t2)">Belum ada item. Klik + Tambah Item.</div>';return;}
-  let rows='';
-  satuanItems.forEach(item=>{
-    rows+=`<div style="display:grid;grid-template-columns:1fr 88px 88px 88px 70px;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--b1)">`;
-    rows+=`<div style="font-weight:600;font-size:13px">${esc(item.name)}</div>`;
-    rows+=`<input type="number" value="${item.prices.regular}" min="0" onchange="updSatuanItemPrice('${item.id}','regular',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${item.prices.sameday}" min="0" onchange="updSatuanItemPrice('${item.id}','sameday',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<input type="number" value="${item.prices.express}" min="0" onchange="updSatuanItemPrice('${item.id}','express',this.value)" style="width:88px;font-size:13px;padding:6px 8px">`;
-    rows+=`<div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditSatuanItem('${item.id}')">Edit</button><button class="btn bre bsm" onclick="delSatuanItem('${item.id}')">\u2715</button></div>`;
-    rows+=`</div>`;
-  });
-  el.innerHTML=hdr+rows;
+
+function setPricingTab(tab, btn){
+  _pricingTab=tab;
+  document.querySelectorAll('.ptab-btn').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  ['kiloan','satuan','tambahan'].forEach(t=>{const p=g('ptab-'+t);if(p)p.classList.toggle('on',t===tab);});
+  _renderPricingTab(tab);
+  // update header actions
+  _renderPricingHeaderActions(tab);
 }
+
+function _renderPricingHeaderActions(tab){
+  const el=g('prc-header-actions');if(!el)return;
+  if(tab==='kiloan'){
+    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('kiloan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Kiloan</button>
+    <button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan Kiloan</button>`;
+  }else if(tab==='satuan'){
+    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('satuan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Satuan</button>
+    <button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>`;
+  }else{
+    el.innerHTML=`<button class="btn bp bsm" onclick="openAddAddon()">+ Tambah Layanan Tambahan</button>`;
+  }
+}
+
+function _renderPricingTab(tab){
+  if(tab==='kiloan') _renderKiloanTab();
+  else if(tab==='satuan') _renderSatuanTab();
+  else _renderTambahanTab();
+  _renderPricingHeaderActions(tab);
+}
+
+// ─── Kiloan tab ───
+function _renderKiloanTab(){
+  const pane=g('ptab-kiloan');if(!pane)return;
+  let html=`<div class="prc-banner warn" style="margin-bottom:16px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div>Semua layanan kiloan akan menggunakan set opsi harga yang sama. Ubah opsi harga di menu "Kelola Opsi Harga Kiloan".</div>
+  </div>
+  <div class="pricing-split">
+    <div id="prc-kiloan-left">${_renderKiloanLeft()}</div>
+    <div id="prc-kiloan-right">${_renderKiloanRight()}</div>
+  </div>`;
+  pane.innerHTML=html;
+}
+
+function _renderKiloanLeft(){
+  const allPo=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const DRAG_ICON=`<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>`;
+  const GEAR_ICON=`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+  const INFO_ICON=`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Berat minimum yang harus dipenuhi"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+  const EDIT_ICON=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const DEL_ICON=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+  const CHECK_ON=`<svg class="chip-on" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const CHECK_OFF=`<svg class="chip-off" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>`;
+
+  let html=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">
+    <div style="padding:14px 16px 10px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:2px">Daftar Layanan Kiloan</div>
+      <div style="font-size:12px;color:var(--t2)">Kelola item layanan kiloan yang tersedia di outlet Anda.</div>
+    </div>
+    <div class="prc-col-hdr">
+      <div style="flex:1">Nama Layanan</div>
+      <div style="width:48px;text-align:center">Satuan</div>
+      <div style="width:150px">Harga Dasar</div>
+      <div style="width:72px;text-align:center">Status</div>
+      <div style="width:70px;text-align:right">Aksi</div>
+    </div>`;
+
+  if(!serviceTypes.length){
+    html+=`<div style="text-align:center;color:var(--t2);padding:24px;font-size:13px">Belum ada layanan kiloan. Klik "+ Tambah" untuk menambahkan.</div>`;
+  } else {
+    serviceTypes.forEach(s=>{
+      const active=s.active!==false;
+      const minP=_minPrice(s.prices||{});
+      const mk=s.minKg||0;
+      const tierApply=s.tierApply||{};
+      const chips=allPo.map(po=>{
+        const isOn=tierApply[po.key]!==false;
+        return `<div class="prc-tier-chip${isOn?' on':''}" id="chip-${s.id}-${po.key}" onclick="_toggleTierChip(this)">${CHECK_OFF}${CHECK_ON}${esc(po.label)}</div>`;
+      }).join('');
+      html+=`<div class="prc-svc-wrap" id="prc-svc-wrap-${s.id}">
+        <div class="prc-svc-row">
+          <div class="prc-svc-col-name">
+            <div style="font-weight:700;font-size:13px">${esc(s.name)}</div>
+            ${s.desc?`<div style="font-size:11px;color:var(--t2);margin-top:1px">${esc(s.desc)}</div>`:''}
+          </div>
+          <div class="prc-svc-col-unit">${esc(s.unit||'kg')}</div>
+          <div class="prc-svc-col-price">Mulai dari <strong>${fmt(minP)}</strong></div>
+          <div class="prc-svc-col-status"><span class="prc-badge-${active?'on':'off'}">${active?'Aktif':'Nonaktif'}</span></div>
+          <div class="prc-svc-col-aksi">
+            <button class="btn bsm" title="Edit" onclick="openEditSvc('${s.id}')">${EDIT_ICON}</button>
+            ${serviceTypes.length>1?`<button class="btn bre bsm" title="Hapus" onclick="delSvc('${s.id}')">${DEL_ICON}</button>`:''}
+          </div>
+        </div>
+        <div class="prc-svc-settings">
+          <div class="prc-svc-settings-hdr">${GEAR_ICON} Pengaturan Layanan</div>
+          <div class="prc-svc-settings-body">
+            <div class="prc-minkg-group">
+              <div class="prc-minkg-lbl">Min. berat ${INFO_ICON}</div>
+              <input type="number" class="prc-minkg-input" id="svc-mkg-${s.id}" value="${mk}" min="0" max="50" step="0.5">
+              <span style="font-size:12px;color:var(--t2)">kg</span>
+            </div>
+            <div class="prc-tier-apply-group">
+              <div class="prc-tier-apply-lbl">Berlaku untuk tier</div>
+              <div class="prc-tier-chips" id="chips-${s.id}">${chips}</div>
+            </div>
+          </div>
+          <div class="prc-svc-save-row">
+            <button class="btn bp bsm bpill" onclick="saveSvcSettings('${s.id}')">Simpan</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  html+=`</div>
+  <button class="btn bp bfull" onclick="openAddSvc()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Tambah Layanan Kiloan
+  </button>`;
+  return html;
+}
+
+function _renderKiloanRight(){
+  return _renderPriceOptsPanel('Kiloan');
+}
+function _renderKiloanRight_unused(){
+  const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const activeCount=tiers.filter(t=>t.active!==false).length;
+  const DRAG_ICON=`<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>`;
+  const EDIT_ICON=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const DEL_ICON=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+  let html=`<div class="prc-opts-panel">
+    <div class="prc-opts-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px">Opsi Harga Kiloan (Universal)</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Opsi harga ini berlaku untuk semua layanan kiloan.</div>
+        </div>
+        <span class="badge gy" style="font-size:11px;flex-shrink:0">${activeCount} Opsi</span>
+      </div>
+    </div>
+    <div style="padding:12px 12px 0">
+      <div class="prc-col-hdr" style="border:none;padding:0 2px 8px;border-bottom:1px solid var(--b1);margin-bottom:8px">
+        <div style="width:24px"></div>
+        <div style="flex:1">Opsi Harga</div>
+        <div style="width:90px">Estimasi</div>
+        <div style="width:40px;text-align:center">Urutan</div>
+        <div style="width:110px">Status</div>
+        <div style="width:60px;text-align:right">Aksi</div>
+      </div>`;
+
+  if(!tiers.length){
+    html+=`<div style="text-align:center;color:var(--t2);padding:20px;font-size:13px">Belum ada tier. Klik "+ Tambah" untuk menambahkan.</div>`;
+  } else {
+    tiers.forEach((po,idx)=>{
+      const on=po.active!==false;
+      const meta=typeof _getTierMeta==='function'?_getTierMeta(po.key,po.label):{bg:'#e8f5e9',fg:'#2e7d32',badge_bg:'#c8e6c9',badge_fg:'#1b5e20',svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'};
+      html+=`<div class="prc-po-row${on?' prc-po-active':''}" id="prc-po-row-${po.key}" draggable="true"
+        ondragstart="_poDragStart(event,'${po.key}')"
+        ondragover="_poDragOver(event,'${po.key}')"
+        ondrop="_poDrop(event,'${po.key}')"
+        ondragend="_poDragEnd()">
+        <div class="prc-po-drag" title="Seret untuk reorder">${DRAG_ICON}</div>
+        <div class="prc-po-icon-cell">
+          <div class="prc-po-icon" style="background:${meta.bg};color:${meta.fg}">${meta.svg}</div>
+          <div class="prc-po-name-block">
+            <div class="prc-po-name">${esc(po.label)}</div>
+            ${po.est?`<span class="prc-po-est-badge" style="background:${meta.badge_bg};color:${meta.badge_fg}">${esc(po.est)}</span>`:''}
+          </div>
+        </div>
+        <div class="prc-po-est-col">${esc(po.est||'—')}</div>
+        <div class="prc-po-order-col">${idx+1}</div>
+        <div class="prc-po-status-col">
+          <span class="prc-po-status-badge ${on?'prc-badge-on':'prc-badge-off'}">${on?'Aktif':'Nonaktif'}</span>
+          <button class="toggle ${on?'on':'off'}" style="transform:scale(.8);transform-origin:left;flex-shrink:0" onclick="togglePriceOptActive('${po.key}')"></button>
+        </div>
+        <div class="prc-po-aksi-col">
+          <button class="btn bsm" title="Edit" onclick="openEditPriceOpt('${po.key}')">${EDIT_ICON}</button>
+          <button class="btn bre bsm" title="Hapus" onclick="_deletePriceOpt('${po.key}')">${DEL_ICON}</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  html+=`</div>
+    <div style="padding:8px 12px 2px">
+      <button class="prc-po-add-btn" onclick="openAddPriceOpt()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tambah Opsi Harga
+      </button>
+    </div>
+    <div style="padding:0 12px 12px">
+      <div class="prc-po-info-box">
+        <div style="display:flex;align-items:flex-start;gap:7px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <ul class="prc-po-info-box" style="background:none;border:none;padding:0;margin:0">
+            <li>Opsi harga yang diubah akan berlaku untuk semua layanan kiloan.</li>
+            <li>Estimasi waktu ditampilkan saat membuat pesanan.</li>
+            <li>Urutan menentukan posisi opsi harga di form order.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  return html;
+}
+
+// ─── Satuan tab ───
+function _renderSatuanTab(){
+  const pane=g('ptab-satuan');if(!pane)return;
+  const activePo=_activePoOptions();
+
+  let html=`<div class="pricing-split">`;
+
+  // ── Left: satuan item list ──
+  html+=`<div>
+    <div style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Daftar Layanan Satuan</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="prc-sat-srch" class="ord-search" placeholder="Cari layanan satuan..." oninput="_filterSatuanList()" style="flex:1;min-width:0">
+        <button class="btn bsm" title="Filter" style="padding:8px 10px;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px" id="prc-sat-tbl-wrap">`;
+  html+=_renderSatuanTable(satuanItems,activePo);
+  html+=`</div>
+    <button class="btn bp bfull" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>
+  </div>`;
+
+  // ── Right: price options panel ──
+  html+=_renderPriceOptsPanel('Satuan');
+  html+=`</div>`;
+  pane.innerHTML=html;
+}
+
+function _renderSatuanTable(items, activePo){
+  let html=`<table class="prc-tbl"><thead><tr>
+    <th>NAMA LAYANAN</th><th>SATUAN</th><th>HARGA DASAR</th><th>OPSI HARGA</th><th>STATUS</th><th>AKSI</th>
+  </tr></thead><tbody>`;
+  if(!items.length){
+    html+=`<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:20px">Belum ada item satuan. Klik + Tambah.</td></tr>`;
+  }else{
+    items.forEach(item=>{
+      const active=item.active!==false;
+      const minP=_minPrice(item.prices||{});
+      const opsiCount=activePo.length;
+      html+=`<tr>
+        <td><div style="font-weight:600">${esc(item.name)}</div>${item.desc?`<div style="font-size:11px;color:var(--t2)">${esc(item.desc)}</div>`:''}</td>
+        <td style="color:var(--t2)">${esc(item.unit||'pcs')}</td>
+        <td>Mulai dari <strong>${fmt(minP)}</strong></td>
+        <td><span class="badge gy" style="font-size:11px">${opsiCount} opsi</span></td>
+        <td><span class="prc-badge-${active?'on':'off'}">${active?'Aktif':'Nonaktif'}</span></td>
+        <td><div style="display:flex;gap:6px;align-items:center">
+          <button class="btn bsm" title="Pengaturan" onclick="openItemSettings('${item.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="btn bre bsm" title="Hapus" onclick="delSatuanItem('${item.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        </div></td>
+      </tr>`;
+    });
+  }
+  html+=`</tbody></table>`;
+  return html;
+}
+
+function _filterSatuanList(){
+  const q=(g('prc-sat-srch')?.value||'').toLowerCase().trim();
+  const filtered=q?satuanItems.filter(x=>x.name.toLowerCase().includes(q)):satuanItems;
+  const wrap=g('prc-sat-tbl-wrap');if(wrap)wrap.innerHTML=_renderSatuanTable(filtered,_activePoOptions());
+}
+
+// ─── Tambahan tab ───
+function _renderTambahanTab(){
+  const pane=g('ptab-tambahan');if(!pane)return;
+  let html=`<div style="margin-bottom:12px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:2px">Layanan Tambahan</div>
+    <div style="font-size:12px;color:var(--t2)">Otomatis muncul sebagai opsi centang di form Buat Pesanan.</div>
+  </div>`;
+  if(!addons.length){
+    html+=`<div style="text-align:center;padding:32px;color:var(--t2);background:var(--ca);border:1.5px solid var(--b1);border-radius:12px">Belum ada layanan tambahan.</div>`;
+  }else{
+    html+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px"><table class="prc-tbl"><thead><tr>
+      <th>NAMA</th><th>HARGA</th><th>SATUAN</th><th>AKSI</th>
+    </tr></thead><tbody>`;
+    addons.forEach(a=>{
+      html+=`<tr>
+        <td><input value="${esc(a.name)}" onchange="updAddon('${a.id}','name',this.value)" style="border:none;background:none;font-size:13px;font-weight:600;width:100%;padding:0;font-family:inherit;color:var(--t1)"></td>
+        <td><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:4px 6px"></td>
+        <td><select onchange="updAddon('${a.id}','unit',this.value)" style="font-size:12px;padding:4px 6px;width:120px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select></td>
+        <td><button class="btn bre bsm" onclick="delAddon('${a.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+  html+=`<button class="btn bp bfull" onclick="openAddAddon()">+ Tambah Layanan Tambahan</button>`;
+  pane.innerHTML=html;
+}
+
+// ─── Price Options right panel ───
+function _renderPriceOptsPanel(type){
+  const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const activeCount=tiers.filter(t=>t.active!==false).length;
+  let html=`<div class="prc-opts-panel">
+    <div class="prc-opts-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px">Opsi Harga ${esc(type)} (Universal)</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Opsi harga ini berlaku untuk semua layanan ${esc(type.toLowerCase())}.</div>
+        </div>
+        <span class="badge gy" style="font-size:11px;flex-shrink:0">${activeCount} Opsi</span>
+      </div>
+    </div>
+    <table class="prc-tbl"><thead><tr>
+      <th>OPSI HARGA</th><th>ESTIMASI</th><th>URUTAN</th><th>STATUS</th><th>AKSI</th>
+    </tr></thead><tbody>`;
+  tiers.forEach(po=>{
+    const on=po.active!==false;
+    html+=`<tr style="${on?'':'opacity:.55'}">
+      <td style="font-weight:600">${esc(po.label)}</td>
+      <td style="color:var(--t2)">${esc(po.est||'—')}</td>
+      <td style="color:var(--t2);text-align:center">${po.order||'—'}</td>
+      <td><span class="prc-badge-${on?'on':'off'}">${on?'Aktif':'Nonaktif'}</span></td>
+      <td><div style="display:flex;gap:5px;align-items:center">
+        <button class="toggle ${on?'on':'off'}" style="transform:scale(.75);transform-origin:left" onclick="togglePriceOptActive('${po.key}')"></button>
+        <button class="btn bsm" title="Edit" onclick="openEditPriceOpt('${po.key}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      </div></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>
+    <div style="padding:12px 16px;border-top:1px solid var(--b1)">
+      <button class="btn bfull" style="font-size:12px" onclick="openAddPriceOpt()">+ Tambah Opsi Harga</button>
+    </div>
+    <div class="prc-banner info" style="margin:0 12px 12px;border-radius:8px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <ul style="margin:0;padding-left:16px">
+        <li>Opsi harga yang diubah akan berlaku untuk semua layanan ${esc(type.toLowerCase())}.</li>
+        <li>Estimasi waktu ditampilkan saat membuat pesanan.</li>
+        <li>Urutan menentukan posisi opsi harga di form order.</li>
+      </ul>
+    </div>
+  </div>`;
+  return html;
+}
+
+// ─── Price Options modal (add/edit tier) ───
+function openPriceOptModal(type){
+  // Open the existing m-price-opt modal but just show the list — for now reuse openEditPriceOpt for first tier
+  // Actually just show a toast directing user to edit individual tiers
+  toast('Klik ✏️ pada baris opsi harga untuk mengedit.');
+}
+function openAddPriceOpt(){
+  _editPoKey=null;
+  g('m-po-title').textContent='Tambah Opsi Harga';
+  if(g('m-po-subtitle'))g('m-po-subtitle').textContent='Buat tier baru untuk opsi harga kiloan yang berlaku untuk semua layanan.';
+  g('mpo-label').value='';
+  g('mpo-est').value='';
+  const btn=g('mpo-active-btn');if(btn){btn.classList.add('on');btn.classList.remove('off');}
+  if(g('mpo-active'))g('mpo-active').value='1';
+  if(g('mpo-active-lbl')){g('mpo-active-lbl').textContent='Aktif digunakan';g('mpo-active-lbl').style.color='var(--p)';}
+  openModal('m-price-opt');
+}
+
+function togglePriceOptActive(key){
+  const po=priceOptions.find(x=>x.key===key);if(!po)return;
+  po.active=!po.active;
+  syncSettings();
+  toast((po.active?'Tier aktif: ':'Tier nonaktif: ')+po.label);
+  // Re-render only the right panel to preserve unsaved chip/minKg state in left panel
+  const right=g('prc-kiloan-right');
+  if(right){right.innerHTML=_renderKiloanRight();
+  } else {
+    renderPricing();
+  }
+  _noRebuildTierCards();
+}
+
+function openEditPriceOpt(key){
+  _editPoKey=key;
+  const po=priceOptions.find(x=>x.key===key);if(!po)return;
+  g('m-po-title').textContent='Edit Opsi Harga';
+  if(g('m-po-subtitle'))g('m-po-subtitle').textContent='Perbarui nama, estimasi, atau status tier ini.';
+  g('mpo-label').value=po.label;
+  g('mpo-est').value=po.est||'';
+  const active=po.active!==false;
+  g('mpo-active').value=active?'1':'0';
+  const btn=g('mpo-active-btn');if(btn){btn.classList.toggle('on',active);btn.classList.toggle('off',!active);}
+  const lbl=g('mpo-active-lbl');if(lbl){lbl.textContent=active?'Aktif digunakan':'Nonaktif';lbl.style.color=active?'var(--p)':'var(--t2)';}
+  openModal('m-price-opt');
+}
+
+function _toggleMpoActive(){
+  const cur=g('mpo-active').value==='1';
+  g('mpo-active').value=cur?'0':'1';
+  const btn=g('mpo-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+  const lbl=g('mpo-active-lbl');if(lbl){lbl.textContent=cur?'Nonaktif':'Aktif digunakan';lbl.style.color=cur?'var(--t2)':'var(--p)';}
+}
+
+function savePriceOpt(){
+  const label=(g('mpo-label')?.value||'').trim();if(!label){toast('⚠️ Nama tier wajib diisi');return;}
+  const active=g('mpo-active').value==='1';
+  const est=g('mpo-est')?.value||'';
+  if(_editPoKey){
+    const po=priceOptions.find(x=>x.key===_editPoKey);if(!po)return;
+    po.label=label;po.est=est;po.active=active;
+  }else{
+    // new tier: generate a key from label
+    const key='tier_'+Date.now();
+    const nextOrder=priceOptions.length?Math.max(...priceOptions.map(po=>po.order||0))+1:1;
+    priceOptions.push({key,label,est,order:nextOrder,active});
+  }
+  cm('m-price-opt');renderPricing();syncSettings();
+  toast(_editPoKey?'✓ Tier diperbarui: '+label:'✓ Tier ditambahkan: '+label);_editPoKey=null;
+}
+
+// ─── Per-item sub-page (Satuan) ───
+let _itemPageId=null;
+function openItemSettings(id){
+  const item=satuanItems.find(x=>x.id===id);if(!item)return;
+  _itemPageId=id;
+  const mainPage=g('prc-main-page');const itemPage=g('prc-item-page');
+  if(mainPage)mainPage.style.display='none';if(itemPage)itemPage.style.display='';
+  _renderItemSettingsPage(item);
+}
+
+function backToPricingList(){
+  _itemPageId=null;
+  const mainPage=g('prc-main-page');const itemPage=g('prc-item-page');
+  if(mainPage)mainPage.style.display='';if(itemPage)itemPage.style.display='none';
+  // refresh satuan tab
+  if(_pricingTab==='satuan')_renderSatuanTab();
+}
+
+function _renderItemSettingsPage(item){
+  const activePo=_activePoOptions();
+  const allPo=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const active=item.active!==false;
+
+  let html=`
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="backToPricingList()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Kembali ke Daftar Layanan Satuan
+    </button>
+    <div style="flex:1"></div>
+    <button class="btn bre bsm" onclick="toggleItemActive('${item.id}')" id="item-toggle-btn">${active?'Nonaktifkan Layanan':'Aktifkan Layanan'}</button>
+  </div>
+  <div class="pt" style="margin-bottom:4px">Pengaturan: ${esc(item.name)} (${esc(item.unit||'pcs')})</div>
+  <div style="font-size:13px;color:var(--t2);margin-bottom:18px">Atur harga dasar dan opsi harga untuk item satuan ini.</div>
+  <div class="pricing-split">
+    <!-- Left: form -->
+    <div class="card">
+      <div class="fg"><label>Nama Layanan</label><input id="ips-name" value="${esc(item.name)}" placeholder="Nama item"></div>
+      <div class="fg"><label>Satuan</label>
+        <select id="ips-unit" style="padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none;width:100%">
+          ${['pcs','item','lembar','pasang','kg'].map(u=>`<option value="${u}" ${(item.unit||'pcs')===u?'selected':''}>${u}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Deskripsi (opsional)</label><input id="ips-desc" value="${esc(item.desc||'')}" placeholder="Contoh: Bed cover ukuran single/double/king"></div>
+      <div class="fg" style="margin-bottom:0">
+        <label>Harga Dasar</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="ips-base" value="${activePo.length?item.prices?.[activePo[0].key]||0:0}" min="0" style="flex:1;font-size:14px;font-weight:700;padding:8px 10px" oninput="_ipsUpdateBaseInPanel()">
+          <span style="color:var(--t2);font-size:13px">/ ${esc(item.unit||'pcs')}</span>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Harga mulai dari untuk opsi termurah.</div>
+      </div>
+      <div class="div_" style="margin:14px 0"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:600;font-size:14px">Status</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${active?'Aktif':'Nonaktif'}</div>
+        </div>
+        <button class="toggle ${active?'on':'off'}" id="ips-active-btn" onclick="_ipsToggleActive()"></button>
+        <input type="hidden" id="ips-active" value="${active?'1':'0'}">
+      </div>
+    </div>
+    <!-- Right: per-tier prices -->
+    <div class="prc-opts-panel">
+      <div class="prc-opts-hdr">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">Opsi Harga untuk ${esc(item.name)}</div>
+        <div style="font-size:12px;color:var(--t2)">Mengikuti set opsi harga satuan (Universal)</div>
+      </div>
+      <table class="prc-tbl"><thead><tr>
+        <th>OPSI HARGA</th><th>ESTIMASI</th><th>HARGA</th><th>URUTAN</th><th>STATUS</th><th></th>
+      </tr></thead><tbody id="ips-price-tbody">`;
+  allPo.forEach(po=>{
+    const on=po.active!==false;
+    const price=item.prices?.[po.key]||0;
+    html+=`<tr id="ips-row-${po.key}" style="${on?'':'opacity:.55'}">
+      <td style="font-weight:600">${esc(po.label)}</td>
+      <td style="color:var(--t2);font-size:12px">${esc(po.est||'—')}</td>
+      <td><input type="number" id="ips-price-${po.key}" value="${price}" min="0" style="width:90px;font-size:13px;font-weight:700;padding:5px 8px;text-align:right"></td>
+      <td style="color:var(--t2);text-align:center">${po.order||'—'}</td>
+      <td><span class="prc-badge-${on?'on':'off'}">${on?'Aktif':'Nonaktif'}</span></td>
+      <td><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer" onclick="document.getElementById('ips-price-${po.key}').focus()"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>
+      <div class="prc-banner info" style="margin:12px;border-radius:8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <ul style="margin:0;padding-left:16px">
+          <li>Harga dapat berbeda untuk setiap item satuan meskipun menggunakan opsi yang sama.</li>
+          <li>Ubah harga pada tabel di atas untuk item ini saja.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+    <button class="btn" onclick="backToPricingList()">Batal</button>
+    <button class="btn bp bpill" onclick="saveItemSettings()">Simpan Perubahan</button>
+  </div>`;
+
+  const el=g('prc-item-content');if(el)el.innerHTML=html;
+}
+
+function _ipsToggleActive(){
+  const cur=g('ips-active').value==='1';
+  g('ips-active').value=cur?'0':'1';
+  const btn=g('ips-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+}
+function _ipsUpdateBaseInPanel(){
+  const val=parseInt(g('ips-base')?.value)||0;
+  const activePo=_activePoOptions();
+  if(activePo.length){const el=g('ips-price-'+activePo[0].key);if(el)el.value=val;}
+}
+function toggleItemActive(id){
+  const item=satuanItems.find(x=>x.id===id);if(!item)return;
+  item.active=!(item.active!==false);
+  const btn=g('item-toggle-btn');if(btn)btn.textContent=item.active?'Nonaktifkan Layanan':'Aktifkan Layanan';
+  const ab=g('ips-active-btn');if(ab){ab.classList.toggle('on',item.active);ab.classList.toggle('off',!item.active);}
+  if(g('ips-active'))g('ips-active').value=item.active?'1':'0';
+  syncSettings();toast((item.active?'✓ Aktif: ':'Nonaktif: ')+item.name);
+}
+function saveItemSettings(){
+  const item=satuanItems.find(x=>x.id===_itemPageId);if(!item)return;
+  item.name=(g('ips-name')?.value||'').trim()||item.name;
+  item.unit=g('ips-unit')?.value||item.unit;
+  item.desc=g('ips-desc')?.value||'';
+  item.active=g('ips-active')?.value!=='0';
+  const prices={};
+  priceOptions.forEach(po=>{const el=g('ips-price-'+po.key);if(el)prices[po.key]=parseInt(el.value)||0;});
+  item.prices=prices;
+  buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();
+  toast('✓ Pengaturan '+item.name+' disimpan');
+  backToPricingList();
+}
+
+// ─── Service modal helpers ───
+function _getTierMeta(key, label) {
+  const k = (key + ' ' + label).toLowerCase();
+  if (k.includes('super') || k.includes('vip')) return {
+    bg:'#f3e5f5', fg:'#7b1fa2', badge_bg:'#e1bee7', badge_fg:'#6a1b9a',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>'
+  };
+  if (k.includes('express')) return {
+    bg:'#e3f2fd', fg:'#1565c0', badge_bg:'#bbdefb', badge_fg:'#0d47a1',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>'
+  };
+  if (k.includes('same') || k.includes('sameday')) return {
+    bg:'#fff3e0', fg:'#e65100', badge_bg:'#ffe0b2', badge_fg:'#bf360c',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+  };
+  if (k.includes('jam') || k.includes('hour')) return {
+    bg:'#fce4ec', fg:'#c62828', badge_bg:'#f8bbd0', badge_fg:'#b71c1c',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+  return {
+    bg:'#e8f5e9', fg:'#2e7d32', badge_bg:'#c8e6c9', badge_fg:'#1b5e20',
+    svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+}
+
+let _msvcPendingRefresh = false;
+function _msvcUnitChange() {
+  const unit = g('msvc-unit')?.value || 'kg';
+  const helpers = { kg:'Harga akan dihitung berdasarkan per kilogram.', pcs:'Harga akan dihitung per item / pcs.', pasang:'Harga akan dihitung per pasang.', meter:'Harga akan dihitung per meter.' };
+  const hlp = g('msvc-unit-helper'); if (hlp) hlp.textContent = helpers[unit] || '';
+  // Update all price labels in tier cards
+  const lbl = 'Harga per ' + unit;
+  document.querySelectorAll('.msvc-price-lbl').forEach(el => el.textContent = lbl);
+}
+
+function _renderSvcPriceRows(containerId, prices) {
+  const el = g(containerId); if (!el) return;
+  const activeOpts = _activePoOptions();
+  const unit = g('msvc-unit')?.value || 'kg';
+  if (!activeOpts.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--t2);font-size:13px;padding:16px 0">Belum ada tier harga. Klik "Tambah Tier" untuk menambahkan.</div>';
+    return;
+  }
+  el.innerHTML = activeOpts.map((po, idx) => {
+    const meta = _getTierMeta(po.key, po.label);
+    const price = prices?.[po.key] || 0;
+    const hasPrice = price > 0;
+    return `<div class="msvc-tier-card${hasPrice ? ' has-price' : ''}" id="msvc-tc-${po.key}" draggable="true"
+        ondragstart="_msvcDragStart(event,'${po.key}')"
+        ondragover="_msvcDragOver(event,'${po.key}')"
+        ondrop="_msvcDrop(event,'${po.key}')"
+        ondragend="_msvcDragEnd()">
+      <div class="msvc-tier-drag" title="Seret untuk reorder">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>
+      </div>
+      <div class="msvc-tier-icon" style="background:${meta.bg};color:${meta.fg}">${meta.svg}</div>
+      <div class="msvc-tier-info">
+        <div class="msvc-tier-name">
+          ${esc(po.label)}
+          ${po.est ? `<span class="msvc-tier-badge" style="background:${meta.badge_bg};color:${meta.badge_fg}">${esc(po.est)}</span>` : ''}
+          ${hasPrice ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${meta.fg}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` : ''}
+        </div>
+        ${po.est ? `<div class="msvc-tier-est">Estimasi selesai ${esc(po.est)}</div>` : ''}
+      </div>
+      <div class="msvc-price-side">
+        <div class="msvc-price-lbl">Harga per ${esc(unit)}</div>
+        <div class="msvc-price-row">
+          <span class="msvc-price-rp">Rp</span>
+          <input type="number" class="msvc-price-input" id="${containerId}-${po.key}"
+            value="${price || ''}" min="0" placeholder="0"
+            oninput="_msvcPriceChange(this,'msvc-tc-${po.key}')">
+        </div>
+      </div>
+      <button class="msvc-tier-del" title="Hapus tier" onclick="_msvcDelTier('${po.key}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+function _readSvcPriceRows(containerId){
+  const prices={};
+  priceOptions.forEach(po=>{const el=g(containerId+'-'+po.key);if(el)prices[po.key]=parseInt(el.value)||0;});
+  return prices;
+}
+
+// ─── Kiloan settings helpers ───
+function _toggleTierChip(el){
+  el.classList.toggle('on');
+}
+
+function saveSvcSettings(id){
+  const s=getSvcById(id);if(!s)return;
+  const kg=parseFloat(g('svc-mkg-'+id)?.value)||0;
+  s.minKg=kg;
+  const tierApply={};
+  priceOptions.forEach(po=>{
+    const chip=document.getElementById('chip-'+id+'-'+po.key);
+    tierApply[po.key]=chip?chip.classList.contains('on'):true;
+  });
+  s.tierApply=tierApply;
+  s.minKgApply={...tierApply};
+  calcO();calcS();
+  syncSettings();
+  toast('Pengaturan '+esc(s.name)+' disimpan');
+}
+
+function _deletePriceOpt(key){
+  const po=priceOptions.find(p=>p.key===key);
+  if(!po)return;
+  if(!confirm('Hapus tier "'+po.label+'"? Harga yang menggunakan tier ini akan ikut terhapus.'))return;
+  priceOptions=priceOptions.filter(p=>p.key!==key);
+  priceOptions.forEach((p,i)=>p.order=i+1);
+  syncSettings();
+  renderPricing();
+  toast('Tier dihapus: '+po.label);
+}
+
+let _svcDragId=null;
+function _svcDragStart(e,id){_svcDragId=id;document.getElementById('prc-svc-wrap-'+id)?.classList.add('dragging');}
+function _svcDragEnd(){_svcDragId=null;document.querySelectorAll('.prc-svc-wrap').forEach(el=>el.classList.remove('dragging'));}
+function _svcDragOver(e,id){e.preventDefault();}
+function _svcDrop(e,targetId){
+  e.preventDefault();
+  if(!_svcDragId||_svcDragId===targetId)return;
+  const fi=serviceTypes.findIndex(s=>s.id===_svcDragId);
+  const ti=serviceTypes.findIndex(s=>s.id===targetId);
+  if(fi<0||ti<0)return;
+  serviceTypes.splice(ti,0,serviceTypes.splice(fi,1)[0]);
+  const left=g('prc-kiloan-left');if(left)left.innerHTML=_renderKiloanLeft();
+  syncSettings();
+}
+
+let _poDragKey=null;
+function _poDragStart(e,key){_poDragKey=key;document.getElementById('prc-po-row-'+key)?.classList.add('dragging');}
+function _poDragEnd(){_poDragKey=null;document.querySelectorAll('.prc-po-row').forEach(el=>el.classList.remove('dragging'));}
+function _poDragOver(e,key){e.preventDefault();}
+function _poDrop(e,targetKey){
+  e.preventDefault();
+  if(!_poDragKey||_poDragKey===targetKey)return;
+  const fi=priceOptions.findIndex(p=>p.key===_poDragKey);
+  const ti=priceOptions.findIndex(p=>p.key===targetKey);
+  if(fi<0||ti<0)return;
+  priceOptions.splice(ti,0,priceOptions.splice(fi,1)[0]);
+  priceOptions.forEach((p,i)=>p.order=i+1);
+  const right=g('prc-kiloan-right');if(right)right.innerHTML=_renderKiloanRight();
+  syncSettings();
+}
+
+function saveSvcMinKg(id){const s=getSvcById(id);if(!s)return;const val=parseFloat(g('mkg-'+id)?.value)||0;s.minKg=val;const apply={};priceOptions.forEach(po=>{apply[po.key]=!!(g('mka-'+id+'-'+po.key)?.checked);});s.minKgApply=apply;calcO();calcS();syncSettings();toast('✓ Min. berat '+s.name+' diperbarui');}
 function updSatuanItemPrice(id,cat,val){const item=satuanItems.find(x=>x.id===id);if(!item)return;item.prices[cat]=parseInt(val)||0;buildSatuanOrderItems('no');calcO();buildSatuanOrderItems('sno');calcS();syncSettings();}
 function updSvcPrice(id,cat,val){const s=getSvcById(id);if(!s)return;s.prices[cat]=parseInt(val)||0;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();}
-function buildOrderTypeDropdowns(){['no-type','sno-type'].forEach(selId=>{const el=g(selId);if(!el)return;const curVal=el.value;el.innerHTML=serviceTypes.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+`<option value="satuan">Satuan</option>`;if(serviceTypes.find(s=>s.id===curVal)||curVal==='satuan')el.value=curVal;});}
-function rebuildPromoSvcSelect(){const el=g('mp-svc');if(!el)return;el.innerHTML='<option value="all">Semua Layanan</option>'+serviceTypes.map(s=>`<option value="${s.id}-regular">${s.name} Regular</option><option value="${s.id}-sameday">${s.name} Same-day</option><option value="${s.id}-express">${s.name} Express</option>`).join('')+'<option value="satuan-regular">Satuan Regular</option><option value="satuan-sameday">Satuan Same-day</option><option value="satuan-express">Satuan Express</option>';}
-function openAddSvc(){editSvcId=null;g('m-svc-title').textContent='Tambah Jenis Layanan';['msvc-name','msvc-r','msvc-sd','msvc-e'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('msvc-unit'))g('msvc-unit').value='pcs';openModal('m-svc');}
-function openEditSvc(id){editSvcId=id;const s=getSvcById(id);if(!s)return;g('m-svc-title').textContent='Edit Layanan: '+s.name;if(g('msvc-name'))g('msvc-name').value=s.name;if(g('msvc-unit'))g('msvc-unit').value=s.unit;if(g('msvc-r'))g('msvc-r').value=s.prices.regular;if(g('msvc-sd'))g('msvc-sd').value=s.prices.sameday;if(g('msvc-e'))g('msvc-e').value=s.prices.express;openModal('m-svc');}
-function saveSvc(){const name=(g('msvc-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama layanan wajib diisi');return;}const unit=g('msvc-unit')?.value||'pcs';const prices={regular:parseInt(g('msvc-r')?.value)||0,sameday:parseInt(g('msvc-sd')?.value)||0,express:parseInt(g('msvc-e')?.value)||0};if(editSvcId){const s=getSvcById(editSvcId);if(s){s.name=name;s.unit=unit;s.prices=prices;}}else{const id='svc'+svcCtr++;serviceTypes.push({id,name,unit,prices,minKg:0,minKgApply:{regular:false,sameday:false,express:false}});}cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast(editSvcId?'\u2713 Layanan diperbarui: '+name:'\u2713 Layanan ditambahkan: '+name);editSvcId=null;}
-function delSvc(id){if(serviceTypes.length<=1){toast('\u26A0\uFE0F Minimal harus ada 1 jenis layanan');return;}confirm_('Hapus Layanan?','Jenis layanan ini akan dihapus. Pesanan yang sudah ada tidak terpengaruh.',()=>{serviceTypes=serviceTypes.filter(s=>s.id!==id);renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('Layanan dihapus');});}
-let editSatItemId=null;
-function openAddSatuanItem(){editSatItemId=null;g('m-sat-title').textContent='Tambah Item Satuan';['msat-name','msat-r','msat-sd','msat-e'].forEach(id=>{const el=g(id);if(el)el.value='';});openModal('m-satuan-item');}
-function openEditSatuanItem(id){editSatItemId=id;const item=satuanItems.find(x=>x.id===id);if(!item)return;g('m-sat-title').textContent='Edit Item: '+item.name;if(g('msat-name'))g('msat-name').value=item.name;if(g('msat-r'))g('msat-r').value=item.prices.regular;if(g('msat-sd'))g('msat-sd').value=item.prices.sameday;if(g('msat-e'))g('msat-e').value=item.prices.express;openModal('m-satuan-item');}
-function saveSatuanItem(){const name=(g('msat-name')?.value||'').trim();if(!name){toast('\u26A0\uFE0F Nama item wajib diisi');return;}const prices={regular:parseInt(g('msat-r')?.value)||0,sameday:parseInt(g('msat-sd')?.value)||0,express:parseInt(g('msat-e')?.value)||0};if(editSatItemId){const item=satuanItems.find(x=>x.id===editSatItemId);if(item){item.name=name;item.prices=prices;}}else{satuanItems.push({id:'sat'+satItemCtr++,name,prices});}cm('m-satuan-item');renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast(editSatItemId?'\u2713 Item diperbarui: '+name:'\u2713 Item ditambahkan: '+name);editSatItemId=null;}
+
+function buildOrderTypeDropdowns(){
+  ['no-type','sno-type'].forEach(selId=>{
+    const el=g(selId);if(!el)return;
+    const curVal=el.value;
+    el.innerHTML=serviceTypes.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+`<option value="satuan">Satuan</option>`;
+    if(serviceTypes.find(s=>s.id===curVal)||curVal==='satuan')el.value=curVal;
+  });
+}
+// rebuildPromoSvcSelect is now a no-op stub (defined in promo section below)
+
+// ─── Kiloan/Satuan modals (add) ───
+function _toggleMsvcActive(){
+  const cur=g('msvc-active').value==='1';
+  g('msvc-active').value=cur?'0':'1';
+  const btn=g('msvc-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+  const card=g('msvc-status-card');if(card)card.classList.toggle('active',!cur);
+}
+function _msvcPriceChange(input, cardId) {
+  const card = g(cardId); if (!card) return;
+  const val = parseFloat(input.value) || 0;
+  card.classList.toggle('has-price', val > 0);
+}
+
+let _msvcDragKey = null;
+function _msvcDragStart(e, key) { _msvcDragKey = key; e.currentTarget.classList.add('dragging'); }
+function _msvcDragEnd() {
+  _msvcDragKey = null;
+  document.querySelectorAll('.msvc-tier-card').forEach(c => c.classList.remove('dragging'));
+}
+function _msvcDragOver(e, key) { e.preventDefault(); }
+function _msvcDrop(e, targetKey) {
+  e.preventDefault();
+  if (!_msvcDragKey || _msvcDragKey === targetKey) return;
+  const fromIdx = priceOptions.findIndex(p => p.key === _msvcDragKey);
+  const toIdx = priceOptions.findIndex(p => p.key === targetKey);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const moved = priceOptions.splice(fromIdx, 1)[0];
+  priceOptions.splice(toIdx, 0, moved);
+  priceOptions.forEach((p, i) => p.order = i + 1);
+  const prices = _readSvcPriceRows('msvc-price-rows');
+  _renderSvcPriceRows('msvc-price-rows', prices);
+  syncSettings();
+}
+
+function _msvcDelTier(key) {
+  if (!confirm('Hapus tier ini? Harga layanan yang menggunakan tier ini akan ikut terhapus.')) return;
+  priceOptions = priceOptions.filter(p => p.key !== key);
+  const prices = _readSvcPriceRows('msvc-price-rows');
+  delete prices[key];
+  _renderSvcPriceRows('msvc-price-rows', prices);
+  syncSettings();
+}
+
+function _toggleMsatActive(){
+  const cur=g('msat-active').value==='1';
+  g('msat-active').value=cur?'0':'1';
+  const btn=g('msat-active-btn');if(btn){btn.classList.toggle('on',!cur);btn.classList.toggle('off',cur);}
+}
+function openAddSvc(){
+  editSvcId=null;
+  const t=g('m-svc-title');if(t)t.textContent='Tambah Layanan Kiloan';
+  if(g('msvc-name'))g('msvc-name').value='';
+  if(g('msvc-desc')){g('msvc-desc').value='';const cnt=g('msvc-desc-cnt');if(cnt)cnt.textContent='0';}
+  if(g('msvc-unit'))g('msvc-unit').value='kg';
+  _msvcUnitChange();
+  if(g('msvc-active'))g('msvc-active').value='1';
+  const ab=g('msvc-active-btn');if(ab){ab.classList.add('on');ab.classList.remove('off');}
+  const sc=g('msvc-status-card');if(sc)sc.classList.add('active');
+  _renderSvcPriceRows('msvc-price-rows',{});
+  openModal('m-svc');
+}
+function openEditSvc(id){
+  editSvcId=id;const s=getSvcById(id);if(!s)return;
+  const t=g('m-svc-title');if(t)t.textContent='Edit Layanan Kiloan';
+  if(g('msvc-name'))g('msvc-name').value=s.name;
+  if(g('msvc-desc')){const desc=s.desc||'';g('msvc-desc').value=desc;const cnt=g('msvc-desc-cnt');if(cnt)cnt.textContent=desc.length;}
+  if(g('msvc-unit'))g('msvc-unit').value=s.unit||'kg';
+  _msvcUnitChange();
+  const active=s.active!==false;
+  if(g('msvc-active'))g('msvc-active').value=active?'1':'0';
+  const ab=g('msvc-active-btn');if(ab){ab.classList.toggle('on',active);ab.classList.toggle('off',!active);}
+  const sc=g('msvc-status-card');if(sc)sc.classList.toggle('active',active);
+  _renderSvcPriceRows('msvc-price-rows',s.prices||{});
+  openModal('m-svc');
+}
+function saveSvc(){
+  const name=(g('msvc-name')?.value||'').trim();if(!name){toast('⚠️ Nama layanan wajib diisi');return;}
+  const unit=g('msvc-unit')?.value||'pcs';
+  const desc=g('msvc-desc')?.value||'';
+  const active=g('msvc-active')?.value!=='0';
+  const prices=_readSvcPriceRows('msvc-price-rows');
+  if(editSvcId){const s=getSvcById(editSvcId);if(s){s.name=name;s.unit=unit;s.desc=desc;s.active=active;s.prices=prices;}}
+  else{const id='svc'+svcCtr++;serviceTypes.push({id,name,unit,desc,active,prices,minKg:0,minKgApply:{}});}
+  cm('m-svc');renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();syncSettings();
+  toast(editSvcId?'✓ Layanan diperbarui: '+name:'✓ Layanan ditambahkan: '+name);editSvcId=null;
+}
+function delSvc(id){if(serviceTypes.length<=1){toast('⚠️ Minimal harus ada 1 jenis layanan');return;}confirm_('Hapus Layanan?','Jenis layanan ini akan dihapus. Pesanan yang sudah ada tidak terpengaruh.',()=>{serviceTypes=serviceTypes.filter(s=>s.id!==id);renderPricing();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('Layanan dihapus');});}
+function openAddSatuanItem(){
+  editSatItemId=null;
+  g('m-sat-title').textContent='Tambah Item Satuan';
+  if(g('msat-name'))g('msat-name').value='';
+  if(g('msat-desc'))g('msat-desc').value='';
+  if(g('msat-unit'))g('msat-unit').value='pcs';
+  if(g('msat-active'))g('msat-active').value='1';
+  const ab=g('msat-active-btn');if(ab){ab.classList.add('on');ab.classList.remove('off');}
+  _renderSvcPriceRows('msat-price-rows',{});
+  openModal('m-satuan-item');
+}
+function openEditSatuanItem(id){openItemSettings(id);}
+function saveSatuanItem(){
+  const name=(g('msat-name')?.value||'').trim();if(!name){toast('⚠️ Nama item wajib diisi');return;}
+  const unit=g('msat-unit')?.value||'pcs';
+  const desc=g('msat-desc')?.value||'';
+  const active=g('msat-active')?.value!=='0';
+  const prices=_readSvcPriceRows('msat-price-rows');
+  if(editSatItemId){const item=satuanItems.find(x=>x.id===editSatItemId);if(item){item.name=name;item.unit=unit;item.desc=desc;item.active=active;item.prices=prices;}}
+  else{satuanItems.push({id:'sat'+satItemCtr++,name,unit,desc,active,prices});}
+  cm('m-satuan-item');renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();
+  toast(editSatItemId?'✓ Item diperbarui: '+name:'✓ Item ditambahkan: '+name);editSatItemId=null;
+}
 function delSatuanItem(id){confirm_('Hapus Item?','Item ini akan dihapus dari daftar Satuan.',()=>{satuanItems=satuanItems.filter(x=>x.id!==id);renderPricing();buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();toast('Item dihapus');});}
-function renderAddonList(){const el=g('addon-list');if(!el)return;el.innerHTML=addons.length?addons.map(a=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--b1);font-size:13px"><input value="${a.name}" onchange="updAddon('${a.id}','name',this.value)" style="flex:1;width:auto;font-size:13px;padding:6px 8px"><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:6px 8px"><select onchange="updAddon('${a.id}','unit',this.value)" style="width:110px;font-size:13px;padding:6px 8px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select><button class="btn bre bsm" onclick="delAddon('${a.id}')">\u2715</button></div>`).join(''):'<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';}
+
+function renderAddonList(){/* kept for compat, actual render is in _renderTambahanTab */}
 function updAddon(id,key,val){const a=addons.find(x=>x.id===id);if(!a)return;a[key]=key==='price'?parseInt(val)||0:val;buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
-function delAddon(id){addons=addons.filter(x=>x.id!==id);renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
+function delAddon(id){addons=addons.filter(x=>x.id!==id);_renderTambahanTab();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();}
 function openAddAddon(){g('mad-n').value='';g('mad-p').value='';g('mad-u').value='flat';openModal('m-addon');}
-function saveAddon(){const name=g('mad-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama wajib diisi');return;}addons.push({id:'a'+addonCtr++,name,price:parseInt(g('mad-p').value)||0,unit:g('mad-u').value});cm('m-addon');renderAddonList();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('\u2713 Layanan tambahan ditambahkan');}
+function saveAddon(){const name=g('mad-n').value.trim();if(!name){toast('⚠️ Nama wajib diisi');return;}addons.push({id:'a'+addonCtr++,name,price:parseInt(g('mad-p').value)||0,unit:g('mad-u').value});cm('m-addon');_renderTambahanTab();buildOrderForm('no');calcO();buildOrderForm('sno');calcS();toast('✓ Layanan tambahan ditambahkan');}
+function renderSvcTypeList(){}
+function renderSatuanItemsList(){}
+
+// ─── New Order: visual type/tier cards ───
+function _noRebuildSvcCards(){
+  const el=g('no-stype-cards');if(!el)return;
+  const curType=g('no-type')?.value||'kiloan';
+  const types=[
+    {key:'kiloan',label:'Kiloan',desc:'Layanan berbasis berat (kg)'},
+    {key:'satuan',label:'Satuan',desc:'Layanan berbasis item / pcs'}
+  ];
+  el.innerHTML=types.map(t=>`
+    <div class="no-type-card${curType===t.key?' on':''}" onclick="_noPickType('${t.key}')">
+      <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
+      <div class="no-type-body">
+        <div class="no-type-lbl">${t.label}</div>
+        <div class="no-type-desc">${t.desc}</div>
+      </div>
+      <div class="no-type-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+  `).join('');
+}
+function _noRebuildTierCards(){
+  const el=g('no-tier-cards');if(!el)return;
+  const curCat=g('no-cat')?.value||'regular';
+  const type=g('no-type')?.value||'kiloan';
+  const tierSect=g('no-tier-sect');
+  if(tierSect)tierSect.style.display=(type==='satuan'?'none':'block');
+  let activeTiers=_activePoOptions();
+  // Filter by service's tierApply if applicable
+  const svc=type!=='satuan'?getSvcById(type):null;
+  if(svc&&svc.tierApply){
+    activeTiers=activeTiers.filter(po=>svc.tierApply[po.key]!==false);
+  }
+  el.style.gridTemplateColumns=`repeat(${Math.max(activeTiers.length,1)},1fr)`;
+  el.innerHTML=activeTiers.map(po=>`
+    <div class="no-type-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}')" style="padding:10px 12px">
+      <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
+      <div class="no-type-body">
+        <div class="no-type-lbl" style="font-size:12px">${esc(po.label)}</div>
+        ${po.est?`<div class="no-type-desc">${esc(po.est)}</div>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+function _noPickType(key){
+  const inp=g('no-type');if(inp)inp.value=key;
+  // Show/hide kg vs satuan sections
+  const kgSect=g('no-kg-sect');const satSect=g('no-satuan-sect');
+  if(kgSect)kgSect.style.display=(key==='kiloan'?'block':'none');
+  if(satSect)satSect.style.display=(key==='satuan'?'block':'none');
+  // Update card styling (only service type cards, not tier cards)
+  const svcGrid=g('no-stype-cards');
+  if(svcGrid)svcGrid.querySelectorAll('.no-type-card').forEach(c=>{
+    const onclick=c.getAttribute('onclick')||'';
+    c.classList.toggle('on',onclick.includes(`'${key}'`));
+  });
+  if(typeof _noRebuildTierCards==='function')_noRebuildTierCards();
+  if(key==='satuan'&&typeof buildSatuanOrderItems==='function')buildSatuanOrderItems('no');
+  calcO();
+}
+function _noPickTier(key){
+  const sel=g('no-cat');if(sel){sel.value=key;}
+  _noRebuildTierCards();
+  catChange('no');
+}
+function _noUpdateSatSelPrices(){
+  const cat=g('no-cat')?.value||'regular';
+  const sel=g('no-sat-sel');if(!sel)return;
+  const activeItems=satuanItems.filter(x=>x.active!==false);
+  sel.innerHTML=activeItems.length
+    ? activeItems.map(item=>`<option value="${item.id}">${esc(item.name)} — ${fmt(item.prices?.[cat]||0)} / ${esc(item.unit||'pcs')}</option>`).join('')
+    : '<option value="">Belum ada item satuan</option>';
+}
 
 // ===== PROMO =====
+let _promoTabState = 'aktif';
+let _mpStep = 1;
+let _mpMaxStep = 1;
+let _mpState = {};
+const _DAYS_SHORT = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+const _DAY_VALS = ['0','1','2','3','4','5','6'];
+
 function isPromoToday(p){if(!p.active)return false;const dm=p.days.length===0||p.days.includes(String(TODAY_DAY));return dm&&(!p.from||TODAY_ISO>=p.from)&&(!p.to||TODAY_ISO<=p.to);}
-function promoDiscLbl(p){if(p.discType==='persen')return `-${p.discVal}%`;if(p.discType==='flat')return `-${fmt(p.discVal)}`;return `-${fmt(p.discVal)}/qty`;}
-function renderPromo(){const el=g('promo-list');if(!el)return;if(!promos.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Belum ada promo.</div>';return;}const today=promos.filter(p=>isPromoToday(p));const rest=promos.filter(p=>!isPromoToday(p));let html='';if(today.length){html+=`<div style="font-size:11px;font-weight:700;color:var(--am);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">\uD83D\uDD25 Berlaku Hari Ini</div>`;today.forEach(p=>{html+=promoCard(p,true);});}if(rest.length){if(today.length)html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px">Promo Lainnya</div>';rest.forEach(p=>{html+=promoCard(p,false);});}el.innerHTML=html;}
-function promoCard(p,today){const dn=p.days.length?p.days.map(d=>DAYS_ID[parseInt(d)]).join(', '):'Setiap hari';return `<div class="pcrd${today?' pact':!p.active?' poff':''}"><div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">${esc(p.name)}</span>${today?'<span class="ptd">\uD83D\uDD25 Hari ini</span>':''}${!p.active?'<span class="badge gy">Nonaktif</span>':''}</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px"><span class="badge gbl">${SVC_LBL[p.svc]||esc(p.svc)}</span><span class="badge gr_" style="font-weight:700">${promoDiscLbl(p)}</span><span class="badge gp">\uD83D\uDCC5 ${dn}</span>${p.from||p.to?`<span class="badge gy">${esc(p.from||'\u2014')} s/d ${esc(p.to||'\u2014')}</span>`:''} ${p.outlets&&p.outlets.length?p.outlets.map(oid=>{const out=go(oid);return out?`<span class="badge" style="background:${safeColor(out.color)}18;color:${safeColor(out.color)}">${esc(out.name)}</span>`:''}).join(''):'<span class="badge gy">Semua Outlet</span>'}</div>${p.note?`<div style="font-size:12px;color:var(--t2)">${esc(p.note)}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px"><button class="toggle ${p.active?'on':'off'}" onclick="togglePromo('${p.id}')"></button><div style="display:flex;gap:4px"><button class="btn bsm" onclick="openEditPromo('${p.id}')">Edit</button><button class="btn bre bsm" onclick="delPromo('${p.id}')">Hapus</button></div></div></div></div>`;}
-function togglePromo(id){const p=promos.find(x=>x.id===id);if(!p)return;p.active=!p.active;renderPromo();syncSettings();toast((p.active?'\u2713 Promo aktif':'Promo nonaktif')+': '+p.name);}
+function isPromoScheduled(p){if(!p.active)return false;if(!p.from)return false;return p.from>TODAY_ISO;}
+function promoDiscLbl(p){
+  if(p.discType==='persen')return `-${p.discVal}%`;
+  if(p.discType==='persen_qty')return `-${p.discVal}%/qty`;
+  if(p.discType==='flat')return `-${fmt(p.discVal)}`;
+  if(p.discType==='per_qty')return `-${fmt(p.discVal)}/qty`;
+  return `-${fmt(p.discVal)}`;
+}
+
+function _promoTabClick(el){
+  document.querySelectorAll('#promo-filter-tabs .promo-ftab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  _promoTabState=el.dataset.tab;
+  renderPromo();
+}
+
+function _promoSvcLbl(p){
+  if(p.targets){
+    const parts=[];
+    if(p.targets.kiloan&&p.targets.kiloan.length){
+      if(p.targets.kiloan[0]==='all')parts.push('Semua Kiloan');
+      else parts.push('Kiloan: '+p.targets.kiloan.map(k=>{const po=priceOptions.find(x=>x.key===k);return po?po.label:k;}).join(', '));
+    }
+    if(p.targets.satuan&&p.targets.satuan.length){
+      if(p.targets.satuan[0]==='all')parts.push('Semua Satuan');
+      else parts.push('Satuan');
+    }
+    return parts.join(' & ')||'Semua Layanan';
+  }
+  const SVC_LBL_={all:'Semua Layanan','kiloan-regular':'Kiloan Reguler','kiloan-sameday':'Kiloan Same Day','kiloan-express':'Kiloan Express','satuan-regular':'Satuan Reguler','satuan-sameday':'Satuan Same Day','satuan-express':'Satuan Express'};
+  return SVC_LBL_[p.svc]||p.svc||'—';
+}
+
+function _promoDayLbl(p){
+  if(!p.days||!p.days.length)return 'Setiap hari';
+  return p.days.map(d=>_DAYS_SHORT[parseInt(d)]||d).join(', ');
+}
+
+function _promoOutletLbl(p){
+  if(!p.outlets||!p.outlets.length)return 'Semua Outlet';
+  return p.outlets.map(oid=>{const o=outlets.find(x=>x.id===oid);return o?o.name:oid;}).join(', ');
+}
+
+function renderPromo(){
+  const el=g('promo-list');if(!el)return;
+  const q=(g('promo-search')?.value||'').toLowerCase().trim();
+  const aktif=promos.filter(p=>p.active&&!isPromoScheduled(p));
+  const terjadwal=promos.filter(p=>p.active&&isPromoScheduled(p));
+  const nonaktif=promos.filter(p=>!p.active);
+  const setCount=(id,n)=>{const el=g(id);if(el)el.textContent=n;};
+  setCount('pcnt-aktif',aktif.length);
+  setCount('pcnt-terjadwal',terjadwal.length);
+  setCount('pcnt-nonaktif',nonaktif.length);
+  let list=_promoTabState==='aktif'?aktif:_promoTabState==='terjadwal'?terjadwal:nonaktif;
+  if(q)list=list.filter(p=>p.name.toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q));
+  if(!list.length){
+    el.innerHTML=`<div style="text-align:center;padding:32px 24px;color:var(--t2)"><div style="font-size:13px;font-weight:500;margin-bottom:4px">Belum ada promo</div><div style="font-size:12px">Klik + Tambah Promo untuk membuat promo baru.</div></div>`;
+    return;
+  }
+  el.innerHTML=list.map(p=>_promoCard(p)).join('');
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
+function _promoCard(p){
+  const svcLbl=_promoSvcLbl(p);
+  const dayLbl=_promoDayLbl(p);
+  const outLbl=_promoOutletLbl(p);
+  const discLbl=promoDiscLbl(p);
+  const _dtMap={flat:'Diskon Nominal',persen:'Persentase Total',persen_qty:'Persentase Satuan',per_qty:'Rp per Kg/Unit'};
+  const discType=_dtMap[p.discType]||p.discType||'—';
+  const period=p.from||p.to?`${p.from||'—'} — ${p.to||'—'}`:'Tanpa batas';
+  return `<div class="promo-card">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <div class="promo-icon-wrap">
+        <i data-lucide="${p.discType==='persen'?'percent':'tag'}" style="width:18px;height:18px;stroke-width:2;color:var(--p)"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${esc(p.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="toggle ${p.active?'on':'off'}" onclick="togglePromo('${p.id}')"></button>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+          <span class="badge" style="background:var(--pl);color:var(--p);font-size:10px">${esc(svcLbl)}</span>
+          <span class="badge" style="background:#fff3f3;color:var(--re);font-size:10px;font-weight:700">${esc(discLbl)}</span>
+          <span class="badge" style="background:var(--bg);color:var(--t2);font-size:10px">${esc(dayLbl)}</span>
+          <span class="badge" style="background:var(--bg);color:var(--t2);font-size:10px">${esc(outLbl)}</span>
+        </div>
+        ${p.note?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">${esc(p.note)}</div>`:''}
+        <div class="promo-meta-grid">
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="tag" style="width:10px;height:10px;stroke-width:2"></i> Tipe Promo</div>
+            <div class="pmv">${esc(discType)}</div>
+          </div>
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="layers" style="width:10px;height:10px;stroke-width:2"></i> Berlaku Untuk</div>
+            <div class="pmv">${esc(svcLbl)}</div>
+          </div>
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="calendar" style="width:10px;height:10px;stroke-width:2"></i> Berlaku Pada</div>
+            <div class="pmv">${esc(dayLbl)}</div>
+          </div>
+          <div class="promo-meta-item">
+            <div class="pml"><i data-lucide="store" style="width:10px;height:10px;stroke-width:2"></i> Outlet</div>
+            <div class="pmv">${esc(outLbl)}</div>
+          </div>
+        </div>
+        <div class="promo-card-footer">
+          <div style="font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px">
+            <i data-lucide="calendar-range" style="width:11px;height:11px;stroke-width:2"></i>
+            Periode: ${esc(period)}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn bsm" onclick="openEditPromo('${p.id}')">Edit</button>
+            <button class="btn bre bsm" onclick="delPromo('${p.id}')">Hapus</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function togglePromo(id){const p=promos.find(x=>x.id===id);if(!p)return;p.active=!p.active;renderPromo();syncSettings();toast((p.active?'Promo aktif':'Promo nonaktif')+': '+p.name);}
 function delPromo(id){confirm_('Hapus Promo?','Promo ini akan dihapus.',()=>{promos=promos.filter(x=>x.id!==id);renderPromo();syncSettings();toast('Promo dihapus');});}
-function promoDiscChange(){const dl=g('mp-dv-lbl');if(dl)dl.textContent={persen:'Nilai (%)',flat:'Nominal (Rp)',per_qty:'Per Kg/Pcs (Rp)'}[g('mp-dt').value]||'Nilai';}
-function tDay(el,day){el.classList.toggle('sel');if(el.classList.contains('sel')){if(!selDays.includes(day))selDays.push(day);}else selDays=selDays.filter(d=>d!==day);}
-function buildPromoOutletChips(sel){const el=g('mp-outlet-chips');if(!el)return;el.innerHTML=outlets.map(o=>{const s=sel.includes(o.id);return `<span class="chip${s?' on':''}" onclick="togglePromoOutlet('${o.id}',this)" style="${s?`background:${o.color}18;border-color:${o.color};color:${o.color}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${o.color};margin-right:5px;vertical-align:middle"></span>${o.name}</span>`;}).join('');}
-function togglePromoOutlet(id){if(promoOutlets.includes(id))promoOutlets=promoOutlets.filter(x=>x!==id);else promoOutlets.push(id);buildPromoOutletChips(promoOutlets);}
-function openAddPromo(){editPromoId=null;selDays=[];promoOutlets=[];g('m-promo-title').textContent='Tambah Promo';['mp-n','mp-dv','mp-from','mp-to','mp-note'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('mp-svc'))g('mp-svc').value='all';if(g('mp-dt'))g('mp-dt').value='persen';document.querySelectorAll('.day-pill').forEach(el=>el.classList.remove('sel'));buildPromoOutletChips([]);promoDiscChange();openModal('m-promo');}
-function openEditPromo(id){editPromoId=id;const p=promos.find(x=>x.id===id);if(!p)return;selDays=[...p.days];promoOutlets=[...(p.outlets||[])];g('m-promo-title').textContent='Edit Promo';if(g('mp-n'))g('mp-n').value=p.name;if(g('mp-svc'))g('mp-svc').value=p.svc;if(g('mp-dt'))g('mp-dt').value=p.discType;if(g('mp-dv'))g('mp-dv').value=p.discVal;if(g('mp-from'))g('mp-from').value=p.from;if(g('mp-to'))g('mp-to').value=p.to;if(g('mp-note'))g('mp-note').value=p.note;document.querySelectorAll('.day-pill').forEach(el=>{const m=el.getAttribute('onclick').match(/'(\d)'/);if(m)el.classList.toggle('sel',selDays.includes(m[1]));});buildPromoOutletChips(promoOutlets);promoDiscChange();openModal('m-promo');}
-function savePromo(){const name=g('mp-n').value.trim();if(!name){toast('\u26A0\uFE0F Nama promo wajib diisi');return;}const val=parseFloat(g('mp-dv').value)||0;if(!val){toast('\u26A0\uFE0F Nilai diskon wajib diisi');return;}const obj={id:editPromoId||'pr'+promoCtr++,name,svc:g('mp-svc').value,discType:g('mp-dt').value,discVal:val,days:[...selDays],from:g('mp-from').value,to:g('mp-to').value,note:g('mp-note').value,active:true,outlets:[...promoOutlets]};if(editPromoId){const i=promos.findIndex(x=>x.id===editPromoId);if(i>=0)promos[i]={...promos[i],...obj,id:editPromoId};}else promos.unshift(obj);cm('m-promo');renderPromo();toast(editPromoId?'\u2713 Promo diperbarui':'\u2713 Promo ditambahkan: '+name);}
+
+// ── Step modal ──
+function _mpSvgChk(){return `<i data-lucide="check" style="width:12px;height:12px;stroke-width:3;display:block"></i>`;}
+
+function _mpUpdateSidebar(){
+  for(let i=1;i<=4;i++){
+    const el=document.querySelector(`#mp-sidebar [data-step="${i}"]`);
+    if(!el)continue;
+    el.classList.toggle('act',i===_mpStep);
+    el.classList.toggle('done',i<_mpStep);
+    const num=el.querySelector('.mp-sn');
+    if(num){
+      if(i<_mpStep){num.innerHTML='<i data-lucide="check" style="width:11px;height:11px;stroke-width:3;display:block"></i>';}
+      else{num.textContent=i;}
+    }
+  }
+  const back=g('mp-btn-back');if(back)back.style.display=_mpStep>1?'':'none';
+  const next=g('mp-btn-next');if(next)next.textContent=_mpStep===4?'Simpan Promo':'Lanjutkan';
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
+function _mpRenderContent(){
+  const el=g('mp-content');if(!el)return;
+  if(_mpStep===1)el.innerHTML=_mpStep1Html();
+  else if(_mpStep===2)el.innerHTML=_mpStep2Html();
+  else if(_mpStep===3)el.innerHTML=_mpStep3Html();
+  else el.innerHTML=_mpStep4Html();
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+
+function _mpStep1Html(){
+  const s=_mpState;
+  const days=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+  const dayVals=['1','2','3','4','5','6','0'];
+  const daysHtml=days.map((d,i)=>`<button type="button" class="dpill${(s.days||[]).includes(dayVals[i])?' sel':''}" onclick="_mpToggleDay('${dayVals[i]}',this)">${d}</button>`).join('');
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">1. Informasi Promo</div>
+  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:16px">
+    <div class="fg" style="margin-bottom:0">
+      <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Nama Promo <span style="color:#e53935">*</span></label>
+      <input id="mp-n" placeholder="Contoh: Promo Selasa Hemat" value="${esc(s.name||'')}">
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-bottom:2px">
+      <label style="font-size:12px;font-weight:600;color:var(--t2)">Status</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button type="button" class="toggle ${s.active!==false?'on':'off'}" id="mp-active-btn" onclick="_mpToggleActive()"></button>
+        <span id="mp-active-lbl" style="font-size:12px;font-weight:500;color:${s.active!==false?'var(--p)':'var(--t2)'};">${s.active!==false?'Aktif':'Nonaktif'}</span>
+      </div>
+    </div>
+  </div>
+  <div class="fg" style="margin-bottom:16px">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Periode Promo</label>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+      <input type="date" id="mp-from" value="${esc(s.from||'')}" placeholder="Dari tanggal">
+      <div style="color:var(--t2);font-size:13px;text-align:center">—</div>
+      <input type="date" id="mp-to" value="${esc(s.to||'')}" placeholder="Sampai tanggal">
+    </div>
+    <div style="font-size:11px;color:var(--t2);margin-top:5px">Kosongkan jika tidak ada batas waktu.</div>
+  </div>
+  <div class="fg" style="margin-bottom:16px">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Hari Aktif</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${daysHtml}</div>
+    <div style="font-size:11px;color:var(--t2);margin-top:7px">Kosongkan untuk berlaku setiap hari.</div>
+  </div>
+  <div class="fg" style="margin-bottom:0">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Berlaku di Outlet</label>
+    <div style="display:flex;gap:10px">
+      <div class="outlet-opt${(s.outletMode||'all')==='all'?' sel':''}" onclick="_mpSetOutletMode('all')">
+        <div class="outlet-opt-icon"><i data-lucide="store" style="width:16px;height:16px;stroke-width:2;display:block"></i></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">Semua Outlet</div>
+          <div style="font-size:11px;color:var(--t2)">Berlaku untuk semua outlet</div>
+        </div>
+        ${(s.outletMode||'all')==='all'?`<i data-lucide="check" style="width:16px;height:16px;stroke-width:2.5;color:var(--p);margin-left:auto;flex-shrink:0;display:block"></i>`:''}
+      </div>
+      <div class="outlet-opt${(s.outletMode||'all')==='specific'?' sel':''}" onclick="_mpSetOutletMode('specific')">
+        <div class="outlet-opt-icon"><i data-lucide="map-pin" style="width:16px;height:16px;stroke-width:2;display:block"></i></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">Pilih Outlet Tertentu</div>
+          <div style="font-size:11px;color:var(--t2)">Pilih outlet yang ingin mendapatkan promo</div>
+        </div>
+        ${(s.outletMode||'all')==='specific'?`<i data-lucide="check" style="width:16px;height:16px;stroke-width:2.5;color:var(--p);margin-left:auto;flex-shrink:0;display:block"></i>`:''}
+      </div>
+    </div>
+    ${(s.outletMode)==='specific'?`<div id="mp-outlet-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${outlets.map(o=>{const sel=(s.outlets||[]).includes(o.id);return `<span class="chip${sel?' on':''}" onclick="_mpToggleOutlet('${o.id}')" style="${sel?`background:${o.color}18;border-color:${o.color};color:${o.color}`:''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${o.color};margin-right:5px;vertical-align:middle"></span>${esc(o.name)}</span>`;}).join('')}</div>`:''}
+  </div>`;
+}
+
+function _mpStep2Html(){
+  const s=_mpState;
+  const activePo=priceOptions.filter(po=>po.active!==false);
+  const activeSatuan=satuanItems.filter(x=>x.active!==false);
+  const kiloanAll=(s.kiloanTargets||[])[0]==='all';
+  const kiloanChecked=k=>kiloanAll||(s.kiloanTargets||[]).includes(k);
+  const satuanAll=(s.satuanTargets||[])[0]==='all';
+  const mChk=(itemId,tierKey)=>{
+    if(satuanAll)return true;
+    return (s.satuanTargets||[]).includes(itemId+'-'+tierKey);
+  };
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">2. Berlaku untuk Layanan</div>
+  <div class="mp-accord">
+    <div class="mp-accord-hd" onclick="_mpToggleAccord('kiloan')">
+      <i data-lucide="shirt" style="width:18px;height:18px;stroke-width:1.8;color:var(--p);flex-shrink:0;display:block"></i>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">Kiloan</div>
+        <div style="font-size:11px;color:var(--t2)">Atur layanan kiloan yang mendapatkan promo</div>
+      </div>
+      <i data-lucide="${s._kiloanOpen!==false?'chevron-up':'chevron-down'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
+    </div>
+    ${s._kiloanOpen!==false?`<div class="mp-accord-bd">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;font-size:13px;font-weight:600;color:var(--t1)">
+        <input type="checkbox" id="mp-kiloan-all" ${kiloanAll?'checked':''} onchange="_mpKiloanAllChg(this)"> Semua Kiloan
+      </label>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px;margin-left:26px">Aktifkan untuk semua layanan kiloan.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:26px">
+        ${activePo.map(po=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:6px 12px;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca)">
+          <input type="checkbox" id="mp-k-${po.key}" ${kiloanChecked(po.key)?'checked':''} onchange="_mpKiloanTierChg('${po.key}',this)"> Kiloan ${esc(po.label)}
+        </label>`).join('')}
+      </div>
+    </div>`:''}
+  </div>
+  <div class="mp-accord">
+    <div class="mp-accord-hd" onclick="_mpToggleAccord('satuan')">
+      <i data-lucide="package" style="width:18px;height:18px;stroke-width:1.8;color:var(--p);flex-shrink:0;display:block"></i>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">Satuan</div>
+        <div style="font-size:11px;color:var(--t2)">Atur layanan satuan yang mendapatkan promo</div>
+      </div>
+      <i data-lucide="${s._satuanOpen!==false?'chevron-up':'chevron-down'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
+    </div>
+    ${s._satuanOpen!==false?`<div class="mp-accord-bd">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--t1)">
+        <input type="checkbox" id="mp-satuan-all" ${satuanAll?'checked':''} onchange="_mpSatuanAllChg(this)"> Semua Satuan
+      </label>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:12px;margin-left:26px">Aktifkan untuk semua layanan satuan.</div>
+      ${activeSatuan.length&&activePo.length?`
+      <div style="overflow-x:auto">
+        <table class="mp-matrix">
+          <thead>
+            <tr>
+              <th style="min-width:120px">Layanan Satuan</th>
+              ${activePo.map(po=>`<th>${esc(po.label)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${activeSatuan.map(item=>`<tr>
+              <td>${esc(item.name)}</td>
+              ${activePo.map(po=>`<td><input type="checkbox" ${mChk(item.id,po.key)?'checked':''} onchange="_mpMatrixChg('${item.id}','${po.key}',this)" style="width:16px;height:16px;cursor:pointer"></td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`:'<div style="font-size:12px;color:var(--t2)">Belum ada item satuan atau tier aktif.</div>'}
+    </div>`:''}
+  </div>`;
+}
+
+function _mpStep3Html(){
+  const s=_mpState;
+  const dt=s.discType||'flat';
+  const types=[
+    {v:'flat',       l:'Rp Nominal',           desc:'Potongan tetap dalam Rupiah dari total harga.'},
+    {v:'persen',     l:'Persentase Total',      desc:'Potongan persen dari total harga pesanan.'},
+    {v:'persen_qty', l:'Persentase Satuan',     desc:'Potongan persen per kg atau per item.'},
+    {v:'per_qty',    l:'Rp per Kg / Unit',      desc:'Potongan nominal tetap per kg atau per item.'},
+  ];
+  const labels={flat:'Nominal (Rp)',persen:'Persentase (%)',persen_qty:'Persentase per Kg/Unit (%)',per_qty:'Nominal per Kg/Unit (Rp)'};
+  const helpers={flat:'Contoh: 5000 untuk potongan Rp 5.000 dari total.',persen:'Contoh: 10 untuk potongan 10% dari total pesanan.',persen_qty:'Contoh: 5 untuk potongan 5% per kg atau per item.',per_qty:'Contoh: 2000 untuk potongan Rp 2.000 per kg atau item.'};
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">3. Diskon</div>
+  <div class="fg" style="margin-bottom:16px">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Jenis Diskon <span style="color:#e53935">*</span></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${types.map(x=>`<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;padding:10px 12px;border:1.5px solid ${dt===x.v?'var(--p)':'var(--b1)'};border-radius:9px;background:${dt===x.v?'var(--pl)':'var(--ca)'}">
+        <input type="radio" name="mp-dt-r" value="${x.v}" ${dt===x.v?'checked':''} onchange="_mpDiscTypeChg('${x.v}')" style="margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-weight:600;color:${dt===x.v?'var(--p)':'var(--t1)'}">${x.l}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.4">${x.desc}</div>
+        </div>
+      </label>`).join('')}
+    </div>
+  </div>
+  <div class="fg" style="margin-bottom:0">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
+    <input type="number" id="mp-dv" placeholder="0" min="0" value="${s.discVal||''}" oninput="_mpState.discVal=parseFloat(this.value)||0">
+    <div style="font-size:11px;color:var(--t2);margin-top:5px">${helpers[dt]||''}</div>
+  </div>`;
+}
+
+function _mpStep4Html(){
+  const s=_mpState;
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">4. Catatan (Opsional)</div>
+  <div class="fg" style="margin-bottom:0">
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Catatan Internal</label>
+    <textarea id="mp-note" placeholder="Keterangan untuk kasir atau referensi internal..." rows="4" style="resize:none">${esc(s.note||'')}</textarea>
+    <div style="font-size:11px;color:var(--t2);margin-top:5px">Catatan ini tidak ditampilkan ke pelanggan.</div>
+  </div>`;
+}
+
+// Step navigation
+function _mpGo(step){
+  if(step>_mpMaxStep)return;
+  _mpSaveCurrentStepState();
+  _mpStep=step;
+  _mpUpdateSidebar();
+  _mpRenderContent();
+}
+
+function _mpNext(){
+  if(_mpStep===4){savePromo();return;}
+  if(!_mpValidate())return;
+  _mpSaveCurrentStepState();
+  _mpStep++;
+  if(_mpStep>_mpMaxStep)_mpMaxStep=_mpStep;
+  _mpUpdateSidebar();
+  _mpRenderContent();
+}
+
+function _mpPrev(){
+  if(_mpStep<=1)return;
+  _mpSaveCurrentStepState();
+  _mpStep--;
+  _mpUpdateSidebar();
+  _mpRenderContent();
+}
+
+function _mpSaveCurrentStepState(){
+  if(_mpStep===1){
+    _mpState.name=(g('mp-n')?.value||'').trim();
+    _mpState.from=g('mp-from')?.value||'';
+    _mpState.to=g('mp-to')?.value||'';
+  } else if(_mpStep===3){
+    _mpState.discVal=parseFloat(g('mp-dv')?.value)||0;
+  } else if(_mpStep===4){
+    _mpState.note=g('mp-note')?.value||'';
+  }
+}
+
+function _mpValidate(){
+  if(_mpStep===1){
+    const name=(g('mp-n')?.value||'').trim();
+    if(!name){toast('Nama promo wajib diisi');return false;}
+    _mpState.name=name;
+  }
+  if(_mpStep===3){
+    const val=parseFloat(g('mp-dv')?.value)||0;
+    if(!val){toast('Nilai diskon wajib diisi');return false;}
+    _mpState.discVal=val;
+  }
+  return true;
+}
+
+// Interactivity helpers
+function _mpToggleActive(){
+  _mpState.active=_mpState.active===false?true:false;
+  const btn=g('mp-active-btn');const lbl=g('mp-active-lbl');
+  if(btn){btn.classList.toggle('on',_mpState.active!==false);btn.classList.toggle('off',_mpState.active===false);}
+  if(lbl){lbl.textContent=_mpState.active!==false?'Aktif':'Nonaktif';lbl.style.color=_mpState.active!==false?'var(--p)':'var(--t2)';}
+}
+
+function _mpToggleDay(val,el){
+  const days=_mpState.days||[];
+  if(days.includes(val)){_mpState.days=days.filter(d=>d!==val);el.classList.remove('sel');}
+  else{_mpState.days=[...days,val];el.classList.add('sel');}
+}
+
+function _mpSetOutletMode(mode){
+  _mpState.outletMode=mode;
+  if(mode==='all')_mpState.outlets=[];
+  _mpRenderContent();
+}
+
+function _mpToggleOutlet(id){
+  const outlets_=_mpState.outlets||[];
+  if(outlets_.includes(id))_mpState.outlets=outlets_.filter(x=>x!==id);
+  else _mpState.outlets=[...outlets_,id];
+  const chips=g('mp-outlet-chips');
+  if(chips)chips.querySelectorAll('.chip').forEach(c=>{
+    const onclickAttr=c.getAttribute('onclick')||'';
+    const m=onclickAttr.match(/'([^']+)'/);
+    if(m)c.classList.toggle('on',(_mpState.outlets||[]).includes(m[1]));
+  });
+}
+
+function _mpToggleAccord(type){
+  if(type==='kiloan')_mpState._kiloanOpen=_mpState._kiloanOpen===false?true:false;
+  else _mpState._satuanOpen=_mpState._satuanOpen===false?true:false;
+  _mpRenderContent();
+}
+
+function _mpKiloanAllChg(cb){
+  _mpState.kiloanTargets=cb.checked?['all']:[];
+  const activePo=priceOptions.filter(po=>po.active!==false);
+  activePo.forEach(po=>{const el=g('mp-k-'+po.key);if(el)el.checked=cb.checked;});
+}
+
+function _mpKiloanTierChg(key,cb){
+  const t=_mpState.kiloanTargets||[];
+  if(t[0]==='all'){_mpState.kiloanTargets=priceOptions.filter(po=>po.active!==false).map(po=>po.key).filter(k=>k!==key);}
+  else if(cb.checked){if(!t.includes(key))_mpState.kiloanTargets=[...t,key];}
+  else{_mpState.kiloanTargets=t.filter(k=>k!==key);}
+  const allCb=g('mp-kiloan-all');
+  if(allCb){const activePo=priceOptions.filter(po=>po.active!==false);const allChk=activePo.every(po=>(_mpState.kiloanTargets||[]).includes(po.key));allCb.checked=allChk;allCb.indeterminate=!allChk&&(_mpState.kiloanTargets||[]).length>0;}
+}
+
+function _mpSatuanAllChg(cb){
+  _mpState.satuanTargets=cb.checked?['all']:[];
+  document.querySelectorAll('.mp-matrix input[type="checkbox"]').forEach(el=>{el.checked=cb.checked;});
+}
+
+function _mpMatrixChg(itemId,tierKey,cb){
+  const t=_mpState.satuanTargets||[];
+  const key=itemId+'-'+tierKey;
+  if(t[0]==='all'){
+    const activePo_=priceOptions.filter(po=>po.active!==false);
+    const activeSatuan_=satuanItems.filter(x=>x.active!==false);
+    _mpState.satuanTargets=[];
+    activeSatuan_.forEach(item=>activePo_.forEach(po=>{if(!(item.id===itemId&&po.key===tierKey))_mpState.satuanTargets.push(item.id+'-'+po.key);}));
+  } else if(cb.checked){
+    if(!t.includes(key))_mpState.satuanTargets=[...t,key];
+  } else {
+    _mpState.satuanTargets=t.filter(k=>k!==key);
+  }
+  const allCb=g('mp-satuan-all');
+  if(allCb){
+    const activePo_=priceOptions.filter(po=>po.active!==false);
+    const activeSatuan_=satuanItems.filter(x=>x.active!==false);
+    const total=activeSatuan_.length*activePo_.length;
+    const checked=(_mpState.satuanTargets||[]).length;
+    allCb.checked=checked===total;
+    allCb.indeterminate=checked>0&&checked<total;
+  }
+}
+
+function _mpDiscTypeChg(val){
+  _mpState.discType=val;
+  _mpRenderContent();
+}
+
+function promoDiscChange(){} // kept for backward compat
+
+// ── Open modal ──
+function openAddPromo(){
+  editPromoId=null;
+  _mpStep=1;_mpMaxStep=1;
+  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',_kiloanOpen:true,_satuanOpen:true};
+  g('m-promo-title').textContent='Tambah Promo';
+  _mpUpdateSidebar();
+  _mpRenderContent();
+  openModal('m-promo');
+}
+
+function openEditPromo(id){
+  editPromoId=id;
+  const p=promos.find(x=>x.id===id);if(!p)return;
+  _mpStep=1;_mpMaxStep=4;
+  let kiloanTargets=[];let satuanTargets=[];
+  if(p.targets){
+    kiloanTargets=p.targets.kiloan||[];
+    satuanTargets=p.targets.satuan||[];
+  } else if(p.svc){
+    if(p.svc==='all'){kiloanTargets=['all'];satuanTargets=['all'];}
+    else if(p.svc.startsWith('kiloan-')){kiloanTargets=[p.svc.replace('kiloan-','')];}
+    else if(p.svc.startsWith('satuan-')){satuanTargets=['all'];}
+  }
+  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',_kiloanOpen:true,_satuanOpen:true};
+  g('m-promo-title').textContent='Edit Promo';
+  _mpUpdateSidebar();
+  _mpRenderContent();
+  openModal('m-promo');
+}
+
+function savePromo(){
+  _mpSaveCurrentStepState();
+  const name=(_mpState.name||'').trim();
+  if(!name){toast('Nama promo wajib diisi');_mpGo(1);return;}
+  const val=_mpState.discVal||0;
+  if(!val){toast('Nilai diskon wajib diisi');_mpGo(3);return;}
+  const kt=_mpState.kiloanTargets||[];
+  const st=_mpState.satuanTargets||[];
+  let svc='all';
+  if(kt.length&&!st.length){svc=kt[0]==='all'?'kiloan-all':'kiloan-'+kt[0];}
+  else if(st.length&&!kt.length){svc=st[0]==='all'?'satuan-all':'satuan-'+((st[0]||'').split('-')[1]||'regular');}
+  const obj={
+    id:editPromoId||'pr'+promoCtr++,
+    name,svc,
+    targets:{kiloan:[...kt],satuan:[...st]},
+    discType:_mpState.discType||'persen',
+    discVal:val,
+    days:[...(_mpState.days||[])],
+    from:_mpState.from||'',
+    to:_mpState.to||'',
+    note:_mpState.note||'',
+    active:_mpState.active!==false,
+    outlets:[...(_mpState.outletMode==='all'?[]:(_mpState.outlets||[]))]
+  };
+  if(editPromoId){const i=promos.findIndex(x=>x.id===editPromoId);if(i>=0)promos[i]={...promos[i],...obj,id:editPromoId};}
+  else promos.unshift(obj);
+  cm('m-promo');
+  renderPromo();
+  toast(editPromoId?'Promo diperbarui':'Promo ditambahkan: '+name);
+}
+
+// tDay kept for any old references
+function tDay(el,day){el.classList.toggle('sel');const days=_mpState.days||[];if(el.classList.contains('sel')){if(!days.includes(day))_mpState.days=[...days,day];}else _mpState.days=days.filter(d=>d!==day);}
+function buildPromoOutletChips(sel){}
+function togglePromoOutlet(id){}
+function rebuildPromoSvcSelect(){}
 
 // ===== KAS KASIR =====
 function setKasOutlet(id){kasOutlet=id;renderKas();}
@@ -2937,11 +4574,7 @@ saveOutlet = function() { _origSaveOutlet(); outlets.forEach(o => syncOutlet(o))
 const _origDelOutlet = delOutlet;
 delOutlet = function(id) { deleteOutlet(id); _origDelOutlet(id); };
 
-// Employees
-const _origSaveEmp = saveEmp;
-saveEmp = function() { _origSaveEmp(); syncEmployee(employees[employees.length - 1]); };
-const _origEmpAct = empAct;
-empAct = function(id, act) { _origEmpAct(id, act); const e = employees.find(x => x.id === id); if (e) syncEmployee(e); };
+// Employees — sync is now handled inside saveEmp and empAct directly; no wrapper needed.
 
 // Kas
 const _origSubmitKas = submitKas;

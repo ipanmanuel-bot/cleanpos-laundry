@@ -87,7 +87,8 @@ function syncEmployee(e) {
     user_id: currentUserId,
     id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid,
     pin: e.pin, status: e.status, cuti_used: e.cutiUsed,
-    clock_in: e.clockIn, clock_out: e.clockOut
+    clock_in: e.clockIn, clock_out: e.clockOut,
+    phone: e.phone||'', last_login_date: e.lastLoginDate||null
   });
 }
 function deleteEmployee(id) { sbDelete('employees', String(id)); }
@@ -143,7 +144,8 @@ function syncSettings() {
     membership_min_deposit: membershipMinDeposit,
     membership_packages: JSON.stringify(membershipPackages),
     membership_expiry_enabled: membershipExpiryEnabled,
-    membership_expiry_days: membershipExpiryDays
+    membership_expiry_days: membershipExpiryDays,
+    price_options: JSON.stringify(priceOptions)
   });
 }
 
@@ -166,7 +168,7 @@ async function supaLoadAll() {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
     const _hadDupes = _oMap.size < outletsData.length;
-    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, color: r.color }));
+    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, hours: r.hours||'', color: r.color }));
     // Update outletCtr so new outlets never collide with existing numeric IDs
     const _oNums = outlets.map(o => parseInt((o.id||'').replace(/\D/g,''))).filter(n => !isNaN(n) && n > 0);
     if (_oNums.length) outletCtr = Math.max(..._oNums) + 1;
@@ -174,7 +176,7 @@ async function supaLoadAll() {
     if (_hadDupes) { console.warn('[supa] Ditemukan outlet dengan ID duplikat — data dibersihkan otomatis'); outlets.forEach(o => syncOutlet(o)); }
   }
   if (empsData)     {
-    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out }));
+    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null }));
     // Use max id to avoid collisions (length-based counter fails if ids aren't sequential)
     empCtr = employees.reduce((mx, e) => Math.max(mx, e.id || 0), 0) + 1;
   }
@@ -202,6 +204,7 @@ async function supaLoadAll() {
     if (membershipPackages.length) membershipPkgCtr = membershipPackages.reduce((mx,p)=>{ const n=parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n)?mx:Math.max(mx,n); },0)+1;
     if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
     if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
+    try { if (s.price_options) priceOptions = JSON.parse(s.price_options); } catch(e) { console.error('[parse] price_options:', e); }
   }
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
