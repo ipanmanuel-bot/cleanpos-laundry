@@ -194,6 +194,46 @@ tr:hover td{background:#F6F7F9}
 .wa-ref-tbl tr:last-child td{border-bottom:none}
 .wa-ref-tbl td:first-child{font-family:'Courier New',monospace;color:var(--p);font-weight:600;white-space:nowrap}
 @media(max-width:768px){.wa-split{grid-template-columns:1fr}}
+/* Settings redesign */
+.set-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:12px}
+.set-hdr-sub{font-size:13px;color:var(--t2);margin-top:3px;line-height:1.5}
+.set-plan-card{background:linear-gradient(135deg,#f9f4ff 0%,#ede5ff 100%);border:1.5px solid #d4beef;border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.set-plan-ic{width:40px;height:40px;border-radius:10px;background:#7B1FA2;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.set-plan-name{font-size:15px;font-weight:800;color:#5a1282;display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.set-plan-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.04em;background:#E8F5E9;color:#2E7D32}
+.set-plan-badge.warn{background:#FFF8E1;color:#F57C00}
+.set-plan-badge.err{background:var(--reb);color:var(--re)}
+.set-plan-meta{font-size:12px;color:#7c4d99;line-height:1.6}
+.set-plan-days{font-size:12px;font-weight:700;color:#5a1282}
+.set-tabs{display:flex;border-bottom:2px solid var(--b1);margin-bottom:20px;gap:0;overflow-x:auto;flex-shrink:0}
+.set-tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px;transition:.15s;user-select:none;white-space:nowrap;flex-shrink:0}
+.set-tab:hover{color:var(--t1)}
+.set-tab.on{color:var(--p);border-bottom-color:var(--p)}
+.set-tab i{width:15px;height:15px;stroke-width:2;display:block;flex-shrink:0}
+.set-tc{display:none}.set-tc.on{display:block}
+.set-g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.set-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.set-mbr-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;position:relative}
+.set-card-icon{width:32px;height:32px;border-radius:8px;background:var(--pl);display:flex;align-items:center;justify-content:center;color:var(--p);flex-shrink:0}
+.set-card-icon i{width:16px;height:16px;stroke-width:2;display:block}
+.set-card-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.set-pw-wrap{position:relative}
+.set-pw-wrap input{padding-right:36px}
+.set-pw-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--t2);padding:2px;display:flex;align-items:center;line-height:1}
+.set-kgchip-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.set-kgchip{display:flex;align-items:center;gap:5px;padding:6px 16px;border:1.5px solid var(--b1);border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;transition:all .12s;line-height:1}
+.set-kgchip input{display:none}
+.set-kgchip.on{border-color:var(--p);background:var(--p);color:#fff}
+.set-printer-empty{text-align:center;padding:24px 16px}
+.set-card-split{display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start}
+.set-color-sw{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:.12s;flex-shrink:0;outline:1px solid rgba(0,0,0,.1)}
+.set-color-sw.on{outline:2px solid var(--p);outline-offset:2px}
+.set-pos-grid{display:grid;grid-template-columns:repeat(3,32px);grid-template-rows:repeat(3,32px);gap:4px;margin-bottom:8px}
+.set-pos-btn{width:32px;height:32px;border:1.5px solid var(--b1);border-radius:6px;display:flex;align-items:center;justify-content:center;background:#fff;cursor:pointer;color:var(--t1);transition:.12s}
+.set-pos-btn:hover{background:var(--pl);border-color:var(--p);color:var(--p)}
+.set-pos-btn i{width:13px;height:13px;stroke-width:2.5;display:block}
+@media(max-width:960px){.set-g3{grid-template-columns:1fr 1fr}.set-mbr-g3{grid-template-columns:1fr 1fr}.set-card-split{grid-template-columns:1fr}}
+@media(max-width:600px){.set-g2{grid-template-columns:1fr}.set-g3{grid-template-columns:1fr}.set-mbr-g3{grid-template-columns:1fr}}
 .kanban{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .kcol{background:var(--bg);border-radius:var(--r);padding:10px;min-height:60px;border:2px solid var(--b1)}
 .khd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -635,8 +675,9 @@ tr:hover td{background:#F6F7F9}
 .emp-sec-name{font-size:14px;font-weight:700;color:var(--t1)}
 .emp-sec-cnt{font-size:11px;font-weight:600;color:var(--t2);background:var(--bg);border:1px solid var(--b1);border-radius:20px;padding:2px 8px}
 .emp-table-wrap{overflow-x:auto}
-.emp-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.emp-tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .emp-tbl th{padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);border-bottom:1.5px solid var(--b1);background:var(--bg);text-align:left;white-space:nowrap}
+.emp-tbl th:nth-child(1){width:24%}.emp-tbl th:nth-child(2){width:10%}.emp-tbl th:nth-child(3){width:8%}.emp-tbl th:nth-child(4){width:16%}.emp-tbl th:nth-child(5){width:10%}.emp-tbl th:nth-child(6){width:14%}.emp-tbl th:nth-child(7){width:18%}
 .emp-tbl td{padding:12px 14px;border-bottom:1px solid var(--b1);vertical-align:middle}
 .emp-tbl tr:last-child td{border-bottom:none}
 .emp-tbl tr:hover td{background:#fafafa}
@@ -1680,178 +1721,277 @@ tr:hover td{background:#F6F7F9}
 
 <!-- SETTINGS -->
 <div class="page" id="o-p-settings">
-  <div class="pt">Pengaturan</div>
-  <div id="settings-sub-card" style="margin-bottom:14px"></div>
-  <div class="g2 og">
-    <div class="card"><div class="ct"><i data-lucide="key-round" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Ubah Password Owner</div>
-      <div class="fg"><label>Password Saat Ini</label><input type="password" id="s-cur" placeholder="••••••••"></div>
-      <div class="fg"><label>Password Baru</label><input type="password" id="s-new" placeholder="••••••••"></div>
-      <div class="fg" style="margin-bottom:0"><label>Konfirmasi Baru</label><input type="password" id="s-cfm" placeholder="••••••••"></div>
-      <div id="s-pwd-msg" style="font-size:12px;min-height:16px;margin-top:8px"></div>
-      <div class="div_"></div>
-      <button class="btn bp bfull bpill" onclick="changePwd()">Simpan Password</button>
+  <!-- Header -->
+  <div class="set-hdr">
+    <div>
+      <div class="pt" style="margin-bottom:3px">Pengaturan</div>
+      <div class="set-hdr-sub">Kelola konfigurasi sistem dan preferensi bisnis Anda.</div>
     </div>
-    <div class="card"><div class="ct"><i data-lucide="store" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Info Toko</div>
-      <div class="fg"><label>Nama Toko</label><input id="s-store" value="CleanPOS Laundry"></div>
-      <div class="fg"><label>Alamat</label><input id="s-addr" placeholder="Alamat lengkap..."></div>
-      <div class="fg"><label>WA Toko</label><input id="s-wa" placeholder="08xx-xxxx-xxxx"></div>
-      <div class="fg" style="margin-bottom:0"><label>Footer Struk</label><textarea id="s-footer" rows="3" placeholder="Contoh: Terima kasih atas kepercayaan Anda!&#10;Promo bulan ini: diskon 10% untuk member."></textarea></div>
-      <div style="font-size:11px;color:var(--t2);margin-top:4px;margin-bottom:10px">Teks ini dicetak di bagian bawah setiap struk.</div>
-      <div class="div_"></div>
-      <button class="btn bp bfull bpill" onclick="saveStoreInfo()">Simpan Info</button>
+    <button class="btn bg bsm bpill" style="white-space:nowrap;flex-shrink:0"><i data-lucide="book-open" style="width:13px;height:13px;stroke-width:2;display:inline;vertical-align:-1px;margin-right:4px"></i>Panduan Penggunaan</button>
+  </div>
+
+  <!-- Plan card -->
+  <div id="settings-sub-card" style="margin-bottom:16px"></div>
+
+  <!-- Tabs -->
+  <div class="set-tabs">
+    <div class="set-tab on" id="set-tab-umum" onclick="switchSettingsTab('umum',this)">
+      <i data-lucide="home"></i>Umum
+    </div>
+    <div class="set-tab" id="set-tab-ops" onclick="switchSettingsTab('ops',this)">
+      <i data-lucide="settings-2"></i>Operasional
+    </div>
+    <div class="set-tab" id="set-tab-mbr" onclick="switchSettingsTab('mbr',this)">
+      <i data-lucide="credit-card"></i>Membership
     </div>
   </div>
-  <div class="card">
-    <div class="ct"><i data-lucide="users" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Karyawan</div>
-    <div class="fg" style="margin-bottom:0"><label>Jatah Cuti per Bulan</label><input type="number" id="s-cuti" min="1" max="31" value="2" placeholder="Contoh: 2" style="width:100px"></div>
-    <div style="font-size:11px;color:var(--t2);margin-top:4px;margin-bottom:10px">Jumlah hari cuti yang diizinkan setiap karyawan per bulan.</div>
-    <div class="div_"></div>
-    <button class="btn bp bfull bpill" onclick="saveEmpSettings()">Simpan Pengaturan Karyawan</button>
-  </div>
-  <div class="card">
-    <div class="ct"><i data-lucide="package" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Pesanan</div>
-    <label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px">Kenaikan Berat Kiloan</label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap" id="s-kgstep-opts">
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .12s" id="s-kgstep-lbl-0.1">
-        <input type="radio" name="s-kgstep" value="0.1" style="accent-color:var(--p)" onchange="_syncKgStepLabels()"> 0,1 kg
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .12s" id="s-kgstep-lbl-0.5">
-        <input type="radio" name="s-kgstep" value="0.5" style="accent-color:var(--p)" onchange="_syncKgStepLabels()"> 0,5 kg
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .12s" id="s-kgstep-lbl-1">
-        <input type="radio" name="s-kgstep" value="1" style="accent-color:var(--p)" onchange="_syncKgStepLabels()"> 1 kg
-      </label>
+
+  <!-- TAB: UMUM -->
+  <div class="set-tc on" id="set-tc-umum">
+    <div style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:2px">Informasi Dasar</div>
+      <div style="font-size:12px;color:var(--t2)">Informasi toko dan akun owner.</div>
     </div>
-    <div style="font-size:11px;color:var(--t2);margin-top:6px;margin-bottom:10px">Mengatur nilai kenaikan saat menekan tombol +/- pada input berat kiloan di form pesanan.</div>
-    <div class="div_"></div>
-    <button class="btn bp bfull bpill" onclick="saveOrderSettings()">Simpan Pengaturan Pesanan</button>
-  </div>
-  <div class="card" id="membership-settings-card">
-    <div class="ct"><i data-lucide="credit-card" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Membership &amp; Saldo Pelanggan</div>
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
-      <div>
-        <div style="font-size:14px;font-weight:600">Aktifkan Membership</div>
-        <div style="font-size:12px;color:var(--t2);margin-top:3px;line-height:1.5">Pelanggan dapat menyimpan saldo dan menggunakannya saat membayar pesanan</div>
-      </div>
-      <button class="toggle off" id="membership-toggle" onclick="toggleMembership()" style="flex-shrink:0;margin-top:2px"></button>
-    </div>
-    <div id="membership-bonus-section" style="display:none">
-      <div class="div_"></div>
-      <!-- Style selector -->
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <button id="mbr-style-btn-deposit" class="btn bp bpill" onclick="switchMembershipStyle('deposit')" style="flex:1;font-size:13px">Free Deposit</button>
-        <button id="mbr-style-btn-package" class="btn bpill" onclick="switchMembershipStyle('package')" style="flex:1;font-size:13px">Paket</button>
-      </div>
-      <!-- Deposit settings -->
-      <div id="mbr-deposit-settings">
-        <div class="fg"><label>Bonus Deposit (%)</label>
-          <input type="number" id="s-mbr-bonus" min="0" max="100" value="10" placeholder="0" style="width:100px">
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus. Contoh: isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
+    <div class="set-g2">
+      <!-- Informasi Toko -->
+      <div class="card">
+        <div class="set-card-hd">
+          <div class="set-card-icon"><i data-lucide="store"></i></div>
+          <div class="ct" style="margin-bottom:0">Informasi Toko</div>
         </div>
-        <div class="fg"><label>Minimum Deposit (Rp)</label>
-          <input type="number" id="s-mbr-min-deposit" min="0" value="0" placeholder="0" style="width:140px">
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa minimum. Kasir tidak dapat menyimpan deposit di bawah jumlah ini.</div>
+        <div class="fg"><label>Nama Toko</label><input id="s-store" placeholder="Nama toko Anda"></div>
+        <div class="fg"><label>No. WhatsApp Toko</label><input id="s-wa" placeholder="0813-xxxx-xxxx"></div>
+        <div class="fg" style="margin-bottom:4px"><label>Footer Struk</label><textarea id="s-footer" rows="3" placeholder="Terima kasih atas kepercayaan Anda!"></textarea></div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:16px">Teks ini dicetak di bagian bawah setiap struk.</div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp bsm bpill" onclick="saveStoreInfo()">Simpan Info</button></div>
+      </div>
+      <!-- Akun Owner -->
+      <div class="card">
+        <div class="set-card-hd">
+          <div class="set-card-icon"><i data-lucide="user"></i></div>
+          <div class="ct" style="margin-bottom:0">Akun Owner</div>
         </div>
-        <div class="div_"></div>
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
+        <div class="fg"><label>Password Saat Ini</label>
+          <div class="set-pw-wrap"><input type="password" id="s-cur" placeholder="••••••••"><button class="set-pw-eye" type="button" onclick="_togglePwVis('s-cur',this)"><i data-lucide="eye" style="width:15px;height:15px;stroke-width:2;display:block"></i></button></div>
+        </div>
+        <div class="fg"><label>Password Baru</label>
+          <div class="set-pw-wrap"><input type="password" id="s-new" placeholder="••••••••"><button class="set-pw-eye" type="button" onclick="_togglePwVis('s-new',this)"><i data-lucide="eye" style="width:15px;height:15px;stroke-width:2;display:block"></i></button></div>
+        </div>
+        <div class="fg" style="margin-bottom:6px"><label>Konfirmasi Password Baru</label>
+          <div class="set-pw-wrap"><input type="password" id="s-cfm" placeholder="••••••••"><button class="set-pw-eye" type="button" onclick="_togglePwVis('s-cfm',this)"><i data-lucide="eye" style="width:15px;height:15px;stroke-width:2;display:block"></i></button></div>
+        </div>
+        <div id="s-pwd-msg" style="font-size:12px;min-height:16px;margin-bottom:12px"></div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp bsm bpill" onclick="changePwd()">Simpan Password</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: OPERASIONAL -->
+  <div class="set-tc" id="set-tc-ops">
+    <div style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:2px">Pengaturan Operasional</div>
+      <div style="font-size:12px;color:var(--t2)">Atur preferensi operasional harian toko Anda.</div>
+    </div>
+    <div class="set-g3">
+      <!-- Karyawan -->
+      <div class="card">
+        <div class="set-card-hd">
+          <div class="set-card-icon"><i data-lucide="users"></i></div>
+          <div><div class="ct" style="margin-bottom:1px">Pengaturan Karyawan</div><div style="font-size:11px;color:var(--t2)">Atur jumlah maksimum cuti yang diizinkan.</div></div>
+        </div>
+        <div class="fg" style="margin-bottom:4px"><label>Jatah Cuti per Bulan</label>
+          <div style="display:flex;align-items:center;gap:8px"><input type="number" id="s-cuti" min="1" max="31" value="2" style="width:90px"><span style="font-size:13px;color:var(--t2)">hari</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.5">Jumlah hari cuti yang diizinkan setiap karyawan per bulan.</div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp bsm bpill" onclick="saveEmpSettings()">Simpan</button></div>
+      </div>
+      <!-- Pesanan -->
+      <div class="card">
+        <div class="set-card-hd">
+          <div class="set-card-icon"><i data-lucide="package"></i></div>
+          <div><div class="ct" style="margin-bottom:1px">Pengaturan Pesanan</div><div style="font-size:11px;color:var(--t2)">Atur kenaikan berat minimal yang digunakan.</div></div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:8px">Kenaikan Berat Kiloan</div>
+        <div class="set-kgchip-wrap" id="s-kgstep-opts">
+          <label class="set-kgchip" id="s-kgstep-lbl-0.1"><input type="radio" name="s-kgstep" value="0.1" onchange="_syncKgStepLabels()"> 0.1 kg</label>
+          <label class="set-kgchip" id="s-kgstep-lbl-0.5"><input type="radio" name="s-kgstep" value="0.5" onchange="_syncKgStepLabels()"> 0.5 kg</label>
+          <label class="set-kgchip" id="s-kgstep-lbl-1"><input type="radio" name="s-kgstep" value="1" onchange="_syncKgStepLabels()"> 1 kg</label>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.5">Mengatur nilai kenaikan saat menekan tombol +/- pada input berat kiloan di form pesanan.</div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp bsm bpill" onclick="saveOrderSettings()">Simpan</button></div>
+      </div>
+      <!-- Printer -->
+      <div class="card" id="printer-card">
+        <div class="set-card-hd" style="margin-bottom:8px">
+          <div class="set-card-icon"><i data-lucide="printer"></i></div>
+          <div><div class="ct" style="margin-bottom:1px">Pengaturan Printer</div><div style="font-size:11px;color:var(--t2)">Kelola printer yang terhubung dengan sistem.</div></div>
+        </div>
+        <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
+        <div id="printer-list"></div>
+        <div id="printer-empty" class="set-printer-empty">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--bg);border:1.5px solid var(--b1);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:var(--t2)"><i data-lucide="printer" style="width:22px;height:22px;stroke-width:1.5;display:block"></i></div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">Belum ada printer terhubung</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:14px;line-height:1.5">Hubungkan printer thermal via Bluetooth, USB, atau LAN.</div>
+          <button class="btn bp bsm bpill" style="width:100%" onclick="openAddPrinter()"><i data-lucide="plus" style="width:13px;height:13px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Tambah Printer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: MEMBERSHIP -->
+  <div class="set-tc" id="set-tc-mbr">
+    <div style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:2px">Membership</div>
+      <div style="font-size:12px;color:var(--t2)">Konfigurasi program membership dan kartu digital pelanggan.</div>
+    </div>
+
+    <!-- 3-card membership settings grid with lock overlay -->
+    <div class="set-mbr-g3" id="membership-settings-card">
+      <!-- Card 1: Membership & Saldo -->
+      <div class="card">
+        <div class="ct" style="margin-bottom:12px">Membership &amp; Saldo</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px">
           <div>
-            <div style="font-size:14px;font-weight:600">Masa Berlaku Saldo</div>
-            <div style="font-size:12px;color:var(--t2);margin-top:3px;line-height:1.5">Saldo otomatis kadaluarsa jika tidak ada deposit dalam jangka waktu tertentu</div>
+            <div style="font-size:13px;font-weight:600">Aktifkan Membership</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.5">Pelanggan dapat menyimpan dan menggunakan saldo.</div>
           </div>
-          <button class="toggle off" id="membership-expiry-toggle" onclick="toggleMembershipExpiry()" style="flex-shrink:0;margin-top:2px"></button>
+          <button class="toggle off" id="membership-toggle" onclick="toggleMembership()" style="flex-shrink:0"></button>
+        </div>
+        <div id="membership-bonus-section" style="display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Mode</div>
+          <div style="display:flex;gap:6px">
+            <button id="mbr-style-btn-deposit" class="btn bp bpill bsm" onclick="switchMembershipStyle('deposit')" style="flex:1;font-size:12px">Free Deposit</button>
+            <button id="mbr-style-btn-package" class="btn bpill bsm" onclick="switchMembershipStyle('package')" style="flex:1;font-size:12px">Paket</button>
+          </div>
+        </div>
+      </div>
+      <!-- Card 2: Bonus & Deposit -->
+      <div class="card">
+        <div class="ct" style="margin-bottom:12px">Bonus &amp; Deposit</div>
+        <div id="mbr-deposit-settings">
+          <div class="fg" style="margin-bottom:10px">
+            <label>Bonus Deposit (%)</label>
+            <input type="number" id="s-mbr-bonus" min="0" max="100" value="10" placeholder="0" style="width:90px">
+            <div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4">Isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <label>Minimum Deposit (Rp)</label>
+            <input type="number" id="s-mbr-min-deposit" min="0" value="0" placeholder="0" style="width:120px">
+            <div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4">Isi 0 untuk tanpa minimum.</div>
+          </div>
+        </div>
+        <div id="mbr-package-settings" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:.06em;text-transform:uppercase">Pilihan Paket</div>
+            <button class="btn bp bsm bpill" onclick="openAddMbrPackage()">+ Tambah</button>
+          </div>
+          <div id="mbr-pkg-list"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn bp bsm bpill" onclick="saveMembershipSettings()">Simpan</button></div>
+      </div>
+      <!-- Card 3: Masa Berlaku -->
+      <div class="card">
+        <div class="ct" style="margin-bottom:12px">Masa Berlaku Saldo</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px">
+          <div>
+            <div style="font-size:13px;font-weight:600">Aktifkan Kadaluarsa</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.5">Saldo otomatis kadaluarsa jika tidak ada deposit.</div>
+          </div>
+          <button class="toggle off" id="membership-expiry-toggle" onclick="toggleMembershipExpiry()" style="flex-shrink:0"></button>
         </div>
         <div id="membership-expiry-section" style="display:none">
-          <div class="fg" style="margin-bottom:0"><label>Masa berlaku sejak deposit terakhir (hari)</label>
-            <input type="number" id="s-mbr-expiry-days" min="1" max="365" value="30" placeholder="30" style="width:100px">
-            <div style="font-size:11px;color:var(--t2);margin-top:4px">Contoh: isi 30 → saldo kadaluarsa 30 hari setelah deposit terakhir</div>
+          <div class="fg" style="margin-bottom:0">
+            <label>Masa Berlaku Sejak Deposit Terakhir (Hari)</label>
+            <input type="number" id="s-mbr-expiry-days" min="1" max="365" value="30" placeholder="30" style="width:90px">
+            <div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4">Contoh: isi 30 → saldo kadaluarsa 30 hari setelah deposit terakhir.</div>
           </div>
         </div>
       </div>
-      <!-- Package settings -->
-      <div id="mbr-package-settings" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:12px;font-weight:700;color:var(--t2);letter-spacing:.06em">PILIHAN PAKET</div>
-          <button class="btn bp bsm" onclick="openAddMbrPackage()">+ Tambah Paket</button>
-        </div>
-        <div id="mbr-pkg-list"></div>
+    </div>
+
+    <!-- Kartu Member Digital designer -->
+    <div class="card" id="member-card-designer-card">
+      <div style="margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:2px">Desain Kartu Member Digital</div>
+        <div style="font-size:12px;color:var(--t2)">Atur tampilan kartu dan posisi informasi yang ditampilkan.</div>
       </div>
-      <div class="div_"></div>
-      <button class="btn bp bfull bpill" onclick="saveMembershipSettings()">Simpan Pengaturan Membership</button>
-    </div>
-  </div>
-  <!-- KARTU MEMBER DIGITAL -->
-  <div class="card" id="member-card-designer-card">
-    <div class="ct"><i data-lucide="image" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Kartu Member Digital</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.55">Desain kartu member <strong>1350 × 1080 px</strong> untuk dikirim ke pelanggan via WhatsApp. Upload background image lalu klik preview untuk mengatur posisi teks Nama, No. WA, dan Saldo.</div>
-
-    <!-- Upload & guide buttons -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-      <label class="btn bp bsm" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px">
-        <i data-lucide="upload" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Upload Background
-        <input type="file" accept="image/*" id="card-bg-upload" style="display:none" onchange="loadMemberCardBg(this)">
-      </label>
-      <button class="btn bsm" onclick="downloadCardGuide()" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="download" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Panduan Template</button>
-      <button class="btn bsm" id="card-clear-btn" onclick="clearMemberCardBg()" style="display:none">Hapus BG</button>
-    </div>
-
-    <!-- Field selector -->
-    <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PILIH TEKS UNTUK DIPOSISIKAN</div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn bsm bp" id="card-field-btn-name" onclick="selectCardField('name')">Nama</button>
-      <button class="btn bsm" id="card-field-btn-phone" onclick="selectCardField('phone')">No. WA</button>
-      <button class="btn bsm" id="card-field-btn-balance" onclick="selectCardField('balance')">Saldo</button>
-    </div>
-
-    <!-- Canvas preview -->
-    <div id="card-canvas-wrap" style="position:relative;background:var(--bg);border:2px dashed var(--b1);border-radius:10px;overflow:hidden;margin-bottom:12px;cursor:crosshair;user-select:none;min-height:120px">
-      <canvas id="card-preview-canvas" style="display:block;touch-action:none;cursor:crosshair"></canvas>
-      <div id="card-canvas-hint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);pointer-events:none;white-space:nowrap">
-        <div style="font-size:28px;margin-bottom:6px">🖼️</div>
-        <div style="font-weight:700;font-size:13px">Upload background image</div>
-        <div style="font-size:11px;margin-top:3px">lalu klik untuk mengatur posisi teks</div>
+      <div class="set-card-split">
+        <!-- LEFT: editor -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Pilih Teks untuk Diposisikan</div>
+          <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+            <button class="btn bsm bp" id="card-field-btn-name" onclick="selectCardField('name')">Nama</button>
+            <button class="btn bsm" id="card-field-btn-phone" onclick="selectCardField('phone')">No. WA</button>
+            <button class="btn bsm" id="card-field-btn-balance" onclick="selectCardField('balance')">Saldo</button>
+          </div>
+          <div class="fg" style="margin-bottom:10px">
+            <label>Jenis Font</label>
+            <select id="card-font" onchange="updateCardFieldStyle()" style="font-size:13px;border-radius:6px;padding:6px 8px;border:1px solid var(--b1);background:#fff;color:var(--t1);width:100%">
+              <option value="Poppins">Poppins</option><option value="Montserrat">Montserrat</option><option value="Raleway">Raleway</option><option value="Nunito">Nunito</option><option value="Lato">Lato</option><option value="Open Sans">Open Sans</option><option value="Roboto">Roboto</option><option value="Playfair Display">Playfair Display</option><option value="Dancing Script">Dancing Script</option><option value="Pacifico">Pacifico</option>
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:10px"><label>Ukuran Font</label>
+            <div style="display:flex;align-items:center;gap:8px"><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"><span style="font-size:13px;color:var(--t2)">px</span></div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:6px">Warna Teks</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <div class="set-color-sw on" style="background:#ffffff" onclick="_setCardColor('#ffffff',this)"></div>
+              <div class="set-color-sw" style="background:#111111" onclick="_setCardColor('#111111',this)"></div>
+              <div class="set-color-sw" style="background:#ffd700" onclick="_setCardColor('#ffd700',this)"></div>
+              <div class="set-color-sw" style="background:#4CAF50" onclick="_setCardColor('#4CAF50',this)"></div>
+              <div class="set-color-sw" style="background:#7B1FA2" onclick="_setCardColor('#7B1FA2',this)"></div>
+              <input type="color" id="card-color" value="#ffffff" oninput="updateCardFieldStyle()" style="width:26px;height:26px;padding:1px;border-radius:6px;cursor:pointer;border:1px solid var(--b1)">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <label style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-bold" onchange="updateCardFieldStyle()" style="accent-color:var(--p)"> Bold</label>
+            <label style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-shadow" checked onchange="updateCardFieldStyle()" style="accent-color:var(--p)"> Bayangan</label>
+          </div>
+          <label class="btn bg bsm bpill" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px">
+            <i data-lucide="upload" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Upload Background
+            <input type="file" accept="image/*" id="card-bg-upload" style="display:none" onchange="loadMemberCardBg(this)">
+          </label>
+          <button class="btn bg bsm bpill" id="card-clear-btn" onclick="clearMemberCardBg()" style="display:none;width:100%">Hapus Background</button>
+        </div>
+        <!-- RIGHT: preview + position -->
+        <div>
+          <div id="card-canvas-wrap" style="position:relative;background:var(--bg);border:2px dashed var(--b1);border-radius:10px;overflow:hidden;margin-bottom:12px;cursor:crosshair;user-select:none;min-height:160px">
+            <canvas id="card-preview-canvas" style="display:block;touch-action:none;cursor:crosshair"></canvas>
+            <div id="card-canvas-hint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);pointer-events:none;white-space:nowrap">
+              <i data-lucide="image" style="width:32px;height:32px;stroke-width:1.5;display:block;margin:0 auto 8px;opacity:.4"></i>
+              <div style="font-weight:700;font-size:13px">Upload background image</div>
+              <div style="font-size:11px;margin-top:3px">lalu klik untuk mengatur posisi teks</div>
+            </div>
+          </div>
+          <!-- Position controls -->
+          <div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:10px">POSISI: <span id="card-field-label">NAMA</span></div>
+            <div class="set-pos-grid">
+              <div></div>
+              <button class="set-pos-btn" onclick="_moveCardField(0,-2)"><i data-lucide="arrow-up"></i></button>
+              <div></div>
+              <button class="set-pos-btn" onclick="_moveCardField(-2,0)"><i data-lucide="arrow-left"></i></button>
+              <div></div>
+              <button class="set-pos-btn" onclick="_moveCardField(2,0)"><i data-lucide="arrow-right"></i></button>
+              <div></div>
+              <button class="set-pos-btn" onclick="_moveCardField(0,2)"><i data-lucide="arrow-down"></i></button>
+              <div></div>
+            </div>
+            <button class="btn bg bsm bpill" style="width:100%;margin-bottom:10px" onclick="_resetCardFieldPos()">Reset Posisi</button>
+            <div style="display:flex;gap:4px;margin-bottom:6px">
+              <button class="btn bsm" id="card-align-left" onclick="setCardAlign('left')" style="flex:1">Kiri</button>
+              <button class="btn bsm bp" id="card-align-center" onclick="setCardAlign('center')" style="flex:1">Tengah</button>
+              <button class="btn bsm" id="card-align-right" onclick="setCardAlign('right')" style="flex:1">Kanan</button>
+            </div>
+            <div style="font-size:10px;color:var(--t2);line-height:1.5">Geser elemen pada preview atau gunakan tombol posisi di atas.</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:12px">
+            <button class="btn bp bsm bpill" onclick="saveMemberCardTemplate()">Simpan Desain</button>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- Field style controls -->
-    <div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:12px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:10px">STYLE TEKS: <span id="card-field-label">NAMA</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Font</label>
-          <select id="card-font" onchange="updateCardFieldStyle()" style="font-size:13px;border-radius:6px;padding:6px 8px;border:1px solid var(--b1);background:var(--bg);color:var(--t1);min-width:140px">
-            <option value="Poppins">Poppins</option>
-            <option value="Montserrat">Montserrat</option>
-            <option value="Raleway">Raleway</option>
-            <option value="Nunito">Nunito</option>
-            <option value="Lato">Lato</option>
-            <option value="Open Sans">Open Sans</option>
-            <option value="Roboto">Roboto</option>
-            <option value="Playfair Display">Playfair Display</option>
-            <option value="Dancing Script">Dancing Script</option>
-            <option value="Pacifico">Pacifico</option>
-          </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Ukuran</label><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"></div>
-        <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--t2)">Warna</label><input type="color" id="card-color" value="#ffffff" oninput="updateCardFieldStyle()" style="width:50px;height:36px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--b1)"></div>
-        <div style="display:flex;gap:10px;align-items:center;padding-bottom:4px">
-          <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-bold" onchange="updateCardFieldStyle()"> Bold</label>
-          <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-shadow" checked onchange="updateCardFieldStyle()"> Bayangan</label>
-        </div>
-        <div style="display:flex;gap:4px;padding-bottom:4px">
-          <button class="btn bsm" id="card-align-left" onclick="setCardAlign('left')">⬛ Kiri</button>
-          <button class="btn bsm bp" id="card-align-center" onclick="setCardAlign('center')">⬛ Tengah</button>
-          <button class="btn bsm" id="card-align-right" onclick="setCardAlign('right')">⬛ Kanan</button>
-        </div>
-      </div>
-      <div style="font-size:10px;color:var(--t2);margin-top:8px;line-height:1.5">💡 Klik pada preview di atas untuk memindahkan posisi teks yang dipilih (hijau = aktif)</div>
-    </div>
-
-    <button class="btn bp bfull bpill" onclick="saveMemberCardTemplate()">Simpan Template Kartu</button>
-  </div>
-
-  <div class="card" id="printer-card">
-    <div class="sh"><div><div class="ct" style="margin-bottom:0"><i data-lucide="printer" style="width:15px;height:15px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:5px"></i>Pengaturan Printer</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Struk (80mm) · Label (58mm) · Bluetooth / USB / LAN</div></div><button class="btn bp bsm" onclick="openAddPrinter()">+ Tambah</button></div>
-    <div id="bt-support-warn" style="display:none;background:var(--amb);border-radius:8px;padding:8px 11px;font-size:12px;color:#5d2f00;margin-bottom:10px"></div>
-    <div id="printer-list"></div>
   </div>
 </div>
 

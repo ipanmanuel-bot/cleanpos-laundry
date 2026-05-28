@@ -523,7 +523,6 @@ function renderSettings(){
   renderSubCard();
   renderPrinters();
   if(g('s-store'))g('s-store').value=storeName;
-  if(g('s-addr'))g('s-addr').value=storeAddr;
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
   if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
@@ -538,10 +537,11 @@ function renderSettings(){
     if(!isElite){
       if(!lockEl){
         lockEl=document.createElement('div');lockEl.className='mbr-lock';
-        lockEl.style.cssText='position:absolute;inset:0;background:rgba(var(--ca-rgb,255,255,255),.82);backdrop-filter:blur(2px);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:2;cursor:pointer;';
-        lockEl.innerHTML='<div style="font-size:28px">🔒</div><div style="font-size:13px;font-weight:700;color:var(--t1)">Fitur Elite</div><div style="font-size:12px;color:var(--t2);text-align:center;padding:0 20px">Upgrade ke paket <strong>Elite</strong> untuk mengaktifkan Membership & Saldo Pelanggan</div><button class="btn bp bsm bpill" style="margin-top:4px" onclick="showUpgradeModal()">Upgrade Sekarang</button>';
+        lockEl.style.cssText='position:absolute;inset:0;background:rgba(255,255,255,.88);backdrop-filter:blur(3px);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:2;';
+        lockEl.innerHTML='<i data-lucide="lock" style="width:28px;height:28px;stroke-width:1.75;color:var(--t2)"></i><div style="font-size:13px;font-weight:700;color:var(--t1)">Fitur Elite</div><div style="font-size:12px;color:var(--t2);text-align:center;padding:0 24px;max-width:260px">Upgrade ke paket <strong>Elite</strong> untuk mengaktifkan Membership & Saldo Pelanggan</div><button class="btn bp bsm bpill" style="margin-top:4px" onclick="showUpgradeModal()">Upgrade Sekarang</button>';
         mCard.style.position='relative';
         mCard.appendChild(lockEl);
+        lucide.createIcons({nodes:[lockEl]});
       }
     } else {
       if(lockEl)lockEl.remove();
@@ -555,8 +555,8 @@ function renderSettings(){
   // Style tabs
   const isPkg=membershipStyle==='package';
   const sbd=g('mbr-style-btn-deposit'),sbp=g('mbr-style-btn-package');
-  if(sbd)sbd.className='btn bpill'+(isPkg?'':' bp');
-  if(sbp)sbp.className='btn bpill'+(isPkg?' bp':'');
+  if(sbd)sbd.className='btn bpill bsm'+(isPkg?'':' bp');
+  if(sbp)sbp.className='btn bpill bsm'+(isPkg?' bp':'');
   // Deposit settings vs package settings
   const mds=g('mbr-deposit-settings'),mps=g('mbr-package-settings');
   if(mds)mds.style.display=isPkg?'none':'';
@@ -573,6 +573,37 @@ function renderSettings(){
   if(isPkg)renderMbrPackages();
   // Card designer preview
   setTimeout(()=>{ drawMemberCardPreview(); selectCardField(_cardActiveField); },50);
+}
+function switchSettingsTab(tab,el){
+  document.querySelectorAll('.set-tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.set-tc').forEach(c=>c.classList.remove('on'));
+  if(el)el.classList.add('on');
+  const tc=g('set-tc-'+tab);if(tc)tc.classList.add('on');
+  if(tab==='mbr')setTimeout(()=>{drawMemberCardPreview();selectCardField(_cardActiveField);},60);
+}
+function _togglePwVis(id,btn){
+  const inp=g(id);if(!inp)return;
+  inp.type=inp.type==='text'?'password':'text';
+  const ic=btn.querySelector('i');
+  if(ic){ic.setAttribute('data-lucide',inp.type==='text'?'eye-off':'eye');lucide.createIcons({nodes:[btn]});}
+}
+function _setCardColor(hex,el){
+  const f=memberCardFields.find(x=>x.id===_cardActiveField);if(!f)return;
+  f.color=hex;if(g('card-color'))g('card-color').value=hex;
+  document.querySelectorAll('.set-color-sw').forEach(s=>s.classList.remove('on'));
+  if(el)el.classList.add('on');
+  updateCardFieldStyle();
+}
+function _moveCardField(dx,dy){
+  const f=memberCardFields.find(x=>x.id===_cardActiveField);if(!f)return;
+  f.x=Math.max(0,Math.min(100,f.x+dx));f.y=Math.max(0,Math.min(100,f.y+dy));
+  drawMemberCardPreview();
+}
+function _resetCardFieldPos(){
+  const DEFS={name:{x:50,y:70},phone:{x:50,y:81},balance:{x:50,y:91}};
+  const f=memberCardFields.find(x=>x.id===_cardActiveField);
+  if(!f||!DEFS[f.id])return;
+  f.x=DEFS[f.id].x;f.y=DEFS[f.id].y;drawMemberCardPreview();
 }
 function initMemberCard() {
   try { const b=localStorage.getItem(_CARD_BG_KEY); if(b){memberCardBg=b;_cardBgImg=new Image();_cardBgImg.onload=()=>drawMemberCardPreview();_cardBgImg.src=b;} } catch(e){}
@@ -919,9 +950,10 @@ async function sendCardViaWA() {
 
 function saveStoreInfo(){
   storeName=(g('s-store')?.value||'').trim()||'CleanPOS Laundry';
-  storeAddr=(g('s-addr')?.value||'').trim();
+  // storeAddr intentionally not updated here (managed via Outlet settings)
   storeWa=(g('s-wa')?.value||'').trim();
   storeFooter=(g('s-footer')?.value||'').trim();
+  syncSettings();
   toast('\u2713 Info toko tersimpan!');
 }
 function saveEmpSettings(){
@@ -938,9 +970,12 @@ function saveEmpSettings(){
 function _syncKgStepLabels(){
   document.querySelectorAll('input[name="s-kgstep"]').forEach(r=>{
     const lbl=r.closest('label');if(!lbl)return;
+    // chip style (new UI)
+    lbl.classList.toggle('on',!!r.checked);
+    // fallback inline style for any legacy usage
     lbl.style.borderColor=r.checked?'var(--p)':'var(--b1)';
-    lbl.style.background=r.checked?'var(--pl)':'';
-    lbl.style.color=r.checked?'var(--p)':'';
+    lbl.style.background=r.checked?'var(--p)':'';
+    lbl.style.color=r.checked?'#fff':'';
   });
 }
 
@@ -1777,60 +1812,28 @@ function renderSubCard(){
 
   const isTrial = currentPlanStatus === 'trial';
 
-  // Status pill
+  // Status badge (uses .set-plan-badge class)
   let statusHtml;
   if(isTrial && isExpired){
-    statusHtml = `<span style="background:var(--reb);color:var(--re);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Trial Berakhir</span>`;
+    statusHtml = `<span class="set-plan-badge err">Trial Berakhir</span>`;
   } else if(isTrial){
-    statusHtml = `<span style="background:#FFF8E1;color:#F57C00;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Trial Gratis</span>`;
+    statusHtml = `<span class="set-plan-badge warn">Trial Gratis</span>`;
   } else if(isExpired){
-    statusHtml = `<span style="background:var(--reb);color:var(--re);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Expired</span>`;
+    statusHtml = `<span class="set-plan-badge err">Expired</span>`;
   } else if(currentPlanStatus === 'active'){
-    statusHtml = `<span style="background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Aktif</span>`;
+    statusHtml = `<span class="set-plan-badge">Aktif</span>`;
   } else {
-    statusHtml = `<span style="background:var(--amb);color:var(--am);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">${currentPlanStatus}</span>`;
+    statusHtml = `<span class="set-plan-badge warn">${currentPlanStatus}</span>`;
   }
 
-  // Expiry line
-  let expiryHtml = '';
-  if(currentPlanExpiry){
-    const expiryDate = new Date(currentPlanExpiry).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
-    if(isExpired){
-      expiryHtml = `<div style="font-size:12px;color:var(--re);margin-top:4px">${isTrial?'Trial berakhir':'Berakhir'}: ${expiryDate}</div>`;
-    } else if(isWarn){
-      expiryHtml = `<div style="font-size:12px;color:#F57C00;margin-top:4px">${isTrial?'Trial berakhir':'Berakhir'}: ${expiryDate} (${d} hari lagi)</div>`;
-    } else {
-      expiryHtml = `<div style="font-size:12px;color:var(--t2);margin-top:4px">${isTrial?'Trial berakhir':'Berakhir'}: ${expiryDate} · <strong style="color:var(--t1)">${d} hari lagi</strong></div>`;
-    }
-  }
-
-  // Features for current plan
-  const FEATS = ['Pesanan tak terbatas','Laporan keuangan','Multi-karyawan','Sync cloud real-time'];
-
-  el.innerHTML = `<div class="card" style="border-left:4px solid ${p.color}">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:${p.color}18;color:${p.color};flex-shrink:0"><i data-lucide="${p.icon}" style="width:18px;height:18px;stroke-width:1.75"></i></span>
-          <div>
-            <div style="font-weight:800;font-size:15px;color:${p.color}">${p.name}</div>
-            <div style="font-size:12px;color:var(--t2)">${p.blurb} · ${p.outlets} outlet</div>
-          </div>
-          <div style="margin-left:4px">${statusHtml}</div>
-        </div>
-        ${expiryHtml}
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
-          ${FEATS.map(f=>`<span style="font-size:11px;background:var(--ca);border:1px solid var(--b1);border-radius:6px;padding:2px 8px;color:var(--t2)">✓ ${f}</span>`).join('')}
-          <span style="font-size:11px;background:${p.color}18;border:1px solid ${p.color}44;border-radius:6px;padding:2px 8px;color:${p.color};font-weight:700">✓ ${p.outlets} Outlet</span>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;min-width:120px">
-        ${isTrial || isExpired
-          ? `<button class="btn bpill bsm" style="background:${p.color};border-color:${p.color};color:#fff;font-size:12px" onclick="showUpgradeModal()">Berlangganan</button>`
-          : `<button class="btn bpill bsm" style="background:${p.color};border-color:${p.color};color:#fff;font-size:12px" onclick="showRenewModal('${currentPlan}')">Perpanjang</button>`}
-        <button class="btn bpill bsm" style="font-size:12px" onclick="showUpgradeModal()">Lihat Semua Plan</button>
-      </div>
+  el.innerHTML = `<div class="set-plan-card">
+    <div class="set-plan-ic"><i data-lucide="${p.icon}" style="width:20px;height:20px;stroke-width:1.75;display:block"></i></div>
+    <div style="flex:1;min-width:0">
+      <div class="set-plan-name">${p.name} Plan ${statusHtml}</div>
+      <div class="set-plan-meta">${p.outlets} Outlet${currentPlanExpiry?' \u2022 Berakhir '+new Date(currentPlanExpiry).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):''}</div>
+      ${d!==null&&d>0?`<div class="set-plan-days">${d} hari lagi</div>`:''}
     </div>
+    <button class="btn bsm bpill" style="border-color:${p.color};color:${p.color};white-space:nowrap;flex-shrink:0" onclick="${isTrial||isExpired?'showUpgradeModal()':'showUpgradeModal()'}">${isTrial||isExpired?'Berlangganan':'Kelola Plan'}</button>
   </div>`;
   lucide.createIcons({nodes:[el]});
 }
@@ -4546,11 +4549,11 @@ function renderReports(){
 function savePrintersToStorage(){try{localStorage.setItem(_PRINTERS_KEY,JSON.stringify(printers));}catch(e){console.error('[storage] printers:',e);}}
 function loadPrintersFromStorage(){try{const raw=localStorage.getItem(_PRINTERS_KEY);if(raw){const d=JSON.parse(raw);if(Array.isArray(d)){printers=d;printerCtr=printers.reduce((mx,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?mx:Math.max(mx,n);},0)+1;}}}catch(e){console.error('[storage] load printers:',e);}}
 function renderPrinters(){
-  const html=printers.length
-    ?printers.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:10px;margin-bottom:8px"><div style="width:40px;height:40px;border-radius:10px;background:var(--pl);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">\uD83D\uDDA8\uFE0F</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.name)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${{usb:'\uD83D\uDD0C USB',bluetooth:'\uD83D\uDCF6 Bluetooth',network:'\uD83C\uDF10 LAN/WiFi'}[p.conn]} \u00B7 ${esc(p.width)}mm \u00B7 ${p.role==='receipt'?'\uD83E\uDDFE Struk':p.role==='label'?'\uD83C\uDFF7\uFE0F Label':'\u2014'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${p.status==='online'?'var(--p)':'var(--re)'};display:inline-block"></span><span style="font-size:11px;color:var(--t2)">${p.status==='online'?'Online':'Offline'}</span></div><div style="display:flex;gap:5px">${p.conn==='bluetooth'?`<button class="btn bsm" onclick="testBtPrinter('${p.id}')">Test</button>`:''}<button class="btn bsm" onclick="editPrinter('${p.id}')">Edit</button><button class="btn bre bsm" onclick="delPrinter('${p.id}')">Hapus</button></div></div></div>`).join('')
-    :'<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Belum ada printer. Klik + Tambah.</div>';
-  const el=g('printer-list');if(el)el.innerHTML=html;
-  const sel=g('s-printer-list');if(sel)sel.innerHTML=html;
+  const items=printers.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:10px;margin-bottom:8px"><div style="width:40px;height:40px;border-radius:10px;background:var(--pl);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--p)"><i data-lucide="printer" style="width:20px;height:20px;stroke-width:1.75;display:block"></i></div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.name)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${{usb:'USB',bluetooth:'Bluetooth',network:'LAN/WiFi'}[p.conn]||p.conn} \u00B7 ${esc(p.width)}mm \u00B7 ${p.role==='receipt'?'Struk':p.role==='label'?'Label':'\u2014'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${p.status==='online'?'var(--p)':'var(--re)'};display:inline-block"></span><span style="font-size:11px;color:var(--t2)">${p.status==='online'?'Online':'Offline'}</span></div><div style="display:flex;gap:5px">${p.conn==='bluetooth'?`<button class="btn bsm" onclick="testBtPrinter('${p.id}')">Test</button>`:''}<button class="btn bsm" onclick="editPrinter('${p.id}')">Edit</button><button class="btn bre bsm" onclick="delPrinter('${p.id}')">Hapus</button></div></div></div>`).join('');
+  const el=g('printer-list');if(el)el.innerHTML=items;
+  const sel=g('s-printer-list');if(sel)sel.innerHTML=items||(printers.length?'':'<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Belum ada printer.</div>');
+  const empty=g('printer-empty');if(empty)empty.style.display=printers.length?'none':'';
+  if(printers.length&&el)lucide.createIcons({nodes:[el]});
 }
 function openAddPrinter(){_editPrinterId=null;btDevice=null;['mpr-n'].forEach(id=>{const el=g(id);if(el)el.value='';});if(g('mpr-c'))g('mpr-c').value='usb';if(g('mpr-w'))g('mpr-w').value='58';if(g('mpr-ip'))g('mpr-ip').value='';if(g('mpr-ip-w'))g('mpr-ip-w').style.display='none';if(g('mpr-r'))g('mpr-r').value='none';if(g('mpr-bt-section'))g('mpr-bt-section').style.display='none';if(g('mpr-manual-section'))g('mpr-manual-section').style.display='block';if(g('bt-found-wrap'))g('bt-found-wrap').style.display='none';if(g('bt-scan-status'))g('bt-scan-status').textContent='';const warn=g('bt-support-warn');if(warn)warn.style.display='none';const t=g('m-printer-title');if(t)t.textContent='Tambah Printer';openModal('m-printer');}
 function editPrinter(id){const p=printers.find(x=>x.id===id);if(!p)return;_editPrinterId=id;btDevice=null;if(g('mpr-n'))g('mpr-n').value=p.name;if(g('mpr-c')){g('mpr-c').value=p.conn;prConnChg();}if(g('mpr-w'))g('mpr-w').value=p.width;if(g('mpr-ip'))g('mpr-ip').value=p.ip||'';if(g('mpr-r'))g('mpr-r').value=p.role;if(g('bt-found-wrap'))g('bt-found-wrap').style.display='none';if(g('bt-scan-status'))g('bt-scan-status').textContent='';const t=g('m-printer-title');if(t)t.textContent='Edit Printer';openModal('m-printer');}
