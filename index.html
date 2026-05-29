@@ -239,6 +239,53 @@ tr:hover td{background:#F6F7F9}
 .khd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
 .kcard{background:var(--ca);border-radius:10px;padding:10px;margin-bottom:7px;box-shadow:var(--sh);font-size:12px}
 .kcard.kdone{border-left:3px solid var(--p)}
+/* ===== TRACKING KANBAN ===== */
+.trk-fbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.trk-search-wrap{position:relative;flex:1;min-width:160px}
+.trk-search-wrap input{width:100%;padding:7px 10px 7px 32px;border:1.5px solid var(--b1);border-radius:20px;font-size:13px;background:var(--ca);outline:none;box-sizing:border-box;font-family:inherit;color:var(--t1)}
+.trk-search-wrap input:focus{border-color:var(--p)}
+.trk-search-ic{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--t2);pointer-events:none;display:block;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.trk-kb{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.trk-col{background:var(--bg);border-radius:var(--r);border:1.5px solid var(--b1);display:flex;flex-direction:column;overflow:hidden}
+.trk-col-hd{display:flex;align-items:center;gap:7px;padding:10px 12px 8px;border-bottom:1px solid var(--b1)}
+.trk-col-ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.trk-col-ic i{width:15px;height:15px;stroke-width:2;display:block}
+.trk-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;flex:1}
+.trk-col-cnt{padding:1px 7px;border-radius:12px;font-size:10px;font-weight:700;background:var(--b1);color:var(--t2)}
+.trk-col-body{padding:8px;display:flex;flex-direction:column;gap:6px;flex:1}
+.trk-card{background:var(--ca);border-radius:10px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);border:1px solid transparent}
+.trk-card:hover{border-color:var(--b1)}
+.trk-card-id{font-size:10px;font-family:monospace;color:var(--t2);margin-bottom:2px}
+.trk-card-name{font-weight:700;font-size:13px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trk-card-svc{font-size:11px;color:var(--t2);margin-bottom:5px}
+.trk-card-time{display:flex;align-items:center;gap:5px;margin-bottom:7px;flex-wrap:wrap;min-height:16px}
+.trk-card-time-txt{font-size:10px;color:var(--t2)}
+.trk-badge-express{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
+.trk-badge-sameday{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.trk-card-btn{width:100%;padding:7px;font-size:11px;font-weight:700;border-radius:8px;border:1.5px solid var(--p);background:var(--p);color:#fff;cursor:pointer;font-family:inherit;text-align:center;display:block;box-sizing:border-box}
+.trk-card-btn:hover{opacity:.88}
+.trk-card-btn-wa{background:var(--ca);color:#25d366;border-color:#25d366}
+.trk-card-btn-wa:hover{background:#f0fff4}
+.trk-card-btn-sec{background:transparent;color:var(--p);border-color:var(--b1)}
+.trk-card-btn-sec:hover{border-color:var(--p);background:var(--pl)}
+.trk-col-more{font-size:11px;color:var(--p);text-align:center;padding:4px 8px;cursor:pointer;border-radius:6px;font-weight:600;background:none;border:none;font-family:inherit;width:100%}
+.trk-col-more:hover{background:var(--pl)}
+.trk-col-empty{font-size:11px;color:var(--t2);text-align:center;padding:16px 8px}
+.trk-bottom-bar{margin-top:12px;background:var(--ca);border:1px solid var(--b1);border-radius:var(--r);padding:10px 16px;display:flex;align-items:center;gap:16px;font-size:12px;flex-wrap:wrap}
+.trk-bottom-stat{display:flex;align-items:center;gap:4px;color:var(--t2)}
+.trk-bottom-stat b{color:var(--t1)}
+.trk-acc{display:none}
+.trk-acc-hd{display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--ca);border:1px solid var(--b1);border-radius:var(--r);cursor:pointer;margin-bottom:4px;user-select:none}
+.trk-acc-hd.on{border-color:var(--p);background:var(--pl)}
+.trk-acc-ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.trk-acc-ic i{width:14px;height:14px;stroke-width:2;display:block}
+.trk-acc-title{font-weight:700;font-size:13px;flex:1}
+.trk-acc-cnt{padding:1px 8px;border-radius:12px;font-size:11px;font-weight:700;background:var(--p);color:#fff}
+.trk-acc-chev{width:16px;height:16px;stroke:var(--t2);transition:transform .2s;display:block;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.trk-acc-hd.on .trk-acc-chev{transform:rotate(180deg)}
+.trk-acc-body{display:flex;flex-direction:column;gap:6px;padding:0 0 8px}
+@media(max-width:768px){.trk-kb{display:none}.trk-acc{display:block}.trk-fbar{flex-wrap:nowrap}.trk-fbar .chips{max-width:50%}}
+/* ========================== */
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--pl);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#3d6b10;flex-shrink:0}
 .day-pill{padding:7px 12px;border-radius:20px;border:2px solid var(--b1);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2);background:var(--ca);user-select:none;display:inline-block;margin:3px;font-family:inherit}
 .day-pill.sel{background:var(--pl);border-color:var(--p);color:#3d6b10}
@@ -1292,10 +1339,20 @@ tr:hover td{background:#F6F7F9}
 
 <!-- TRACKING -->
 <div class="page" id="o-p-tracking">
-  <div class="pt">Tracking Pesanan</div>
-  <div class="chips" id="trk-outlet-chips"></div>
-  <div id="o-trk-alert" style="margin-bottom:10px"></div>
-  <div class="kanban" id="o-kanban"></div>
+  <div class="sh" style="margin-bottom:12px">
+    <div class="pt" style="margin-bottom:0">Tracking Pesanan</div>
+  </div>
+  <div class="trk-fbar">
+    <div class="chips" id="trk-outlet-chips" style="margin-bottom:0;flex-shrink:0"></div>
+    <div class="trk-search-wrap">
+      <svg class="trk-search-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="trk-search" placeholder="Cari nama / ID..." oninput="renderKanban('o')">
+    </div>
+  </div>
+  <div id="o-trk-alert"></div>
+  <div class="trk-kb" id="o-kanban"></div>
+  <div class="trk-acc" id="o-trk-acc"></div>
+  <div class="trk-bottom-bar" id="o-trk-bbar"></div>
 </div>
 
 <!-- WA -->
@@ -2128,9 +2185,19 @@ tr:hover td{background:#F6F7F9}
     </div>
   </div>
   <div class="page" id="s-p-tracking">
-    <div class="pt">Tracking</div>
-    <div id="s-trk-alert" style="margin-bottom:10px"></div>
-    <div class="kanban" id="s-kanban"></div>
+    <div class="sh" style="margin-bottom:12px">
+      <div class="pt" style="margin-bottom:0">Tracking</div>
+    </div>
+    <div class="trk-fbar">
+      <div class="trk-search-wrap">
+        <svg class="trk-search-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="s-trk-search" placeholder="Cari nama / ID..." oninput="renderKanban('s')">
+      </div>
+    </div>
+    <div id="s-trk-alert"></div>
+    <div class="trk-kb" id="s-kanban"></div>
+    <div class="trk-acc" id="s-trk-acc"></div>
+    <div class="trk-bottom-bar" id="s-trk-bbar"></div>
   </div>
   <div class="page" id="s-p-wa">
     <div class="pt">WA Notifikasi</div>

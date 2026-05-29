@@ -1146,6 +1146,11 @@ function _renderDashStats(s, range){
 
 function _renderDashChart(curOrders, prevOrders, range){
   const canvas=g('dash-chart'); if(!canvas)return;
+  // If canvas has no layout yet (called synchronously right after showApp), defer one frame
+  if(!canvas.offsetWidth){
+    requestAnimationFrame(()=>_renderDashChart(curOrders,prevOrders,range));
+    return;
+  }
   // Destroy previous chart instance
   if(_dashChart){_dashChart.destroy();_dashChart=null;}
 

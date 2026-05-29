@@ -920,33 +920,145 @@ function toggleOrdCard(id) {
 }
 
 // ===== KANBAN / TRACKING =====
+var _trkAccOpen = null;
+
 function setTrkOutlet(id) { trkOutlet = id; renderKanban('o'); }
+
+function _trkTime(o) {
+  if (!o.isoDate) return '';
+  try { const d = new Date(o.isoDate); return d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}); } catch(e) { return ''; }
+}
+
+function _trkBadge(o) {
+  const c = (o.svcCat || '').toLowerCase();
+  if (c.includes('express')) return '<span class="trk-badge-express">Express</span>';
+  if (c.includes('sameday') || c.includes('same day')) return '<span class="trk-badge-sameday">Sameday</span>';
+  return '';
+}
+
+function _trkCardHtml(o, st, role) {
+  const t = _trkTime(o);
+  const badge = _trkBadge(o);
+  const nextMap = {Diterima:'Mencuci', Mencuci:'Mengeringkan', Mengeringkan:'Menyetrika', Menyetrika:'Selesai'};
+  const ctaLbl = {Diterima:'Mulai Mencuci', Mencuci:'Lanjut Mengeringkan', Mengeringkan:'Lanjut Menyetrika', Menyetrika:'Selesaikan'};
+  const next = nextMap[st];
+  let ctaHtml = '';
+  if (next) {
+    ctaHtml = `<button class="trk-card-btn" onclick="updSt('${o.id}','${next}','${role}')">${ctaLbl[st]}</button>`;
+  } else if (st === 'Selesai') {
+    if (!o.waSent) {
+      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">
+        <button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>
+        <button class="trk-card-btn trk-card-btn-sec" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>
+      </div>`;
+    } else {
+      ctaHtml = `<button class="trk-card-btn" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>`;
+    }
+  }
+  return `<div class="trk-card">
+    <div class="trk-card-id">${esc(o.id)}</div>
+    <div class="trk-card-name">${esc(o.name)}</div>
+    <div class="trk-card-svc">${esc(o.svcType)} · ${o.qty}${getSvcUnit(o.svcType)}</div>
+    <div class="trk-card-time">${t ? `<span class="trk-card-time-txt">${t}</span>` : ''}${badge}</div>
+    ${ctaHtml}
+  </div>`;
+}
+
+var _TRK_COL_IC   = {Diterima:'inbox', Mencuci:'droplets', Mengeringkan:'wind', Menyetrika:'thermometer', Selesai:'check-circle'};
+var _TRK_COL_BG   = {Diterima:'#e3f2fd', Mencuci:'#e8f5e9', Mengeringkan:'#f3e5f5', Menyetrika:'#fff3e0', Selesai:'#e8f5e9'};
+var _TRK_COL_CLR  = {Diterima:'#1565c0', Mencuci:'#2e7d32', Mengeringkan:'#7b1fa2', Menyetrika:'#e65100', Selesai:'#2e7d32'};
+
+function _trkColHtml(st, items, role) {
+  const ic = _TRK_COL_IC[st] || 'circle';
+  const bg = _TRK_COL_BG[st] || 'var(--pl)';
+  const clr = _TRK_COL_CLR[st] || 'var(--p)';
+  const MAX = 3;
+  const shown = items.slice(0, MAX);
+  const extra = items.length - MAX;
+  const cards = shown.map(o => _trkCardHtml(o, st, role)).join('');
+  const moreTxt = extra > 0 ? `<button class="trk-col-more">+${extra} pesanan lainnya</button>` : '';
+  const emptyTxt = items.length === 0 ? '<div class="trk-col-empty">Kosong</div>' : '';
+  return `<div class="trk-col">
+    <div class="trk-col-hd">
+      <div class="trk-col-ic" style="background:${bg}"><i data-lucide="${ic}" style="color:${clr}"></i></div>
+      <span class="trk-col-title" style="color:${clr}">${st}</span>
+      <span class="trk-col-cnt">${items.length}</span>
+    </div>
+    <div class="trk-col-body">${cards}${moreTxt}${emptyTxt}</div>
+  </div>`;
+}
+
+function _trkAccordionHtml(groups, role) {
+  return Object.entries(groups).map(([st, items]) => {
+    const ic = _TRK_COL_IC[st] || 'circle';
+    const bg = _TRK_COL_BG[st] || 'var(--pl)';
+    const clr = _TRK_COL_CLR[st] || 'var(--p)';
+    const isOpen = _trkAccOpen === st;
+    const safeId = st.replace(/\s/g, '');
+    const cards = items.map(o => _trkCardHtml(o, st, role)).join('');
+    return `<div>
+      <div class="trk-acc-hd${isOpen ? ' on' : ''}" onclick="_trkAccToggle('${st}','${role}')">
+        <div class="trk-acc-ic" style="background:${bg}"><i data-lucide="${ic}" style="color:${clr}"></i></div>
+        <span class="trk-acc-title">${st}</span>
+        ${items.length ? `<span class="trk-acc-cnt">${items.length}</span>` : ''}
+        <svg class="trk-acc-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div id="trk-acc-body-${safeId}" style="display:${isOpen ? 'flex' : 'none'};flex-direction:column;gap:6px;padding:0 0 6px">${cards || '<div class="trk-col-empty">Kosong</div>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function _trkAccToggle(st, role) {
+  _trkAccOpen = (_trkAccOpen === st) ? null : st;
+  renderKanban(role);
+}
 
 function renderKanban(role) {
   const cols = ['Diterima', 'Mencuci', 'Mengeringkan', 'Menyetrika', 'Selesai'];
-  const aId = role === 'o' ? 'o-trk-alert' : 's-trk-alert';
-  const kId = role === 'o' ? 'o-kanban' : 's-kanban';
-  if (role === 'o') { const tc = g('trk-outlet-chips'); if (tc) tc.innerHTML = buildOutletFilterChips(trkOutlet, 'setTrkOutlet'); }
-  const filtOrders = role === 'o'
+  if (role === 'o') {
+    const tc = g('trk-outlet-chips');
+    if (tc) tc.innerHTML = buildOutletFilterChips(trkOutlet, 'setTrkOutlet');
+  }
+  const src = role === 'o'
     ? (trkOutlet !== 'all' ? orders.filter(o => o.outletId === trkOutlet) : orders)
     : (curStaff ? orders.filter(o => o.outletId === curStaff.oid) : orders);
+
+  const searchId = role === 'o' ? 'trk-search' : 's-trk-search';
+  const q = (g(searchId) ? g(searchId).value.trim().toLowerCase() : '');
+  const filtOrders = q
+    ? src.filter(o => o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q))
+    : src;
+
+  const aId = role === 'o' ? 'o-trk-alert' : 's-trk-alert';
   const wp = filtOrders.filter(o => o.status === 'Selesai' && !o.waSent);
-  const al = g(aId); if (al) al.innerHTML = wp.length ? `<div style="background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:11px 14px;font-size:13px;color:#3d6b10;margin-bottom:10px">💬 ${wp.length} cucian selesai belum dinotif WA</div>` : '';
-  const kb = g(kId); if (!kb) return;
-  kb.innerHTML = cols.map(st => {
-    const items = filtOrders.filter(o => o.status === st);
-    return `<div class="kcol"><div class="khd"><span>${st}</span><span style="background:var(--ca);padding:1px 7px;border-radius:12px;font-size:10px">${items.length}</span></div>${items.length
-      ? items.map(o => { const _oc=go(o.outletId);const _ocColor=_oc?.color?safeColor(_oc.color):'var(--t2)'; return `<div class="kcard${st === 'Selesai' ? ' kdone' : ''}">
-          <div style="font-size:10px;font-family:monospace;color:var(--t2)">${esc(o.id)}</div>
-          <div style="font-weight:700;font-size:12px;margin:3px 0">${esc(o.name)}</div>
-          <div style="font-size:10px;font-weight:600;color:${_ocColor};">${esc(_oc?.name || '')}</div>
-          <div style="font-size:11px;color:var(--t2)">${esc(o.svcType)}·${o.qty}${getSvcUnit(o.svcType)}</div>
-          ${st === 'Selesai' ? `<div style="margin-top:8px">${o.waSent ? '<span class="badge gg" style="font-size:10px">✓ WA Terkirim</span>' : `<button class="btn bp bpill" style="width:100%;padding:6px;font-size:11px" onclick="openWaMod('${o.id}')">💬 Kirim WA</button>`}</div>` : ''}
-          ${st === 'Selesai' ? `<div style="margin-top:6px"><button class="btn bpill" style="width:100%;padding:7px;font-size:11px;font-weight:700;background:var(--p);color:#fff;border-color:var(--p)" onclick="updSt('${o.id}','Diambil','${role}')">✓ Sudah Diambil</button></div>` : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:8px">${STATUS_LIST.filter(s => s !== 'Diambil').map(s => `<button class="btn bsm${s === st ? ' bp' : ''}" style="font-size:10px;padding:3px 6px" onclick="updSt('${o.id}','${s}','${role}')">${s}</button>`).join('')}</div>
-        </div>`; }).join('')
-      : '<div style="font-size:11px;color:var(--t2);text-align:center;padding:14px">Kosong</div>'}</div>`;
-  }).join('');
+  const al = g(aId);
+  if (al) al.innerHTML = wp.length
+    ? `<div style="background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:10px 14px;font-size:13px;color:#3d6b10;margin-bottom:10px;display:flex;align-items:center;gap:7px"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;flex-shrink:0;display:block"></i>${wp.length} cucian selesai belum dinotif WA</div>`
+    : '';
+
+  const groups = {};
+  cols.forEach(st => { groups[st] = filtOrders.filter(o => o.status === st); });
+
+  const kb = g(role === 'o' ? 'o-kanban' : 's-kanban');
+  if (kb) kb.innerHTML = cols.map(st => _trkColHtml(st, groups[st], role)).join('');
+
+  const acc = g(role === 'o' ? 'o-trk-acc' : 's-trk-acc');
+  if (acc) acc.innerHTML = _trkAccordionHtml(groups, role);
+
+  const bbar = g(role === 'o' ? 'o-trk-bbar' : 's-trk-bbar');
+  if (bbar) {
+    const active = filtOrders.filter(o => o.status !== 'Diambil').length;
+    const inProg = filtOrders.filter(o => !['Selesai', 'Diambil'].includes(o.status)).length;
+    const selesai = groups['Selesai'].length;
+    bbar.innerHTML = `
+      <span class="trk-bottom-stat">Aktif: <b>${active}</b></span>
+      <span class="trk-bottom-stat">Diproses: <b>${inProg}</b></span>
+      <span class="trk-bottom-stat">Selesai: <b>${selesai}</b></span>
+      ${wp.length ? `<span style="color:var(--am);font-weight:600;margin-left:auto">${wp.length} belum dinotif WA</span>` : ''}
+    `;
+  }
+
+  lucide.createIcons();
 }
 
 function updSt(id, st, role) {
