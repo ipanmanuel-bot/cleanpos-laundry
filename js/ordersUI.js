@@ -680,9 +680,9 @@ function setOrdFpy(v) { ordFpy = v; _ordPage = 1; _renderOrdFilterChips(); rende
 
 function setOrdDateFilter(f) {
   ordDateFilter = f; _ordPage = 1;
-  // Keep staff date buttons working
+  // Keep staff date chips working
   ['all','today','week','month','custom'].forEach(k => {
-    const sb = g('sodf-'+k); if (sb) sb.className = 'btn bsm bpill' + (f===k?' bp':'');
+    const sb = g('sodf-'+k); if (sb) sb.className = 'chip' + (f===k?' on':'');
   });
   const scr = g('sodf-custom-range'); if (scr) scr.style.display = f==='custom'?'flex':'none';
   // Update owner filter panel
@@ -767,8 +767,8 @@ function renderOrders() {
     dateFrom = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-01`;
     dateTo = TODAY_ISO;
   } else if (ordDateFilter === 'custom') {
-    dateFrom = g('o-date-from')?.value || '';
-    dateTo   = g('o-date-to')?.value   || '';
+    dateFrom = g('o-date-from')?.value || g('s-date-from')?.value || '';
+    dateTo   = g('o-date-to')?.value   || g('s-date-to')?.value   || '';
   }
 
   const fullList = orders.filter(o => {
@@ -949,10 +949,10 @@ function _trkCardHtml(o, st, role) {
     if (!o.waSent) {
       ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">
         <button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>
-        <button class="trk-card-btn trk-card-btn-sec" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>
+        <button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>
       </div>`;
     } else {
-      ctaHtml = `<button class="trk-card-btn" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>`;
+      ctaHtml = `<button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>`;
     }
   }
   return `<div class="trk-card">
@@ -967,16 +967,25 @@ function _trkCardHtml(o, st, role) {
 var _TRK_COL_IC   = {Diterima:'inbox', Mencuci:'droplets', Mengeringkan:'wind', Menyetrika:'thermometer', Selesai:'check-circle'};
 var _TRK_COL_BG   = {Diterima:'#e3f2fd', Mencuci:'#e8f5e9', Mengeringkan:'#f3e5f5', Menyetrika:'#fff3e0', Selesai:'#e8f5e9'};
 var _TRK_COL_CLR  = {Diterima:'#1565c0', Mencuci:'#2e7d32', Mengeringkan:'#7b1fa2', Menyetrika:'#e65100', Selesai:'#2e7d32'};
+var _trkShowAll = {};
+
+function _trkShowAllToggle(st, role) {
+  _trkShowAll[st] = !_trkShowAll[st];
+  renderKanban(role);
+}
 
 function _trkColHtml(st, items, role) {
   const ic = _TRK_COL_IC[st] || 'circle';
   const bg = _TRK_COL_BG[st] || 'var(--pl)';
   const clr = _TRK_COL_CLR[st] || 'var(--p)';
   const MAX = 3;
-  const shown = items.slice(0, MAX);
+  const showAll = !!_trkShowAll[st];
+  const shown = showAll ? items : items.slice(0, MAX);
   const extra = items.length - MAX;
   const cards = shown.map(o => _trkCardHtml(o, st, role)).join('');
-  const moreTxt = extra > 0 ? `<button class="trk-col-more">+${extra} pesanan lainnya</button>` : '';
+  const moreTxt = extra > 0
+    ? `<button class="trk-col-more" onclick="_trkShowAllToggle('${st}','${role}')">${showAll ? 'Sembunyikan' : `+${extra} pesanan lainnya`}</button>`
+    : '';
   const emptyTxt = items.length === 0 ? '<div class="trk-col-empty">Kosong</div>' : '';
   return `<div class="trk-col">
     <div class="trk-col-hd">

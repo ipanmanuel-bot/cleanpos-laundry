@@ -262,12 +262,12 @@ tr:hover td{background:#F6F7F9}
 .trk-card-time-txt{font-size:10px;color:var(--t2)}
 .trk-badge-express{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
 .trk-badge-sameday{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-.trk-card-btn{width:100%;padding:7px;font-size:11px;font-weight:700;border-radius:8px;border:1.5px solid var(--p);background:var(--p);color:#fff;cursor:pointer;font-family:inherit;text-align:center;display:block;box-sizing:border-box}
-.trk-card-btn:hover{opacity:.88}
-.trk-card-btn-wa{background:var(--ca);color:#25d366;border-color:#25d366}
-.trk-card-btn-wa:hover{background:#f0fff4}
-.trk-card-btn-sec{background:transparent;color:var(--p);border-color:var(--b1)}
-.trk-card-btn-sec:hover{border-color:var(--p);background:var(--pl)}
+.trk-card-btn{width:100%;padding:7px;font-size:11px;font-weight:600;border-radius:8px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t1);cursor:pointer;font-family:inherit;text-align:center;display:block;box-sizing:border-box;transition:.12s}
+.trk-card-btn:hover{border-color:var(--p);color:var(--p)}
+.trk-card-btn-wa{color:#25d366;border-color:#25d366;background:var(--ca)}
+.trk-card-btn-wa:hover{background:#f0fff4;border-color:#1da853}
+.trk-card-btn-done{background:#22c55e;border-color:#22c55e;color:#fff}
+.trk-card-btn-done:hover{background:#16a34a;border-color:#16a34a}
 .trk-col-more{font-size:11px;color:var(--p);text-align:center;padding:4px 8px;cursor:pointer;border-radius:6px;font-weight:600;background:none;border:none;font-family:inherit;width:100%}
 .trk-col-more:hover{background:var(--pl)}
 .trk-col-empty{font-size:11px;color:var(--t2);text-align:center;padding:16px 8px}
@@ -2097,23 +2097,32 @@ tr:hover td{background:#F6F7F9}
     <div class="card"><div class="sh"><span class="ct" style="margin-bottom:0">Pesanan Terbaru</span><button class="btn bsm" onclick="sGo('orders',null)">Semua</button></div><div id="s-recent"></div></div>
   </div>
   <div class="page" id="s-p-orders">
-    <div class="sh"><div class="pt" style="margin-bottom:0">Pesanan</div></div>
-    <div class="card">
-      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
-        <button id="sodf-all"   class="btn bp bsm bpill" onclick="setOrdDateFilter('all')">Semua</button>
-        <button id="sodf-today" class="btn bsm bpill" onclick="setOrdDateFilter('today')">Hari Ini</button>
-        <button id="sodf-week"  class="btn bsm bpill" onclick="setOrdDateFilter('week')">Minggu Ini</button>
-        <button id="sodf-month" class="btn bsm bpill" onclick="setOrdDateFilter('month')">Bulan Ini</button>
-        <button id="sodf-custom" class="btn bsm bpill" onclick="setOrdDateFilter('custom')">Custom</button>
-        <div id="sodf-custom-range" style="display:none;gap:5px;align-items:center">
-          <input type="date" id="s-date-from" style="width:130px;font-size:12px" onchange="renderOrders()">
-          <span style="font-size:11px;color:var(--t2)">–</span>
-          <input type="date" id="s-date-to" style="width:130px;font-size:12px" onchange="renderOrders()">
+    <div class="sh" style="margin-bottom:14px">
+      <div class="pt" style="margin-bottom:0">Pesanan</div>
+      <button class="btn bp bsm" onclick="sGo('new-order',null)">+ Buat</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--b1)">
+        <div class="chips" style="margin-bottom:8px;overflow-x:auto;flex-wrap:nowrap">
+          <span id="sodf-all"    class="chip on" onclick="setOrdDateFilter('all')">Semua</span>
+          <span id="sodf-today"  class="chip"    onclick="setOrdDateFilter('today')">Hari Ini</span>
+          <span id="sodf-week"   class="chip"    onclick="setOrdDateFilter('week')">Minggu Ini</span>
+          <span id="sodf-month"  class="chip"    onclick="setOrdDateFilter('month')">Bulan Ini</span>
+          <span id="sodf-custom" class="chip"    onclick="setOrdDateFilter('custom')">Custom</span>
         </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <input id="s-srch" placeholder="Cari nama / ID..." style="width:180px;flex:none" oninput="renderOrders()">
-        <select id="s-fst" onchange="renderOrders()" style="width:140px;flex:none"><option value="">Semua Status</option><option>Diterima</option><option>Mencuci</option><option>Mengeringkan</option><option>Menyetrika</option><option>Selesai</option><option>Diambil</option></select>
+        <div id="sodf-custom-range" style="display:none;gap:5px;align-items:center;margin-bottom:8px">
+          <input type="date" id="s-date-from" style="font-size:12px" onchange="renderOrders()">
+          <span style="font-size:11px;color:var(--t2)">–</span>
+          <input type="date" id="s-date-to" style="font-size:12px" onchange="renderOrders()">
+        </div>
+        <div class="ord-filter-bar" style="margin-bottom:0">
+          <input id="s-srch" class="ord-search" placeholder="Cari nama / ID..." oninput="renderOrders()">
+          <select id="s-fst" onchange="renderOrders()" style="height:32px;font-size:12px;border:1.5px solid var(--b1);border-radius:8px;padding:0 8px;background:var(--ca);color:var(--t1);font-family:inherit;flex-shrink:0">
+            <option value="">Semua Status</option>
+            <option>Diterima</option><option>Mencuci</option><option>Mengeringkan</option>
+            <option>Menyetrika</option><option>Selesai</option><option>Diambil</option>
+          </select>
+        </div>
       </div>
       <div class="tw"><table><thead><tr><th>ID</th><th>Pelanggan</th><th>Layanan</th><th>Status</th><th>Bayar</th><th>Tgl Masuk</th><th>Tgl Diambil</th><th>WA</th><th>Aksi</th></tr></thead><tbody id="s-ord-tb"></tbody></table></div>
     </div>
@@ -2205,14 +2214,26 @@ tr:hover td{background:#F6F7F9}
     <div class="card"><div class="sh"><div class="ct" style="margin-bottom:0">Belum Dinotifikasi</div><span id="s-wa-pend-cnt" class="badge gam">0</span></div><div id="s-wa-pend-list"></div></div>
   </div>
   <div class="page" id="s-p-membership">
-    <div class="sh"><div class="pt" style="margin-bottom:0">Membership</div><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Tambah</button><button class="btn bsm" onclick="importContacts()"><i data-lucide="contact" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Impor</button></div></div>
-
-    <div id="s-mbr-disabled" style="display:none;background:var(--amb);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;font-size:13px;color:#5d2f00">
-      ⚠️ Fitur membership belum diaktifkan oleh owner. Hubungi owner untuk mengaktifkannya di menu Pengaturan.
+    <div class="sh" style="margin-bottom:14px">
+      <div>
+        <div class="pt" style="margin-bottom:2px">Pelanggan</div>
+        <div style="font-size:12px;color:var(--t2)">Kelola data pelanggan dan saldo deposit</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bp bsm" onclick="openAddCust()"><i data-lucide="user-plus" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Tambah</button>
+        <button class="btn bsm" onclick="importContacts()"><i data-lucide="contact" style="width:14px;height:14px;stroke-width:2.5;display:inline-block;vertical-align:middle;margin-right:4px"></i>Impor</button>
+      </div>
     </div>
-    <div id="s-mbr-content">
-      <input id="s-mbr-srch" placeholder="Cari nama / telepon..." style="width:240px;margin-bottom:12px" oninput="renderMembership()">
-      <div id="s-mbr-list"></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="s-mbr-disabled" style="display:none;padding:14px 16px;font-size:13px;color:#5d2f00;background:var(--amb);border-bottom:1px solid #ffcc80">
+        Fitur membership belum diaktifkan oleh owner. Hubungi owner untuk mengaktifkannya di menu Pengaturan.
+      </div>
+      <div id="s-mbr-content">
+        <div class="cust-filter-bar">
+          <input id="s-mbr-srch" class="ord-search" placeholder="Cari nama / telepon pelanggan..." oninput="renderMembership()" style="flex:1;min-width:160px">
+        </div>
+        <div id="s-mbr-list" style="padding:8px 16px 12px"></div>
+      </div>
     </div>
   </div>
   <div class="page" id="s-p-printer">
