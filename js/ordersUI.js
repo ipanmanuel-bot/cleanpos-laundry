@@ -704,6 +704,9 @@ function setOrdPage(p) {
 }
 
 function openOrdFilterPanel() {
+  // Hide outlet section for staff (they always see only their outlet)
+  const orfOutletSec = g('orf-outlet')?.closest('.orf-section');
+  if (orfOutletSec) orfOutletSec.style.display = curRole === 'owner' ? '' : 'none';
   // Outlet chips
   const oc = g('orf-outlet');
   if (oc) oc.innerHTML = [{id:'all',name:'Semua'},...outlets.map(o=>({id:o.id,name:o.name}))]
@@ -733,25 +736,26 @@ function _renderOrdFilterChips() {
 }
 
 function _renderOrdActiveChips() {
-  const wrap = g('ord-active-chips'); if (!wrap) return;
+  const isO = curRole === 'owner';
+  const wrap = g(isO ? 'ord-active-chips' : 's-ord-active-chips'); if (!wrap) return;
   const dtL = {today:'Hari Ini',week:'Minggu Ini',month:'Bulan Ini',custom:'Custom'};
   const chips = [];
-  if (ordOutlet !== 'all') { const oc=go(ordOutlet); chips.push(`<span class="ofc ofc-out">${esc(oc?.name||ordOutlet)}<button class="ofc-x" onclick="setOrdOutlet('all')">×</button></span>`); }
-  if (ordFst !== '')        chips.push(`<span class="ofc ofc-st">${esc(ordFst)}<button class="ofc-x" onclick="setOrdFst('')">×</button></span>`);
-  if (ordFpy !== '')        { const cls=ordFpy==='Lunas'?'ofc-pay-ok':ordFpy==='DP'?'ofc-pay-dp':'ofc-pay-no'; chips.push(`<span class="ofc ${cls}">${esc(ordFpy)}<button class="ofc-x" onclick="setOrdFpy('')">×</button></span>`); }
+  if (isO && ordOutlet !== 'all') { const oc=go(ordOutlet); chips.push(`<span class="ofc ofc-out">${esc(oc?.name||ordOutlet)}<button class="ofc-x" onclick="setOrdOutlet('all')">×</button></span>`); }
+  if (ordFst !== '')     chips.push(`<span class="ofc ofc-st">${esc(ordFst)}<button class="ofc-x" onclick="setOrdFst('')">×</button></span>`);
+  if (ordFpy !== '')     { const cls=ordFpy==='Lunas'?'ofc-pay-ok':ordFpy==='DP'?'ofc-pay-dp':'ofc-pay-no'; chips.push(`<span class="ofc ${cls}">${esc(ordFpy)}<button class="ofc-x" onclick="setOrdFpy('')">×</button></span>`); }
   if (ordDateFilter!=='all') chips.push(`<span class="ofc ofc-dt">${dtL[ordDateFilter]||ordDateFilter}<button class="ofc-x" onclick="setOrdDateFilter('all')">×</button></span>`);
   wrap.innerHTML = chips.join('');
   wrap.style.display = chips.length ? 'flex' : 'none';
   const cnt = chips.length;
-  const badge = g('ord-filter-badge'); if (badge) { badge.textContent=cnt; badge.style.display=cnt?'inline':'none'; }
-  const btn = g('ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
+  const badge = g(isO ? 'ord-filter-badge' : 's-ord-filter-badge'); if (badge) { badge.textContent=cnt; badge.style.display=cnt?'inline':'none'; }
+  const btn = g(isO ? 'ord-filter-btn' : 's-ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
 }
 
 function renderOrders() {
   const isO = curRole === 'owner';
   const q = ((isO ? g('o-srch') : g('s-srch'))?.value || '').toLowerCase();
-  const fs = isO ? ordFst : (g('s-fst')?.value || '');
-  const fp = isO ? ordFpy : (g('s-fpy')?.value || '');
+  const fs = ordFst;
+  const fp = ordFpy;
 
   // Date filter range
   let dateFrom = null, dateTo = null;
@@ -786,16 +790,16 @@ function renderOrders() {
   if (_ordPage > _totalPages) _ordPage = _totalPages;
   const list = fullList.slice((_ordPage - 1) * _PER_PAGE, _ordPage * _PER_PAGE);
 
-  if (isO) _renderOrdActiveChips();
+  _renderOrdActiveChips();
 
-  // Mobile cards (owner only)
-  const cardWrap = isO ? g('ord-cards') : null;
+  // Mobile cards
+  const cardWrap = g(isO ? 'ord-cards' : 's-ord-cards');
   if (cardWrap) _renderOrdCards(list, cardWrap);
 
   // Table
   const tbId = isO ? 'ord-tb' : 's-ord-tb';
   const tb = g(tbId); if (!tb) return;
-  const colspan = isO ? 11 : 9;
+  const colspan = isO ? 11 : 10;
   if (!fullList.length) {
     tb.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`;
     if (isO) _renderOrdPager(0, 1);
@@ -821,8 +825,9 @@ function renderOrders() {
   } else {
     tb.innerHTML = list.map(o => `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td style="font-weight:600">${esc(o.name)}</td>
+      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
+      <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
       <td><button class="badge ${SL_PAY[o.payStatus]}" style="cursor:pointer;border:none;font-family:inherit;font-size:inherit" onclick="openPayPicker('${o.id}',this)">${esc(o.payStatus)}</button></td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
@@ -831,11 +836,11 @@ function renderOrders() {
       <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
     </tr>`).join('');
   }
-  if (isO) _renderOrdPager(fullList.length, _totalPages);
+  _renderOrdPager(fullList.length, _totalPages);
 }
 
 function _renderOrdPager(total, totalPages) {
-  const wrap = g('ord-pager'); if (!wrap) return;
+  const wrap = g(curRole === 'owner' ? 'ord-pager' : 's-ord-pager'); if (!wrap) return;
   if (totalPages <= 1) { wrap.innerHTML = ''; return; }
   const p = _ordPage;
   let btns = '';
@@ -904,7 +909,7 @@ function _renderOrdCards(list, wrap) {
           <button class="oib blu" onclick="showDetail('${esc(o.id)}')" title="Detail">${_IC_EYE}</button>
           <button class="oib" onclick="showRcpt('${esc(o.id)}')" title="Struk">${_IC_RECEIPT}</button>
           ${waAct}
-          <button class="oib red" onclick="deleteOrder('${esc(o.id)}')" title="Hapus">${_IC_TRASH}</button>
+          ${curRole === 'owner' ? `<button class="oib red" onclick="deleteOrder('${esc(o.id)}')" title="Hapus">${_IC_TRASH}</button>` : ''}
           <button class="btn bsm bp" onclick="openPayPicker('${esc(o.id)}',this)" style="margin-left:auto;border-radius:var(--rp)">${esc(o.payStatus)}</button>
         </div>
       </div>

@@ -514,7 +514,9 @@ function initOwner(){
     // Land directly on settings so user can pay
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
-    buildOrderForm('no');calcO();refreshODash();
+    buildOrderForm('no');calcO();
+    // Double-RAF: ensures flex layout is fully computed before Chart.js reads canvas dimensions
+    requestAnimationFrame(()=>requestAnimationFrame(refreshODash));
   }
   _resetIdleTimer();
 }
@@ -1144,11 +1146,11 @@ function _renderDashStats(s, range){
   el.innerHTML = scTotal + scBelum + scTrx + scPengeluaran + scBayar + scDiterima + scSelesai;
 }
 
-function _renderDashChart(curOrders, prevOrders, range){
+function _renderDashChart(curOrders, prevOrders, range, _retry){
   const canvas=g('dash-chart'); if(!canvas)return;
-  // If canvas has no layout yet (called synchronously right after showApp), defer one frame
-  if(!canvas.offsetWidth){
-    requestAnimationFrame(()=>_renderDashChart(curOrders,prevOrders,range));
+  // Wait until the canvas and its container have real dimensions
+  if(!canvas.offsetWidth || !(canvas.parentElement?.offsetHeight)){
+    if((_retry||0)<10) setTimeout(()=>_renderDashChart(curOrders,prevOrders,range,(_retry||0)+1), 40);
     return;
   }
   // Destroy previous chart instance
