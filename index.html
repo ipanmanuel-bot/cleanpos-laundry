@@ -25,7 +25,7 @@
   --t1:#1A1A1A;--t2:#6B6B65;--t3:#ABABAB;
   --re:#E53935;--reb:#FFEBEE;--am:#F57C00;--amb:#FFF8E1;
   --bl:#1976D2;--blb:#E3F2FD;--pu:#7B1FA2;--pub:#F3E5F5;
-  --r:16px;--rs:10px;--rp:100px;
+  --r:16px;--rs:10px;--rp:14px;
   --sh:0 2px 12px rgba(0,0,0,.06);--sh2:0 8px 32px rgba(0,0,0,.14)
 }
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;font-size:15px;color:var(--t1);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -315,12 +315,12 @@ tr:hover td{background:#F6F7F9}
 .mft{padding:14px 20px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--ca)}
 .xb{background:none;border:none;cursor:pointer;font-size:22px;color:var(--t2);padding:2px 6px;border-radius:8px;line-height:1}
 .xb:hover{background:var(--bg)}
-#toast{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--dk);color:#fff;padding:12px 22px;border-radius:var(--rp);font-size:13px;font-weight:500;z-index:999;display:none;white-space:nowrap;box-shadow:var(--sh2);pointer-events:none}
+#toast{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--dk);color:#fff;padding:12px 22px;border-radius:100px;font-size:13px;font-weight:500;z-index:999;display:none;white-space:nowrap;box-shadow:var(--sh2);pointer-events:none}
 #sync-bar{position:fixed;top:0;left:0;right:0;z-index:1100;height:3px;display:none;pointer-events:none}
 #sync-bar.syncing{display:block;background:linear-gradient(90deg,var(--p) 0%,#c8e87a 40%,var(--p) 100%);background-size:200% 100%;animation:syncSlide 1.2s linear infinite}
 #sync-bar.sync-ok{display:block;background:var(--p);animation:syncFadeOut 0.6s ease 1.4s forwards}
 #sync-bar.sync-err{display:block;background:var(--re);animation:syncFadeOut 0.6s ease 3s forwards}
-#sync-chip{position:fixed;top:10px;right:14px;z-index:1101;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--rp);display:none;align-items:center;gap:5px;box-shadow:var(--sh2);pointer-events:none;white-space:nowrap}
+#sync-chip{position:fixed;top:10px;right:14px;z-index:1101;font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px;display:none;align-items:center;gap:5px;box-shadow:var(--sh2);pointer-events:none;white-space:nowrap}
 #sync-chip.syncing{display:flex;background:var(--dk);color:#fff}
 #sync-chip.sync-ok{display:flex;background:var(--pl);color:var(--pd);animation:syncFadeOut 0.5s ease 1.6s forwards}
 #sync-chip.sync-err{display:flex;background:var(--reb);color:var(--re);animation:syncFadeOut 0.5s ease 3.5s forwards}
