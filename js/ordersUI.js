@@ -12,6 +12,18 @@ function _setSatuanCart(pre, cart){ if(pre==='no') _noSatuanCart=cart; else _sno
 const _voucherState = {};
 function _getVS(pre){ if(!_voucherState[pre])_voucherState[pre]={code:'',promo:null}; return _voucherState[pre]; }
 
+// ─── Dismissed auto-promo state (per prefix) ───
+const _dismissedPromo = {};
+function dismissAutoPromo(pre) {
+  const type = g(pre + '-type')?.value;
+  const cat  = g(pre + '-cat')?.value;
+  if (type && cat) {
+    const p = getActivePromo(type, cat);
+    if (p) _dismissedPromo[pre] = p.id;
+  }
+  if (pre === 'no') calcO(); else calcS();
+}
+
 function applyVoucherCode(pre) {
   const input = g(pre + '-voucher-input');
   const code = (input?.value || '').trim().toUpperCase();
@@ -368,6 +380,7 @@ function getActivePromo(type, cat) {
   const curOid = curStaff?.oid || (curOutlet?.id) || 'all';
   return promos.find(p => {
     if (!p.active) return false;
+    if (p.useCode) return false; // code-required promos only apply via voucher input
     const dm = p.days.length === 0 || p.days.includes(String(TODAY_DAY));
     const dateOk = (!p.from || TODAY_ISO >= p.from) && (!p.to || TODAY_ISO <= p.to);
     const outletOk = !p.outlets || p.outlets.length === 0 || p.outlets.includes(curOid);
@@ -468,18 +481,18 @@ function calcBase(pre) {
 function doCalc(pre, hasDisc) {
   const res = calcBase(pre);
   const { type, cat, bq, base, addTotal, addonLines, subtotal, satuanLines } = res;
-  // Voucher promo overrides auto-detected promo
+  // Voucher promo overrides auto-detected promo; dismissed promos are skipped
   const vs = _getVS(pre);
-  const actPromo = vs.promo || res.actPromo;
   const isVoucher = !!vs.promo;
-  let promoEnabled = true;
-  if (!isVoucher) { const pc = g(pre + '-promo-chk'); if (pc) promoEnabled = pc.checked; }
-  let promoAmt = actPromo && promoEnabled ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
+  const autoPromo = (_dismissedPromo[pre] && res.actPromo?.id === _dismissedPromo[pre]) ? null : res.actPromo;
+  const actPromo = vs.promo || autoPromo;
+  let promoAmt = actPromo ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
   const pb = g(pre + '-promo-box');
-  if (actPromo && !isVoucher && pb) {
-    // Show auto-promo box with toggle (only when no voucher is active)
+  if (autoPromo && !isVoucher && pb) {
+    // Show auto-promo box with X dismiss button
+    const discLbl = autoPromo.discType === 'persen' ? autoPromo.discVal + '%' : fmt(calcPromoDisc(autoPromo, subtotal, bq));
     pb.style.display = 'block';
-    pb.innerHTML = `<div class="${promoEnabled ? 'pb-act' : 'pb-off'}"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:${promoEnabled ? '#3d6b10' : 'var(--t2)'}">${actPromo.name}</div><div style="font-size:11px;color:${promoEnabled ? '#4a7a15' : 'var(--t3)'}">${actPromo.discType === 'persen' ? actPromo.discVal + '%' : fmt(calcPromoDisc(actPromo, subtotal, bq))} diskon</div></div></div><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="${pre}-promo-chk" ${promoEnabled ? 'checked' : ''} onchange="${pre === 'no' ? 'calcO' : 'calcS'}()"> Pakai promo</label></div></div>`;
+    pb.innerHTML = `<div class="pb-act" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:#3d6b10">${esc(autoPromo.name)}</div><div style="font-size:11px;color:#4a7a15">${esc(discLbl)} diskon otomatis</div></div></div><button type="button" onclick="dismissAutoPromo('${pre}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:20px;padding:0 4px;line-height:1;flex-shrink:0" title="Hapus promo ini">×</button></div>`;
   } else if (pb) { pb.style.display = 'none'; pb.innerHTML = ''; }
   let discType = 'none', discAmt = 0;
   if (hasDisc) {
@@ -718,9 +731,10 @@ function buildOrder(pre) {
   orders.push(o); orderCtr++;
   // Mark voucher code as used (for bulk unique codes)
   _markVoucherUsed(pre, o.id);
-  // Reset voucher UI
+  // Reset voucher + dismissed promo state
   _renderVoucherApplied(pre, null);
   const vi = g(pre + '-voucher-input'); if (vi) vi.value = '';
+  _dismissedPromo[pre] = null;
   if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
     kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });

@@ -194,6 +194,11 @@ async function supaLoadAll() {
     try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) { console.error('[parse] satuan_items:', e); }
     try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) { console.error('[parse] addons:', e); }
     try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) { console.error('[parse] promos:', e); }
+    // Recalibrate promoCtr so new promos never collide with loaded IDs
+    if (promos.length) {
+      const _maxN = promos.reduce((mx, p) => { const n = parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
+      if (typeof promoCtr !== 'undefined' && _maxN >= promoCtr) promoCtr = _maxN + 1;
+    }
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) { console.error('[parse] wa_tpl_new:', e); }
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
