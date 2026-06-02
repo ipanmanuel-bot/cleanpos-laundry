@@ -2913,48 +2913,46 @@ tr:hover td{background:#F6F7F9}
 </div>
 <!-- MEMBER CARD: Send Modal -->
 <div class="mbg" id="m-send-card">
-  <div class="mbox" style="max-width:640px">
+  <div class="mbox" style="max-width:520px">
     <div class="mhd"><span class="mht">Kirim Membership Card</span><button class="xb" onclick="cm('m-send-card')">×</button></div>
-    <div class="mbd" style="padding-top:12px">
-      <div class="sc-split">
-        <!-- LEFT: card preview + customer info -->
-        <div>
-          <div id="card-send-preview-wrap" style="display:none;margin-bottom:10px">
-            <canvas id="card-send-canvas" style="display:block;width:100%;border-radius:10px;background:var(--bg)"></canvas>
-          </div>
-          <div id="card-send-no-tmpl" style="display:none;background:var(--bg);border:1.5px solid var(--b1);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.6">
-            Belum ada template kartu. <span onclick="cm('m-send-card');oGo('settings',null)" style="font-weight:700;cursor:pointer;text-decoration:underline">Buat di Pengaturan →</span><br>
-            <span style="font-size:11px;color:var(--t2)">Kamu tetap bisa kirim teks saldo.</span>
-          </div>
-          <div id="sc-cust-info" style="margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:12px;line-height:1.7"></div>
+    <div class="mbd" style="padding-top:14px;display:flex;flex-direction:column;gap:14px">
+      <!-- Card preview -->
+      <div id="card-send-preview-wrap" style="display:none">
+        <canvas id="card-send-canvas" style="display:block;width:100%;border-radius:10px;background:var(--bg)"></canvas>
+      </div>
+      <div id="card-send-no-tmpl" style="display:none;background:var(--bg);border:1.5px solid var(--b1);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.6">
+        Belum ada template kartu. <span onclick="cm('m-send-card');oGo('card-design',null)" style="font-weight:700;cursor:pointer;text-decoration:underline">Buat di Editor Kartu →</span><br>
+        <span style="font-size:11px;color:var(--t2)">Kamu tetap bisa kirim teks saldo.</span>
+      </div>
+      <!-- Customer info -->
+      <div id="sc-cust-info" style="padding:10px 12px;background:var(--bg);border-radius:10px;font-size:12px;line-height:1.7"></div>
+      <!-- Message -->
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PESAN WHATSAPP</div>
+        <textarea id="card-wa-msg" rows="5" oninput="_scUpdateCharCount()" style="width:100%;font-size:12px;border-radius:8px;padding:10px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t1);resize:vertical;line-height:1.5;box-sizing:border-box;font-family:inherit"></textarea>
+        <div style="font-size:10px;color:var(--t2);text-align:right;margin-top:3px;margin-bottom:10px" id="sc-char-count">0 / 500</div>
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PESAN CEPAT</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="sc-chip" onclick="_setMsgPreset('saldo')">Saldo Update</button>
+          <button class="sc-chip" onclick="_setMsgPreset('promo')">Promo</button>
+          <button class="sc-chip" onclick="_setMsgPreset('reminder')">Reminder</button>
         </div>
-        <!-- RIGHT: message + presets + actions -->
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PESAN WHATSAPP</div>
-          <textarea id="card-wa-msg" rows="6" oninput="_scUpdateCharCount()" style="width:100%;font-size:12px;border-radius:8px;padding:10px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t1);resize:vertical;line-height:1.5;box-sizing:border-box;font-family:inherit"></textarea>
-          <div style="font-size:10px;color:var(--t2);text-align:right;margin-top:3px;margin-bottom:10px" id="sc-char-count">0 / 500</div>
-          <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px">PESAN CEPAT</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-            <button class="sc-chip" onclick="_setMsgPreset('saldo')">Saldo Update</button>
-            <button class="sc-chip" onclick="_setMsgPreset('promo')">Promo</button>
-            <button class="sc-chip" onclick="_setMsgPreset('reminder')">Reminder</button>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:7px">
-            <button class="btn bfull bpill" id="card-send-with-img-btn" style="display:none;background:var(--p);border-color:var(--p);color:#fff;font-weight:700;gap:8px" onclick="sendCardViaWA()">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Kirim Membership Card
-            </button>
-            <button class="btn bfull bpill" onclick="sendTextOnlyWA()" style="border-color:var(--b1);color:var(--t1);gap:8px;font-weight:600">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Kirim Pesan Saja
-            </button>
-            <button class="btn bfull bpill" id="card-download-btn" style="display:none;color:var(--t2);border-color:var(--b1);gap:8px" onclick="downloadMemberCard()">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Download Card
-            </button>
-          </div>
-          <div id="card-send-hint" style="font-size:11px;color:var(--t2);text-align:center;margin-top:8px;line-height:1.5"></div>
-        </div>
+      </div>
+      <!-- Actions -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn bfull" id="card-send-with-img-btn" style="display:none;background:var(--p);border-color:var(--p);color:#fff;font-weight:700;gap:8px" onclick="sendCardViaWA()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Kirim Membership Card
+        </button>
+        <button class="btn bfull" onclick="sendTextOnlyWA()" style="border-color:var(--b1);color:var(--t1);gap:8px;font-weight:600">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Kirim Pesan Saja
+        </button>
+        <button class="btn bfull" id="card-download-btn" style="display:none;color:var(--t2);border-color:var(--b1);gap:8px" onclick="downloadMemberCard()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Card
+        </button>
+        <div id="card-send-hint" style="font-size:11px;color:var(--t2);text-align:center;line-height:1.5"></div>
       </div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-send-card')">Tutup</button></div>

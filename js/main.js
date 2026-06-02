@@ -436,7 +436,7 @@ function oGo(pg,el){
   document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('o-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
   g('o-mc').scrollTop=0;
-  const pm={dashboard:refreshODash,orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings,notifications:renderNotifications,'card-design':renderMemberCardDesign};
+  const pm={dashboard:()=>requestAnimationFrame(refreshODash),orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings,notifications:renderNotifications,'card-design':renderMemberCardDesign};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('no');calcO();}
   closeDrawer();
