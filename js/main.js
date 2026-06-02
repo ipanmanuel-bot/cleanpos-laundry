@@ -3664,6 +3664,7 @@ function _promoCard(p){
           <span class="badge" style="background:#fff3f3;color:var(--re);font-size:10px;font-weight:700">${esc(discLbl)}</span>
           <span class="badge" style="background:var(--bg);color:var(--t2);font-size:10px">${esc(dayLbl)}</span>
           <span class="badge" style="background:var(--bg);color:var(--t2);font-size:10px">${esc(outLbl)}</span>
+          ${p.useCode?`<span class="badge" style="background:#f3e5f5;color:#7b1fa2;font-size:10px">🎟️ ${p.codeType==='bulk'?(()=>{const tot=p.codes?.length||0;const used=p.codes?.filter(c=>c.used).length||0;return tot+' kode · '+(tot-used)+' tersedia';})():p.code||'Kode Voucher'}</span>`:''}
         </div>
         ${p.note?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">${esc(p.note)}</div>`:''}
         <div class="promo-meta-grid">
@@ -3706,7 +3707,7 @@ function delPromo(id){confirm_('Hapus Promo?','Promo ini akan dihapus.',()=>{pro
 function _mpSvgChk(){return `<i data-lucide="check" style="width:12px;height:12px;stroke-width:3;display:block"></i>`;}
 
 function _mpUpdateSidebar(){
-  for(let i=1;i<=4;i++){
+  for(let i=1;i<=5;i++){
     const el=document.querySelector(`#mp-sidebar [data-step="${i}"]`);
     if(!el)continue;
     el.classList.toggle('act',i===_mpStep);
@@ -3718,7 +3719,7 @@ function _mpUpdateSidebar(){
     }
   }
   const back=g('mp-btn-back');if(back)back.style.display=_mpStep>1?'':'none';
-  const next=g('mp-btn-next');if(next)next.textContent=_mpStep===4?'Simpan Promo':'Lanjutkan';
+  const next=g('mp-btn-next');if(next)next.textContent=_mpStep===5?'Simpan Promo':'Lanjutkan';
   if(typeof lucide!=='undefined')lucide.createIcons();
 }
 
@@ -3727,7 +3728,8 @@ function _mpRenderContent(){
   if(_mpStep===1)el.innerHTML=_mpStep1Html();
   else if(_mpStep===2)el.innerHTML=_mpStep2Html();
   else if(_mpStep===3)el.innerHTML=_mpStep3Html();
-  else el.innerHTML=_mpStep4Html();
+  else if(_mpStep===4)el.innerHTML=_mpStep4Html();
+  else el.innerHTML=_mpStep5Html();
   if(typeof lucide!=='undefined')lucide.createIcons();
 }
 
@@ -3897,6 +3899,132 @@ function _mpStep4Html(){
   </div>`;
 }
 
+function _mpStep5Html(){
+  const s=_mpState;
+  const useCode=s.useCode||false;
+  const codeType=s.codeType||'single';
+  const codes=s.codes||[];
+  const usedCount=codes.filter(c=>c.used).length;
+  return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">5. Kode Voucher</div>
+  <div style="font-size:12px;color:var(--t2);margin-bottom:18px">Opsional — aktifkan jika promo ini memerlukan kode untuk ditukarkan.</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1.5px solid var(--b1);border-radius:12px;margin-bottom:18px;background:var(--ca)">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--t1)">Promo ini memerlukan kode voucher</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:3px">Pelanggan harus memasukkan kode untuk mendapatkan diskon</div>
+    </div>
+    <button type="button" class="toggle ${useCode?'on':'off'}" id="mp-use-code-btn" onclick="_mpToggleUseCode()"></button>
+    <input type="checkbox" id="mp-use-code" ${useCode?'checked':''} style="display:none">
+  </div>
+  <div id="mp-code-opts" style="display:${useCode?'block':'none'}">
+    <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Tipe Kode</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:12px;border:1.5px solid ${codeType==='single'?'var(--p)':'var(--b1)'};border-radius:10px;background:${codeType==='single'?'var(--pl)':'var(--ca)'}">
+        <input type="radio" name="mp-code-type" value="single" ${codeType==='single'?'checked':''} onchange="_mpCodeTypeChg('single')" style="margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-weight:600;font-size:13px;color:${codeType==='single'?'var(--p)':'var(--t1)'}">Satu Kode</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.4">Satu kode berlaku untuk semua pelanggan, tidak terbatas penggunaan</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:12px;border:1.5px solid ${codeType==='bulk'?'var(--p)':'var(--b1)'};border-radius:10px;background:${codeType==='bulk'?'var(--pl)':'var(--ca)'}">
+        <input type="radio" name="mp-code-type" value="bulk" ${codeType==='bulk'?'checked':''} onchange="_mpCodeTypeChg('bulk')" style="margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-weight:600;font-size:13px;color:${codeType==='bulk'?'var(--p)':'var(--t1)'}">Kode Unik (Bulk)</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.4">Setiap kode hanya bisa digunakan sekali, import dari CSV/Excel</div>
+        </div>
+      </label>
+    </div>
+    <div id="mp-single-wrap" style="display:${codeType==='single'?'block':'none'}">
+      <div class="fg" style="margin-bottom:0">
+        <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">Kode Voucher <span style="color:#e53935">*</span></label>
+        <input id="mp-single-code" placeholder="Contoh: HEMAT10" value="${esc(s.code||'')}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <div style="font-size:11px;color:var(--t2);margin-top:5px">Kode tidak case-sensitive saat digunakan pelanggan.</div>
+      </div>
+    </div>
+    <div id="mp-bulk-wrap" style="display:${codeType==='bulk'?'block':'none'}">
+      <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px">Import Kode dari File</div>
+      <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;border:1.5px dashed var(--b2);border-radius:10px;cursor:pointer;background:var(--bg)" onclick="g('mp-bulk-file').click()">
+        <i data-lucide="upload" style="width:20px;height:20px;stroke-width:1.8;color:var(--p);flex-shrink:0;display:block"></i>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">Upload CSV atau Excel (.xlsx, .xls)</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px">Satu kode per baris (atau kolom A di Excel). Tidak perlu header.</div>
+        </div>
+      </label>
+      <input type="file" id="mp-bulk-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="_mpImportCodes(this)">
+      ${codes.length?`<div style="margin-top:12px;padding:10px 14px;background:var(--pl);border-radius:9px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--p)">${codes.length} kode diimport</div>
+          <div style="font-size:11px;color:var(--pd);margin-top:2px">${codes.length-usedCount} tersedia · ${usedCount} sudah digunakan</div>
+        </div>
+        <button type="button" onclick="_mpClearCodes()" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--re);font-weight:600">Hapus semua</button>
+      </div>
+      <div style="max-height:140px;overflow-y:auto;margin-top:8px;border:1px solid var(--b1);border-radius:8px">
+        ${codes.slice(0,200).map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;font-size:12px;border-bottom:1px solid var(--b1)">
+          <span style="font-family:monospace;color:${c.used?'var(--t3)':'var(--t1)'};text-decoration:${c.used?'line-through':'none'}">${esc(c.code)}</span>
+          <span style="font-size:10px;color:${c.used?'var(--re)':'var(--p)'}">${c.used?'Terpakai':'Tersedia'}</span>
+        </div>`).join('')}
+        ${codes.length>200?`<div style="padding:8px 12px;font-size:11px;color:var(--t2);text-align:center">+${codes.length-200} kode lainnya</div>`:''}
+      </div>`:`<div style="margin-top:10px;font-size:12px;color:var(--t2)">Belum ada kode diimport.</div>`}
+    </div>
+  </div>`;
+}
+
+function _mpToggleUseCode(){
+  const btn=g('mp-use-code-btn'); const chk=g('mp-use-code'); const opts=g('mp-code-opts');
+  if(!btn||!chk)return;
+  const on=!chk.checked;
+  chk.checked=on;
+  btn.className='toggle '+(on?'on':'off');
+  _mpState.useCode=on;
+  if(opts)opts.style.display=on?'block':'none';
+}
+
+function _mpCodeTypeChg(val){
+  _mpState.codeType=val;
+  const sw=g('mp-single-wrap'); const bw=g('mp-bulk-wrap');
+  if(sw)sw.style.display=val==='single'?'block':'none';
+  if(bw)bw.style.display=val==='bulk'?'block':'none';
+  // update radio border colors
+  document.querySelectorAll('input[name="mp-code-type"]').forEach(r=>{
+    const lbl=r.closest('label');
+    if(lbl){lbl.style.borderColor=r.value===val?'var(--p)':'var(--b1)';lbl.style.background=r.value===val?'var(--pl)':'var(--ca)';}
+    const title=lbl?.querySelector('div>div');if(title)title.style.color=r.value===val?'var(--p)':'var(--t1)';
+  });
+}
+
+function _mpImportCodes(input){
+  const file=input.files?.[0]; if(!file)return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const lines=e.target.result.split(/\r?\n/);
+      const codes=lines.map(l=>l.trim().replace(/^["']|["']$/g,'').toUpperCase()).filter(l=>l&&l.length>0);
+      _mpState.codes=(codes).map(c=>({code:c,used:false,usedAt:null,orderId:null}));
+      _mpRenderContent();
+    };
+    reader.readAsText(file);
+  } else if(ext==='xlsx'||ext==='xls'){
+    if(typeof XLSX==='undefined'){toast('⚠️ Library Excel belum dimuat, coba refresh halaman');return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      const codes=rows.map(r=>(String(r[0]||'')).trim().toUpperCase()).filter(c=>c&&c.length>0);
+      _mpState.codes=codes.map(c=>({code:c,used:false,usedAt:null,orderId:null}));
+      _mpRenderContent();
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    toast('Format file tidak didukung. Gunakan .csv, .xlsx, atau .xls');
+  }
+}
+
+function _mpClearCodes(){
+  _mpState.codes=[];
+  _mpRenderContent();
+}
+
 // Step navigation
 function _mpGo(step){
   if(step>_mpMaxStep)return;
@@ -3907,7 +4035,7 @@ function _mpGo(step){
 }
 
 function _mpNext(){
-  if(_mpStep===4){savePromo();return;}
+  if(_mpStep===5){savePromo();return;}
   if(!_mpValidate())return;
   _mpSaveCurrentStepState();
   _mpStep++;
@@ -3933,6 +4061,11 @@ function _mpSaveCurrentStepState(){
     _mpState.discVal=parseFloat(g('mp-dv')?.value)||0;
   } else if(_mpStep===4){
     _mpState.note=g('mp-note')?.value||'';
+  } else if(_mpStep===5){
+    _mpState.useCode=g('mp-use-code')?.checked||false;
+    _mpState.codeType=document.querySelector('input[name="mp-code-type"]:checked')?.value||'single';
+    _mpState.code=(g('mp-single-code')?.value||'').trim().toUpperCase();
+    // bulk codes are already in _mpState.codes from the import handler
   }
 }
 
@@ -4043,7 +4176,7 @@ function promoDiscChange(){} // kept for backward compat
 function openAddPromo(){
   editPromoId=null;
   _mpStep=1;_mpMaxStep=1;
-  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',_kiloanOpen:true,_satuanOpen:true};
+  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',useCode:false,codeType:'single',code:'',codes:[],_kiloanOpen:true,_satuanOpen:true};
   g('m-promo-title').textContent='Tambah Promo';
   _mpUpdateSidebar();
   _mpRenderContent();
@@ -4053,7 +4186,7 @@ function openAddPromo(){
 function openEditPromo(id){
   editPromoId=id;
   const p=promos.find(x=>x.id===id);if(!p)return;
-  _mpStep=1;_mpMaxStep=4;
+  _mpStep=1;_mpMaxStep=5;
   let kiloanTargets=[];let satuanTargets=[];
   if(p.targets){
     kiloanTargets=p.targets.kiloan||[];
@@ -4063,7 +4196,7 @@ function openEditPromo(id){
     else if(p.svc.startsWith('kiloan-')){kiloanTargets=[p.svc.replace('kiloan-','')];}
     else if(p.svc.startsWith('satuan-')){satuanTargets=['all'];}
   }
-  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',_kiloanOpen:true,_satuanOpen:true};
+  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',useCode:p.useCode||false,codeType:p.codeType||'single',code:p.code||'',codes:[...(p.codes||[])],_kiloanOpen:true,_satuanOpen:true};
   g('m-promo-title').textContent='Edit Promo';
   _mpUpdateSidebar();
   _mpRenderContent();
@@ -4081,6 +4214,11 @@ function savePromo(){
   let svc='all';
   if(kt.length&&!st.length){svc=kt[0]==='all'?'kiloan-all':'kiloan-'+kt[0];}
   else if(st.length&&!kt.length){svc=st[0]==='all'?'satuan-all':'satuan-'+((st[0]||'').split('-')[1]||'regular');}
+  // Validate voucher code if enabled
+  const useCode=_mpState.useCode||false;
+  const codeType=_mpState.codeType||'single';
+  if(useCode&&codeType==='single'&&!(_mpState.code||'').trim()){toast('Masukkan kode voucher atau nonaktifkan opsi kode voucher');_mpGo(5);return;}
+  if(useCode&&codeType==='bulk'&&!(_mpState.codes||[]).length){toast('Import kode voucher terlebih dahulu atau nonaktifkan opsi kode voucher');_mpGo(5);return;}
   const obj={
     id:editPromoId||'pr'+promoCtr++,
     name,svc,
@@ -4092,11 +4230,16 @@ function savePromo(){
     to:_mpState.to||'',
     note:_mpState.note||'',
     active:_mpState.active!==false,
-    outlets:[...(_mpState.outletMode==='all'?[]:(_mpState.outlets||[]))]
+    outlets:[...(_mpState.outletMode==='all'?[]:(_mpState.outlets||[]))],
+    useCode,
+    codeType,
+    code:useCode&&codeType==='single'?(_mpState.code||'').trim().toUpperCase():'',
+    codes:useCode&&codeType==='bulk'?[...(_mpState.codes||[])]:[]
   };
   if(editPromoId){const i=promos.findIndex(x=>x.id===editPromoId);if(i>=0)promos[i]={...promos[i],...obj,id:editPromoId};}
   else promos.unshift(obj);
   cm('m-promo');
+  syncSettings();
   renderPromo();
   toast(editPromoId?'Promo diperbarui':'Promo ditambahkan: '+name);
 }

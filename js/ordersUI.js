@@ -8,6 +8,84 @@ let _snoSatuanCart = [];
 function _getSatuanCart(pre){ return pre==='no' ? _noSatuanCart : _snoSatuanCart; }
 function _setSatuanCart(pre, cart){ if(pre==='no') _noSatuanCart=cart; else _snoSatuanCart=cart; }
 
+// ─── Voucher code state ───
+const _voucherState = {};
+function _getVS(pre){ if(!_voucherState[pre])_voucherState[pre]={code:'',promo:null}; return _voucherState[pre]; }
+
+function applyVoucherCode(pre) {
+  const input = g(pre + '-voucher-input');
+  const code = (input?.value || '').trim().toUpperCase();
+  if (!code) { toast('Masukkan kode voucher terlebih dahulu'); return; }
+  const today = String(typeof TODAY_DAY !== 'undefined' ? TODAY_DAY : new Date().getDay());
+  const todayISO = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : new Date().toISOString().split('T')[0];
+  const curOid = (typeof curStaff !== 'undefined' && curStaff?.oid) || (typeof curOutlet !== 'undefined' && curOutlet?.id) || 'all';
+  const promo = (typeof promos !== 'undefined' ? promos : []).find(p => {
+    if (!p.active || !p.useCode) return false;
+    const dayOk = !p.days?.length || p.days.includes(today);
+    const dateOk = (!p.from || todayISO >= p.from) && (!p.to || todayISO <= p.to);
+    const outletOk = !p.outlets?.length || p.outlets.includes(curOid);
+    if (!dayOk || !dateOk || !outletOk) return false;
+    if (p.codeType === 'bulk') return p.codes?.some(c => (c.code||'').toUpperCase() === code && !c.used);
+    return (p.code || '').toUpperCase() === code;
+  });
+  const vs = _getVS(pre);
+  if (!promo) {
+    toast('❌ Kode voucher tidak valid atau sudah digunakan');
+    vs.code = ''; vs.promo = null;
+    _renderVoucherApplied(pre, null);
+    if (pre === 'no') calcO(); else calcS();
+    return;
+  }
+  vs.code = code; vs.promo = promo;
+  toast('✅ Voucher diterapkan: ' + promo.name);
+  _renderVoucherApplied(pre, promo);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function removeVoucherCode(pre) {
+  const vs = _getVS(pre);
+  vs.code = ''; vs.promo = null;
+  const input = g(pre + '-voucher-input');
+  if (input) input.value = '';
+  _renderVoucherApplied(pre, null);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function _renderVoucherApplied(pre, promo) {
+  const box = g(pre + '-voucher-applied');
+  const row = g(pre + '-voucher-input-row');
+  if (!box) return;
+  if (promo) {
+    const vs = _getVS(pre);
+    box.style.display = 'block';
+    box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--pl);border-radius:9px;padding:9px 12px;margin-bottom:8px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--p)">🎟️ ${esc(promo.name)}</div>
+        <div style="font-size:11px;color:var(--pd);margin-top:2px">${esc(vs.code)}</div>
+      </div>
+      <button type="button" onclick="removeVoucherCode('${pre}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:20px;padding:0 0 0 8px;line-height:1">×</button>
+    </div>`;
+    if (row) row.style.display = 'none';
+  } else {
+    box.style.display = 'none'; box.innerHTML = '';
+    if (row) row.style.display = 'flex';
+  }
+}
+
+function _markVoucherUsed(pre, orderId) {
+  const vs = _getVS(pre);
+  if (!vs.promo || !vs.code) return;
+  const p = (typeof promos !== 'undefined' ? promos : []).find(x => x.id === vs.promo.id);
+  if (!p) return;
+  if (p.codeType === 'bulk' && p.codes) {
+    const entry = p.codes.find(c => (c.code||'').toUpperCase() === vs.code && !c.used);
+    if (entry) { entry.used = true; entry.usedAt = new Date().toISOString(); entry.orderId = orderId; }
+  }
+  // single-code promos don't get "used" marked (reusable by nature)
+  if (typeof syncSettings === 'function') syncSettings();
+  vs.code = ''; vs.promo = null;
+}
+
 // ===== ORDER FORM =====
 function buildOrderForm(pre) {
   buildOrderTypeDropdowns();
@@ -389,11 +467,17 @@ function calcBase(pre) {
 
 function doCalc(pre, hasDisc) {
   const res = calcBase(pre);
-  const { type, cat, bq, base, addTotal, addonLines, subtotal, actPromo, satuanLines } = res;
-  let promoEnabled = true; const pc = g(pre + '-promo-chk'); if (pc) promoEnabled = pc.checked;
+  const { type, cat, bq, base, addTotal, addonLines, subtotal, satuanLines } = res;
+  // Voucher promo overrides auto-detected promo
+  const vs = _getVS(pre);
+  const actPromo = vs.promo || res.actPromo;
+  const isVoucher = !!vs.promo;
+  let promoEnabled = true;
+  if (!isVoucher) { const pc = g(pre + '-promo-chk'); if (pc) promoEnabled = pc.checked; }
   let promoAmt = actPromo && promoEnabled ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
   const pb = g(pre + '-promo-box');
-  if (actPromo && pb) {
+  if (actPromo && !isVoucher && pb) {
+    // Show auto-promo box with toggle (only when no voucher is active)
     pb.style.display = 'block';
     pb.innerHTML = `<div class="${promoEnabled ? 'pb-act' : 'pb-off'}"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:${promoEnabled ? '#3d6b10' : 'var(--t2)'}">${actPromo.name}</div><div style="font-size:11px;color:${promoEnabled ? '#4a7a15' : 'var(--t3)'}">${actPromo.discType === 'persen' ? actPromo.discVal + '%' : fmt(calcPromoDisc(actPromo, subtotal, bq))} diskon</div></div></div><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="${pre}-promo-chk" ${promoEnabled ? 'checked' : ''} onchange="${pre === 'no' ? 'calcO' : 'calcS'}()"> Pakai promo</label></div></div>`;
   } else if (pb) { pb.style.display = 'none'; pb.innerHTML = ''; }
@@ -632,6 +716,11 @@ function buildOrder(pre) {
     o.payStatus = 'Lunas';
   }
   orders.push(o); orderCtr++;
+  // Mark voucher code as used (for bulk unique codes)
+  _markVoucherUsed(pre, o.id);
+  // Reset voucher UI
+  _renderVoucherApplied(pre, null);
+  const vi = g(pre + '-voucher-input'); if (vi) vi.value = '';
   if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
     kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
@@ -820,7 +909,7 @@ function renderOrders() {
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
     </tr>`; }).join('');
   } else {
     tb.innerHTML = list.map(o => `<tr>
@@ -833,7 +922,7 @@ function renderOrders() {
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button></div></td>
     </tr>`).join('');
   }
   _renderOrdPager(fullList.length, _totalPages);
@@ -859,7 +948,27 @@ function _renderOrdPager(total, totalPages) {
   </div>`;
 }
 
+function copyTrackingLink(id) {
+  const o = orders.find(x => x.id === id); if (!o) return;
+  if (!o.tracking_token) {
+    o.tracking_token = genTrackingToken();
+    if (typeof syncOrder === 'function') syncOrder(o);
+  }
+  const url = window.location.origin + window.location.pathname + '?track=' + o.tracking_token;
+  navigator.clipboard.writeText(url).then(() => {
+    toast('🔗 Link tracking disalin!');
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('🔗 Link tracking disalin!');
+  });
+}
+
 const _IC_EYE = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const _IC_LINK = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 const _IC_RECEIPT = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
 const _IC_MSG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 const _IC_CHECK = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
@@ -908,6 +1017,7 @@ function _renderOrdCards(list, wrap) {
         <div class="ocard-acts">
           <button class="oib blu" onclick="showDetail('${esc(o.id)}')" title="Detail">${_IC_EYE}</button>
           <button class="oib" onclick="showRcpt('${esc(o.id)}')" title="Struk">${_IC_RECEIPT}</button>
+          <button class="oib" onclick="copyTrackingLink('${esc(o.id)}')" title="Salin link tracking">${_IC_LINK}</button>
           ${waAct}
           ${curRole === 'owner' ? `<button class="oib red" onclick="deleteOrder('${esc(o.id)}')" title="Hapus">${_IC_TRASH}</button>` : ''}
           <button class="btn bsm bp" onclick="openPayPicker('${esc(o.id)}',this)" style="margin-left:auto;border-radius:var(--rp)">${esc(o.payStatus)}</button>

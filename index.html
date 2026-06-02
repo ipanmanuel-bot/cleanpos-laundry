@@ -11,6 +11,7 @@
 <meta name="description" content="CleanPOS adalah sistem POS modern yang dirancang khusus untuk bisnis laundry. Membantu Anda mengelola pesanan, data pelanggan, dan transaksi dengan mudah dalam satu platform yang sederhana dan intuitif.">
 <title>CleanPOS - Laundry Management System</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="apple-touch-icon" href="img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1287,6 +1288,15 @@ tr:hover td{background:#F6F7F9}
           <!-- Rendered by _noUpdateSummary() -->
           <div style="padding:20px;color:var(--t2);font-size:13px;text-align:center">Isi form di sebelah kiri untuk melihat ringkasan pesanan.</div>
         </div>
+        <!-- Voucher Code Input -->
+        <div style="padding:12px 20px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1)">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Kode Voucher</div>
+          <div id="no-voucher-applied" style="display:none"></div>
+          <div id="no-voucher-input-row" style="display:flex;gap:7px">
+            <input id="no-voucher-input" placeholder="Masukkan kode voucher..." style="flex:1;text-transform:uppercase;font-size:13px" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')applyVoucherCode('no')">
+            <button type="button" class="btn bp bsm" onclick="applyVoucherCode('no')" style="white-space:nowrap;font-size:12px;font-weight:600">Terapkan</button>
+          </div>
+        </div>
         <div class="no-sum-pay">
           <div class="fg" style="margin-bottom:10px">
             <label>Metode Pembayaran</label>
@@ -2160,6 +2170,15 @@ tr:hover td{background:#F6F7F9}
         </div>
       </div>
       <div>
+        <!-- Voucher Code Input -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Kode Voucher</div>
+          <div id="sno-voucher-applied" style="display:none"></div>
+          <div id="sno-voucher-input-row" style="display:flex;gap:7px">
+            <input id="sno-voucher-input" placeholder="Masukkan kode voucher..." style="flex:1;text-transform:uppercase;font-size:13px" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')applyVoucherCode('sno')">
+            <button type="button" class="btn bp bsm" onclick="applyVoucherCode('sno')">Terapkan</button>
+          </div>
+        </div>
         <div id="sno-promo-box"></div>
         <div class="card"><div class="ct">Ringkasan</div><div id="sno-preview"></div><div class="div_"></div><div class="sr tot"><span>Total</span><span id="sno-total" style="color:var(--p)">Rp 0</span></div></div>
         <div class="card"><div class="ct">Pembayaran</div>
@@ -2328,6 +2347,10 @@ tr:hover td{background:#F6F7F9}
       <div class="mp-step-item" data-step="4" onclick="_mpGo(4)">
         <div class="mp-sn" id="mpn-4">4</div>
         <div class="mp-sl">Catatan (Opsional)</div>
+      </div>
+      <div class="mp-step-item" data-step="5" onclick="_mpGo(5)">
+        <div class="mp-sn" id="mpn-5">5</div>
+        <div class="mp-sl">Kode Voucher</div>
       </div>
     </div>
     <div class="mp-content" id="mp-content"></div>

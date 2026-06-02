@@ -244,6 +244,8 @@ async function supaLoadAll() {
   if (curRole === 'owner' && typeof refreshODash === 'function') refreshODash();
   else if (curRole === 'staff' && typeof refreshSDash === 'function') refreshSDash();
   supaSubscribeOrders();
+  supaSubscribeSettings();
+  supaSubscribeEmployees();
 }
 
 // --- Realtime: subscribe to orders table changes ---
@@ -263,6 +265,64 @@ function supaSubscribeOrders() {
       }
       renderOrders();
       if (curRole === 'owner') refreshODash(); else refreshSDash();
+    })
+    .subscribe();
+}
+
+// --- Realtime: subscribe to settings & employees for multi-device sync ---
+let supaSettingsCh = null;
+let supaEmployeesCh = null;
+
+function supaSubscribeSettings() {
+  if (!supaEnabled || !supabase) return;
+  if (supaSettingsCh) supabase.removeChannel(supaSettingsCh);
+  supaSettingsCh = supabase.channel('settings-rt')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, async payload => {
+      if (payload.new?.user_id !== currentUserId) return;
+      const s = payload.new;
+      // Apply updated settings directly without full reload
+      if (s.store_name !== undefined) storeName = s.store_name;
+      if (s.store_addr !== undefined) storeAddr = s.store_addr;
+      if (s.store_wa !== undefined) storeWa = s.store_wa;
+      if (s.store_footer !== undefined) storeFooter = s.store_footer;
+      if (s.service_types) { try { serviceTypes = JSON.parse(s.service_types); } catch(e){} }
+      if (s.satuan_items) { try { satuanItems = JSON.parse(s.satuan_items); } catch(e){} }
+      if (s.addons) { try { addons = JSON.parse(s.addons); } catch(e){} }
+      if (s.promos) { try { promos = JSON.parse(s.promos); } catch(e){} }
+      if (s.wa_tpl_selesai !== undefined) waTplSelesai = s.wa_tpl_selesai;
+      if (s.wa_tpl_new) { try { waTplNew = JSON.parse(s.wa_tpl_new); } catch(e){} }
+      if (s.cuti_per_bulan !== undefined) cutiPerBulan = s.cuti_per_bulan;
+      if (s.membership_enabled !== undefined) membershipEnabled = s.membership_enabled;
+      if (s.membership_bonus !== undefined) membershipBonus = s.membership_bonus;
+      if (s.membership_style !== undefined) membershipStyle = s.membership_style;
+      if (s.membership_min_deposit !== undefined) membershipMinDeposit = s.membership_min_deposit;
+      if (s.membership_packages) { try { membershipPackages = JSON.parse(s.membership_packages); } catch(e){} }
+      if (s.membership_expiry_enabled !== undefined) membershipExpiryEnabled = s.membership_expiry_enabled;
+      if (s.membership_expiry_days !== undefined) membershipExpiryDays = s.membership_expiry_days;
+      if (s.price_options) { try { priceOptions = JSON.parse(s.price_options); } catch(e){} }
+      if (s.kg_step !== undefined) kgStep = s.kg_step;
+      // Re-render UI to reflect new settings
+      if (typeof renderSettings === 'function') renderSettings();
+      if (typeof renderPricing === 'function') renderPricing();
+    })
+    .subscribe();
+}
+
+function supaSubscribeEmployees() {
+  if (!supaEnabled || !supabase) return;
+  if (supaEmployeesCh) supabase.removeChannel(supaEmployeesCh);
+  supaEmployeesCh = supabase.channel('employees-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, payload => {
+      if ((payload.new?.user_id || payload.old?.user_id) !== currentUserId) return;
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const r = payload.new;
+        const emp = { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out };
+        const idx = employees.findIndex(e => String(e.id) === String(r.id));
+        if (idx >= 0) employees[idx] = emp; else employees.push(emp);
+      } else if (payload.eventType === 'DELETE') {
+        employees = employees.filter(e => String(e.id) !== String(payload.old.id));
+      }
+      if (typeof renderEmployees === 'function') renderEmployees();
     })
     .subscribe();
 }
