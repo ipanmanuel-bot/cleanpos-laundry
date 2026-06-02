@@ -87,6 +87,12 @@ let _custFilter = 'all'; let _custPage = 1;
 let rptStatusFilter = ''; let rptPayFilter = ''; let _rptTxPage = 1;
 let curRole = null; let curStaff = null; let curOutlet = null;
 let pinEntry = ''; let selOutletColor = '#8DC440';
+// Notification settings
+let notifWaPending = true; let notifProsesKosong = true; let notifBelumLunas = true; let notifDurasiLama = true;
+let notifProsesKosongDelay = 15; let notifDurasiMencuci = 100; let notifDurasiMengeringkan = 80;
+// In-app notification center
+let appNotifications = [];
+const _NOTIF_KEY = 'cleanpos_notifs';
 let editSvcId = null;
 let editSatItemId = null;
 let _pricingTab = 'kiloan';
@@ -429,7 +435,7 @@ function oGo(pg,el){
   document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('o-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
   g('o-mc').scrollTop=0;
-  const pm={dashboard:refreshODash,orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings};
+  const pm={dashboard:refreshODash,orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings,notifications:renderNotifications};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('no');calcO();}
   closeDrawer();
@@ -506,6 +512,9 @@ function seed(){
 // ===== INIT =====
 function initOwner(){
   loadPrintersFromStorage();
+  _loadNotifications();_updateNotifBadge();
+  setInterval(_generateNotifications,5*60*1000);
+  setTimeout(_generateNotifications,5000);
   g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
   const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
   prevTpl();renderPricing();renderPromo();renderSettings();
@@ -528,6 +537,14 @@ function renderSettings(){
   if(g('s-wa'))g('s-wa').value=storeWa;
   if(g('s-footer'))g('s-footer').value=storeFooter;
   if(g('s-cuti'))g('s-cuti').value=cutiPerBulan;
+  // Notification settings
+  [['notif-wa-pending',notifWaPending],['notif-proses-kosong',notifProsesKosong],['notif-belum-lunas',notifBelumLunas],['notif-durasi-lama',notifDurasiLama]].forEach(([id,val])=>{
+    const cb=g(id);if(cb)cb.checked=val;
+    const btn=g(id+'-btn');if(btn){btn.classList.toggle('on',val);btn.classList.toggle('off',!val);}
+  });
+  if(g('notif-delay'))g('notif-delay').value=notifProsesKosongDelay;
+  if(g('notif-dur-mencuci'))g('notif-dur-mencuci').value=notifDurasiMencuci;
+  if(g('notif-dur-mengeringkan'))g('notif-dur-mengeringkan').value=notifDurasiMengeringkan;
   // kg step radio
   const kgRadio=document.querySelector(`input[name="s-kgstep"][value="${kgStep}"]`);
   if(kgRadio){kgRadio.checked=true;_syncKgStepLabels();}
@@ -2010,6 +2027,8 @@ function openAddOutlet(){
   _editOutletId=null;
   g('mo-title').textContent='Tambah Outlet';
   ['mo-n','mo-a','mo-h'].forEach(id=>{const el=g(id);if(el)el.value='';});
+  if(g('mo-washing'))g('mo-washing').value=1;
+  if(g('mo-drying'))g('mo-drying').value=1;
   _openOutletModal();
 }
 function editOutlet(id){
@@ -2019,6 +2038,8 @@ function editOutlet(id){
   if(g('mo-n'))g('mo-n').value=o.name||'';
   if(g('mo-a'))g('mo-a').value=o.addr&&o.addr!=='—'?o.addr:'';
   if(g('mo-h'))g('mo-h').value=o.hours||'';
+  if(g('mo-washing'))g('mo-washing').value=o.washingCount||1;
+  if(g('mo-drying'))g('mo-drying').value=o.dryingCount||1;
   _openOutletModal();
 }
 function saveOutlet(){
@@ -2026,19 +2047,102 @@ function saveOutlet(){
   if(!name){toast('Nama outlet wajib diisi');return;}
   const addr=g('mo-a').value.trim()||'—';
   const hours=g('mo-h').value.trim()||'—';
+  const washingCount=Math.max(1,parseInt(g('mo-washing')?.value)||1);
+  const dryingCount=Math.max(1,parseInt(g('mo-drying')?.value)||1);
   if(_editOutletId){
     const o=outlets.find(x=>x.id===_editOutletId);
-    if(o){o.name=name;o.addr=addr;o.hours=hours;o.color=selOutletColor;}
+    if(o){o.name=name;o.addr=addr;o.hours=hours;o.color=selOutletColor;o.washingCount=washingCount;o.dryingCount=dryingCount;}
     _editOutletId=null;
     cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('Outlet diperbarui');
     return;
   }
   const max=PLAN_LIMITS[currentPlan]||1;
   if(outlets.length>=max){cm('m-outlet');toast('Plan '+( PLANS[currentPlan]?.name||'Basic')+' maksimal '+max+' outlet');showUpgradeModal();return;}
-  outlets.push({id:'o'+Date.now(),name,addr,hours,color:selOutletColor});
+  outlets.push({id:'o'+Date.now(),name,addr,hours,color:selOutletColor,washingCount,dryingCount});
   cm('m-outlet');renderOutlets();buildEmpChips();goOutletSelect();toast('Outlet "'+name+'" ditambahkan');
 }
+function adjMachine(type,delta){
+  const id='mo-'+type;const el=g(id);if(!el)return;
+  el.value=Math.max(1,Math.min(20,(parseInt(el.value)||1)+delta));
+}
 function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus permanen.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
+
+// ===== NOTIFICATION CENTER =====
+function _loadNotifications(){try{const d=localStorage.getItem(_NOTIF_KEY);if(d)appNotifications=JSON.parse(d);}catch(e){appNotifications=[];}}
+function _saveNotifications(){try{localStorage.setItem(_NOTIF_KEY,JSON.stringify(appNotifications.slice(0,100)));}catch(e){}}
+function _updateNotifBadge(){
+  const count=appNotifications.filter(n=>!n.read).length;
+  ['o-notif-badge','o-notif-badge-b'].forEach(id=>{
+    const el=g(id);if(!el)return;
+    if(count>0){el.textContent=count>99?'99+':count;el.style.display='flex';}
+    else el.style.display='none';
+  });
+}
+function _fmtNotifTime(iso){if(!iso)return'';try{const d=new Date(iso);return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});}catch(e){return'';}}
+function markNotifRead(id){
+  const n=appNotifications.find(x=>x.id===id);if(!n)return;
+  n.read=true;_saveNotifications();_updateNotifBadge();
+  const el=g('notif-item-'+id);if(el){el.classList.remove('notif-unread');const dot=el.querySelector('.notif-dot');if(dot)dot.style.display='none';}
+}
+function markAllNotifsRead(){
+  appNotifications.forEach(n=>n.read=true);_saveNotifications();_updateNotifBadge();renderNotifications();
+}
+function _generateNotifications(){
+  const now=new Date();const newNotifs=[];
+  // 1. WA Pending
+  if(notifWaPending){const count=orders.filter(o=>o.status==='Selesai'&&!o.waSent).length;if(count>0&&!appNotifications.some(n=>n.type==='wa-pending'&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_wa',type:'wa-pending',title:'Pesanan selesai belum di WA',body:`Ada ${count} pesanan selesai yang belum dikirim WhatsApp.`,time:now.toISOString(),read:false});}}
+  // 2. Belum Lunas
+  if(notifBelumLunas){const count=orders.filter(o=>o.status==='Selesai'&&o.payStatus!=='Lunas').length;if(count>0&&!appNotifications.some(n=>n.type==='belum-lunas'&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_ln',type:'belum-lunas',title:'Pesanan selesai belum lunas',body:`Ada ${count} pesanan selesai yang belum berstatus Lunas.`,time:now.toISOString(),read:false});}}
+  // 3. Proses Kosong (per outlet)
+  if(notifProsesKosong){outlets.forEach(outlet=>{const mencuciCount=orders.filter(o=>o.status==='Mencuci'&&o.outletId===outlet.id).length;const pendingCount=orders.filter(o=>o.status==='Diterima'&&o.outletId===outlet.id).length;if(mencuciCount<=1&&pendingCount>0&&!appNotifications.some(n=>n.type==='proses-kosong'&&n.outletId===outlet.id&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_pk_'+outlet.id,type:'proses-kosong',title:'Kolom Mencuci kosong',body:`Kolom Mencuci di ${outlet.name} kosong selama ${notifProsesKosongDelay} menit. Segera proses ${pendingCount} pesanan yang diterima.`,time:now.toISOString(),read:false,outletId:outlet.id});}});}
+  // 4. Durasi Lama
+  if(notifDurasiLama){const nowMs=now.getTime();const lama=orders.filter(o=>{if(o.status!=='Mencuci'||!o.isoDate)return false;try{const diff=(nowMs-new Date(o.isoDate).getTime())/60000;return diff>notifDurasiMencuci;}catch(e){return false;}});if(lama.length>0&&!appNotifications.some(n=>n.type==='durasi-lama'&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_dl',type:'durasi-lama',title:'Durasi proses terlalu lama',body:`${lama.length} pesanan di proses Mencuci melebihi ${notifDurasiMencuci} menit.`,time:now.toISOString(),read:false});}}
+  if(newNotifs.length){appNotifications=[...newNotifs,...appNotifications].slice(0,100);_saveNotifications();_updateNotifBadge();const pg=g('o-p-notifications');if(pg&&pg.classList.contains('on'))renderNotifications();}
+}
+function _toggleNotifBtn(cbId,btnId){
+  const cb=g(cbId);const btn=g(btnId);if(!cb||!btn)return;
+  cb.checked=!cb.checked;
+  btn.classList.toggle('on',cb.checked);btn.classList.toggle('off',!cb.checked);
+}
+function saveNotifSettings(){
+  notifWaPending=!!g('notif-wa-pending')?.checked;
+  notifProsesKosong=!!g('notif-proses-kosong')?.checked;
+  notifBelumLunas=!!g('notif-belum-lunas')?.checked;
+  notifDurasiLama=!!g('notif-durasi-lama')?.checked;
+  notifProsesKosongDelay=parseInt(g('notif-delay')?.value)||15;
+  notifDurasiMencuci=parseInt(g('notif-dur-mencuci')?.value)||100;
+  notifDurasiMengeringkan=parseInt(g('notif-dur-mengeringkan')?.value)||80;
+  syncSettings();toast('Pengaturan notifikasi disimpan');
+}
+function renderNotifications(){
+  const el=g('notif-list');if(!el)return;
+  _updateNotifBadge();
+  if(!appNotifications.length){
+    el.innerHTML=`<div style="text-align:center;padding:48px 20px;color:var(--t2)"><div style="width:48px;height:48px;border-radius:50%;background:var(--bg);border:2px solid var(--b1);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="bell" style="width:22px;height:22px;stroke-width:1.5;display:block;color:var(--t3)"></i></div><div style="font-size:14px;font-weight:600;margin-bottom:4px">Tidak ada notifikasi</div><div style="font-size:12px">Notifikasi operasional akan muncul di sini.</div></div>`;
+    if(typeof lucide!=='undefined')lucide.createIcons();return;
+  }
+  const TYPE_META={
+    'wa-pending':{icon:'message-circle',bg:'#EDF5D8',fg:'#6FA32E'},
+    'proses-kosong':{icon:'bar-chart-2',bg:'#E3F2FD',fg:'#1565C0'},
+    'belum-lunas':{icon:'file-text',bg:'#FFF8E1',fg:'#E65100'},
+    'durasi-lama':{icon:'clock',bg:'#FFEBEE',fg:'#C62828'}
+  };
+  el.innerHTML=appNotifications.map(n=>{
+    const m=TYPE_META[n.type]||{icon:'bell',bg:'var(--bg)',fg:'var(--t2)'};
+    return `<div class="notif-item${n.read?'':' notif-unread'}" id="notif-item-${n.id}" onclick="markNotifRead('${n.id}')" style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--b1);cursor:pointer;background:${n.read?'var(--ca)':'var(--pl)'};transition:background .15s">
+      <div style="width:38px;height:38px;border-radius:10px;background:${m.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${m.fg}"><i data-lucide="${m.icon}" style="width:18px;height:18px;stroke-width:1.75;display:block"></i></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:${n.read?'500':'700'};color:var(--t1);margin-bottom:2px">${n.title}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5">${n.body}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--t3)">${_fmtNotifTime(n.time)}</div>
+        <div class="notif-dot" style="width:8px;height:8px;border-radius:50%;background:var(--p);${n.read?'display:none':''}"></div>
+      </div>
+    </div>`;
+  }).join('');
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
 
 // ===== CUSTOMERS =====
 // ===== MEMBERSHIP EXPIRY HELPERS =====
@@ -2644,10 +2748,10 @@ function toggleMembershipExpiry(){
 }
 
 // ===== PRICING & ADDONS =====
-function _activePoOptions(){return priceOptions.filter(po=>po.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));}
+function _activePoOptions(cat){return priceOptions.filter(po=>cat==='kiloan'?po.activeKiloan!==false:cat==='satuan'?po.activeSatuan!==false:(po.activeKiloan!==false||po.activeSatuan!==false)).sort((a,b)=>(a.order||0)-(b.order||0));}
 function _getPoLabel(key){return priceOptions.find(po=>po.key===key)?.label||key;}
 function _getPoEst(key){return priceOptions.find(po=>po.key===key)?.est||'';}
-function _minPrice(prices){const vals=priceOptions.filter(po=>po.active!==false).map(po=>prices?.[po.key]||0).filter(v=>v>0);return vals.length?Math.min(...vals):0;}
+function _minPrice(prices,cat){const vals=_activePoOptions(cat).map(po=>prices?.[po.key]||0).filter(v=>v>0);return vals.length?Math.min(...vals):0;}
 
 // ─── Main entry ───
 function renderPricing(){
@@ -2703,7 +2807,7 @@ function _renderKiloanTab(){
 }
 
 function _renderKiloanLeft(){
-  const allPo=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const allPo=_activePoOptions('kiloan');
   const DRAG_ICON=`<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>`;
   const GEAR_ICON=`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
   const INFO_ICON=`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Berat minimum yang harus dipenuhi"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
@@ -2730,7 +2834,7 @@ function _renderKiloanLeft(){
   } else {
     serviceTypes.forEach(s=>{
       const active=s.active!==false;
-      const minP=_minPrice(s.prices||{});
+      const minP=_minPrice(s.prices||{},'kiloan');
       const mk=s.minKg||0;
       const tierApply=s.tierApply||{};
       const chips=allPo.map(po=>{
@@ -2868,7 +2972,7 @@ function _renderKiloanRight_unused(){
 // ─── Satuan tab ───
 function _renderSatuanTab(){
   const pane=g('ptab-satuan');if(!pane)return;
-  const activePo=_activePoOptions();
+  const activePo=_activePoOptions('satuan');
 
   let html=`<div class="pricing-split">`;
 
@@ -2902,7 +3006,7 @@ function _renderSatuanTable(items, activePo){
   }else{
     items.forEach(item=>{
       const active=item.active!==false;
-      const minP=_minPrice(item.prices||{});
+      const minP=_minPrice(item.prices||{},'satuan');
       const opsiCount=activePo.length;
       html+=`<tr>
         <td><div style="font-weight:600">${esc(item.name)}</div>${item.desc?`<div style="font-size:11px;color:var(--t2)">${esc(item.desc)}</div>`:''}</td>
@@ -2924,7 +3028,7 @@ function _renderSatuanTable(items, activePo){
 function _filterSatuanList(){
   const q=(g('prc-sat-srch')?.value||'').toLowerCase().trim();
   const filtered=q?satuanItems.filter(x=>x.name.toLowerCase().includes(q)):satuanItems;
-  const wrap=g('prc-sat-tbl-wrap');if(wrap)wrap.innerHTML=_renderSatuanTable(filtered,_activePoOptions());
+  const wrap=g('prc-sat-tbl-wrap');if(wrap)wrap.innerHTML=_renderSatuanTable(filtered,_activePoOptions('satuan'));
 }
 
 // ─── Tambahan tab ───
@@ -2956,30 +3060,31 @@ function _renderTambahanTab(){
 
 // ─── Price Options right panel ───
 function _renderPriceOptsPanel(type){
+  const cat=type.toLowerCase(); // 'kiloan' or 'satuan'
   const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
-  const activeCount=tiers.filter(t=>t.active!==false).length;
+  const activeCount=tiers.filter(t=>(cat==='kiloan'?t.activeKiloan:t.activeSatuan)!==false).length;
   let html=`<div class="prc-opts-panel">
     <div class="prc-opts-hdr">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div>
-          <div style="font-weight:700;font-size:14px">Opsi Harga ${esc(type)} (Universal)</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">Opsi harga ini berlaku untuk semua layanan ${esc(type.toLowerCase())}.</div>
+          <div style="font-weight:700;font-size:14px">Opsi Harga ${esc(type)}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Aktif/nonaktif per kategori — mengatur tampilan opsi di form pesanan ${esc(type.toLowerCase())}.</div>
         </div>
-        <span class="badge gy" style="font-size:11px;flex-shrink:0">${activeCount} Opsi</span>
+        <span class="badge gy" style="font-size:11px;flex-shrink:0">${activeCount} Aktif</span>
       </div>
     </div>
     <table class="prc-tbl"><thead><tr>
-      <th>OPSI HARGA</th><th>ESTIMASI</th><th>URUTAN</th><th>STATUS</th><th>AKSI</th>
+      <th>OPSI HARGA</th><th>ESTIMASI</th><th>URUTAN</th><th>STATUS ${esc(type.toUpperCase())}</th><th>AKSI</th>
     </tr></thead><tbody>`;
   tiers.forEach(po=>{
-    const on=po.active!==false;
+    const on=(cat==='kiloan'?po.activeKiloan:po.activeSatuan)!==false;
     html+=`<tr style="${on?'':'opacity:.55'}">
       <td style="font-weight:600">${esc(po.label)}</td>
       <td style="color:var(--t2)">${esc(po.est||'—')}</td>
       <td style="color:var(--t2);text-align:center">${po.order||'—'}</td>
       <td><span class="prc-badge-${on?'on':'off'}">${on?'Aktif':'Nonaktif'}</span></td>
       <td><div style="display:flex;gap:5px;align-items:center">
-        <button class="toggle ${on?'on':'off'}" style="transform:scale(.75);transform-origin:left" onclick="togglePriceOptActive('${po.key}')"></button>
+        <button class="toggle ${on?'on':'off'}" style="transform:scale(.75);transform-origin:left" onclick="togglePriceOptActive('${po.key}','${cat}')"></button>
         <button class="btn bsm" title="Edit" onclick="openEditPriceOpt('${po.key}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
       </div></td>
     </tr>`;
@@ -2991,7 +3096,7 @@ function _renderPriceOptsPanel(type){
     <div class="prc-banner info" style="margin:0 12px 12px;border-radius:8px">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <ul style="margin:0;padding-left:16px">
-        <li>Opsi harga yang diubah akan berlaku untuk semua layanan ${esc(type.toLowerCase())}.</li>
+        <li>Toggle di sini hanya mengatur kategori <strong>${esc(type)}</strong> — tidak mempengaruhi kategori lain.</li>
         <li>Estimasi waktu ditampilkan saat membuat pesanan.</li>
         <li>Urutan menentukan posisi opsi harga di form order.</li>
       </ul>
@@ -3018,17 +3123,15 @@ function openAddPriceOpt(){
   openModal('m-price-opt');
 }
 
-function togglePriceOptActive(key){
+function togglePriceOptActive(key,cat){
   const po=priceOptions.find(x=>x.key===key);if(!po)return;
-  po.active=!po.active;
+  if(cat==='kiloan'){ po.activeKiloan=!(po.activeKiloan!==false); }
+  else if(cat==='satuan'){ po.activeSatuan=!(po.activeSatuan!==false); }
+  else { po.activeKiloan=!po.activeKiloan; po.activeSatuan=!po.activeSatuan; } // fallback
   syncSettings();
-  toast((po.active?'Tier aktif: ':'Tier nonaktif: ')+po.label);
-  // Re-render only the right panel to preserve unsaved chip/minKg state in left panel
-  const right=g('prc-kiloan-right');
-  if(right){right.innerHTML=_renderKiloanRight();
-  } else {
-    renderPricing();
-  }
+  const isOn=cat==='satuan'?(po.activeSatuan!==false):(po.activeKiloan!==false);
+  toast((isOn?'✓ Aktif untuk '+cat+': ':'Nonaktif untuk '+cat+': ')+po.label);
+  renderPricing();
   _noRebuildTierCards();
 }
 
@@ -3060,11 +3163,13 @@ function savePriceOpt(){
   if(_editPoKey){
     const po=priceOptions.find(x=>x.key===_editPoKey);if(!po)return;
     po.label=label;po.est=est;po.active=active;
+    if(po.activeKiloan===undefined)po.activeKiloan=active;
+    if(po.activeSatuan===undefined)po.activeSatuan=active;
   }else{
     // new tier: generate a key from label
     const key='tier_'+Date.now();
     const nextOrder=priceOptions.length?Math.max(...priceOptions.map(po=>po.order||0))+1:1;
-    priceOptions.push({key,label,est,order:nextOrder,active});
+    priceOptions.push({key,label,est,order:nextOrder,active,activeKiloan:active,activeSatuan:active});
   }
   cm('m-price-opt');renderPricing();syncSettings();
   toast(_editPoKey?'✓ Tier diperbarui: '+label:'✓ Tier ditambahkan: '+label);_editPoKey=null;
@@ -3089,8 +3194,8 @@ function backToPricingList(){
 }
 
 function _renderItemSettingsPage(item){
-  const activePo=_activePoOptions();
-  const allPo=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));
+  const activePo=_activePoOptions('satuan');
+  const allPo=[...priceOptions].filter(po=>po.activeSatuan!==false).sort((a,b)=>(a.order||0)-(b.order||0));
   const active=item.active!==false;
 
   let html=`
@@ -3131,33 +3236,30 @@ function _renderItemSettingsPage(item){
         <input type="hidden" id="ips-active" value="${active?'1':'0'}">
       </div>
     </div>
-    <!-- Right: per-tier prices -->
+    <!-- Right: per-tier prices + per-item active toggle -->
     <div class="prc-opts-panel">
       <div class="prc-opts-hdr">
         <div style="font-weight:700;font-size:14px;margin-bottom:2px">Opsi Harga untuk ${esc(item.name)}</div>
-        <div style="font-size:12px;color:var(--t2)">Mengikuti set opsi harga satuan (Universal)</div>
+        <div style="font-size:12px;color:var(--t2)">Aktifkan opsi dan atur harga khusus untuk item ini.</div>
       </div>
       <table class="prc-tbl"><thead><tr>
-        <th>OPSI HARGA</th><th>ESTIMASI</th><th>HARGA</th><th>URUTAN</th><th>STATUS</th><th></th>
+        <th>OPSI HARGA</th><th>HARGA</th><th>AKTIF ITEM INI</th>
       </tr></thead><tbody id="ips-price-tbody">`;
   allPo.forEach(po=>{
-    const on=po.active!==false;
+    const itemOn=(item.tierApply||{})[po.key]!==false;
     const price=item.prices?.[po.key]||0;
-    html+=`<tr id="ips-row-${po.key}" style="${on?'':'opacity:.55'}">
-      <td style="font-weight:600">${esc(po.label)}</td>
-      <td style="color:var(--t2);font-size:12px">${esc(po.est||'—')}</td>
+    html+=`<tr id="ips-row-${po.key}" style="${itemOn?'':'opacity:.55'}">
+      <td><div style="font-weight:600">${esc(po.label)}</div>${po.est?`<div style="font-size:11px;color:var(--t2)">${esc(po.est)}</div>`:''}</td>
       <td><input type="number" id="ips-price-${po.key}" value="${price}" min="0" style="width:90px;font-size:13px;font-weight:700;padding:5px 8px;text-align:right"></td>
-      <td style="color:var(--t2);text-align:center">${po.order||'—'}</td>
-      <td><span class="prc-badge-${on?'on':'off'}">${on?'Aktif':'Nonaktif'}</span></td>
-      <td><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer" onclick="document.getElementById('ips-price-${po.key}').focus()"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></td>
+      <td><button class="toggle ${itemOn?'on':'off'}" id="ips-tier-btn-${po.key}" style="transform:scale(.85);transform-origin:center" onclick="toggleItemTierApply('${item.id}','${po.key}')"></button></td>
     </tr>`;
   });
   html+=`</tbody></table>
       <div class="prc-banner info" style="margin:12px;border-radius:8px">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <ul style="margin:0;padding-left:16px">
-          <li>Harga dapat berbeda untuk setiap item satuan meskipun menggunakan opsi yang sama.</li>
-          <li>Ubah harga pada tabel di atas untuk item ini saja.</li>
+          <li>Toggle menonaktifkan opsi ini khusus untuk item ini — tidak mempengaruhi layanan satuan lain.</li>
+          <li>Harga tetap tersimpan meski opsi dinonaktifkan.</li>
         </ul>
       </div>
     </div>
@@ -3177,7 +3279,7 @@ function _ipsToggleActive(){
 }
 function _ipsUpdateBaseInPanel(){
   const val=parseInt(g('ips-base')?.value)||0;
-  const activePo=_activePoOptions();
+  const activePo=_activePoOptions('satuan');
   if(activePo.length){const el=g('ips-price-'+activePo[0].key);if(el)el.value=val;}
 }
 function toggleItemActive(id){
@@ -3188,13 +3290,25 @@ function toggleItemActive(id){
   if(g('ips-active'))g('ips-active').value=item.active?'1':'0';
   syncSettings();toast((item.active?'✓ Aktif: ':'Nonaktif: ')+item.name);
 }
+function toggleItemTierApply(itemId,tierKey){
+  const item=satuanItems.find(x=>x.id===itemId);if(!item)return;
+  if(!item.tierApply)item.tierApply={};
+  item.tierApply[tierKey]=item.tierApply[tierKey]===false?true:false;
+  const on=item.tierApply[tierKey]!==false;
+  const row=g('ips-row-'+tierKey);
+  if(row){
+    row.style.opacity=on?'':'0.55';
+    const btn=g('ips-tier-btn-'+tierKey);
+    if(btn){btn.classList.toggle('on',on);btn.classList.toggle('off',!on);}
+  }
+}
 function saveItemSettings(){
   const item=satuanItems.find(x=>x.id===_itemPageId);if(!item)return;
   item.name=(g('ips-name')?.value||'').trim()||item.name;
   item.unit=g('ips-unit')?.value||item.unit;
   item.desc=g('ips-desc')?.value||'';
   item.active=g('ips-active')?.value!=='0';
-  const prices={};
+  const prices=Object.assign({},item.prices||{});
   priceOptions.forEach(po=>{const el=g('ips-price-'+po.key);if(el)prices[po.key]=parseInt(el.value)||0;});
   item.prices=prices;
   buildSatuanOrderItems('no');buildSatuanOrderItems('sno');calcO();calcS();syncSettings();
@@ -3239,7 +3353,7 @@ function _msvcUnitChange() {
 
 function _renderSvcPriceRows(containerId, prices) {
   const el = g(containerId); if (!el) return;
-  const activeOpts = _activePoOptions();
+  const activeOpts = _activePoOptions('kiloan');
   const unit = g('msvc-unit')?.value || 'kg';
   if (!activeOpts.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--t2);font-size:13px;padding:16px 0">Belum ada tier harga. Klik "Tambah Tier" untuk menambahkan.</div>';
@@ -3520,7 +3634,7 @@ function _noRebuildTierCards(){
   const type=g('no-type')?.value||'kiloan';
   const tierSect=g('no-tier-sect');
   if(tierSect)tierSect.style.display=(type==='satuan'?'none':'block');
-  let activeTiers=_activePoOptions();
+  let activeTiers=_activePoOptions('kiloan');
   // Filter by service's tierApply if applicable
   const svc=type!=='satuan'?getSvcById(type):null;
   if(svc&&svc.tierApply){
@@ -3536,6 +3650,10 @@ function _noRebuildTierCards(){
       </div>
     </div>
   `).join('');
+  if(activeTiers.length===1&&curCat!==activeTiers[0].key){
+    const sel=g('no-cat');if(sel)sel.value=activeTiers[0].key;
+    catChange('no');
+  }
 }
 function _noPickType(key){
   const inp=g('no-type');if(inp)inp.value=key;
@@ -3792,7 +3910,8 @@ function _mpStep1Html(){
 
 function _mpStep2Html(){
   const s=_mpState;
-  const activePo=priceOptions.filter(po=>po.active!==false);
+  const activePo=_activePoOptions('kiloan');
+  const activePoSatuan=_activePoOptions('satuan');
   const activeSatuan=satuanItems.filter(x=>x.active!==false);
   const kiloanAll=(s.kiloanTargets||[])[0]==='all';
   const kiloanChecked=k=>kiloanAll||(s.kiloanTargets||[]).includes(k);
@@ -3837,19 +3956,19 @@ function _mpStep2Html(){
         <input type="checkbox" id="mp-satuan-all" ${satuanAll?'checked':''} onchange="_mpSatuanAllChg(this)"> Semua Satuan
       </label>
       <div style="font-size:11px;color:var(--t2);margin-bottom:12px;margin-left:26px">Aktifkan untuk semua layanan satuan.</div>
-      ${activeSatuan.length&&activePo.length?`
+      ${activeSatuan.length&&activePoSatuan.length?`
       <div style="overflow-x:auto">
         <table class="mp-matrix">
           <thead>
             <tr>
               <th style="min-width:120px">Layanan Satuan</th>
-              ${activePo.map(po=>`<th>${esc(po.label)}</th>`).join('')}
+              ${activePoSatuan.map(po=>`<th>${esc(po.label)}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
             ${activeSatuan.map(item=>`<tr>
               <td>${esc(item.name)}</td>
-              ${activePo.map(po=>`<td><input type="checkbox" ${mChk(item.id,po.key)?'checked':''} onchange="_mpMatrixChg('${item.id}','${po.key}',this)" style="width:16px;height:16px;cursor:pointer"></td>`).join('')}
+              ${activePoSatuan.map(po=>`<td><input type="checkbox" ${mChk(item.id,po.key)?'checked':''} onchange="_mpMatrixChg('${item.id}','${po.key}',this)" style="width:16px;height:16px;cursor:pointer"></td>`).join('')}
             </tr>`).join('')}
           </tbody>
         </table>
@@ -4123,17 +4242,17 @@ function _mpToggleAccord(type){
 
 function _mpKiloanAllChg(cb){
   _mpState.kiloanTargets=cb.checked?['all']:[];
-  const activePo=priceOptions.filter(po=>po.active!==false);
+  const activePo=_activePoOptions('kiloan');
   activePo.forEach(po=>{const el=g('mp-k-'+po.key);if(el)el.checked=cb.checked;});
 }
 
 function _mpKiloanTierChg(key,cb){
   const t=_mpState.kiloanTargets||[];
-  if(t[0]==='all'){_mpState.kiloanTargets=priceOptions.filter(po=>po.active!==false).map(po=>po.key).filter(k=>k!==key);}
+  if(t[0]==='all'){_mpState.kiloanTargets=_activePoOptions('kiloan').map(po=>po.key).filter(k=>k!==key);}
   else if(cb.checked){if(!t.includes(key))_mpState.kiloanTargets=[...t,key];}
   else{_mpState.kiloanTargets=t.filter(k=>k!==key);}
   const allCb=g('mp-kiloan-all');
-  if(allCb){const activePo=priceOptions.filter(po=>po.active!==false);const allChk=activePo.every(po=>(_mpState.kiloanTargets||[]).includes(po.key));allCb.checked=allChk;allCb.indeterminate=!allChk&&(_mpState.kiloanTargets||[]).length>0;}
+  if(allCb){const activePo=_activePoOptions('kiloan');const allChk=activePo.every(po=>(_mpState.kiloanTargets||[]).includes(po.key));allCb.checked=allChk;allCb.indeterminate=!allChk&&(_mpState.kiloanTargets||[]).length>0;}
 }
 
 function _mpSatuanAllChg(cb){
@@ -4145,7 +4264,7 @@ function _mpMatrixChg(itemId,tierKey,cb){
   const t=_mpState.satuanTargets||[];
   const key=itemId+'-'+tierKey;
   if(t[0]==='all'){
-    const activePo_=priceOptions.filter(po=>po.active!==false);
+    const activePo_=_activePoOptions('satuan');
     const activeSatuan_=satuanItems.filter(x=>x.active!==false);
     _mpState.satuanTargets=[];
     activeSatuan_.forEach(item=>activePo_.forEach(po=>{if(!(item.id===itemId&&po.key===tierKey))_mpState.satuanTargets.push(item.id+'-'+po.key);}));
@@ -4156,7 +4275,7 @@ function _mpMatrixChg(itemId,tierKey,cb){
   }
   const allCb=g('mp-satuan-all');
   if(allCb){
-    const activePo_=priceOptions.filter(po=>po.active!==false);
+    const activePo_=_activePoOptions('satuan');
     const activeSatuan_=satuanItems.filter(x=>x.active!==false);
     const total=activeSatuan_.length*activePo_.length;
     const checked=(_mpState.satuanTargets||[]).length;

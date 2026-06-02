@@ -109,6 +109,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .role-ic svg{width:28px;height:28px;stroke-width:1.5;display:block}
 #plan-badge-emoji svg{width:20px;height:20px;stroke-width:1.75;display:block}
 .page{display:none}.page.on{display:block}
+.notif-badge{display:none;position:absolute;top:-5px;right:-7px;min-width:17px;height:17px;background:var(--re);border-radius:9px;font-size:10px;font-weight:700;color:#fff;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid var(--dk)}
+.notif-item:hover{background:var(--bg)!important}
+.notif-unread{background:var(--pl)!important}
+.notif-g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.notif-g2{grid-template-columns:1fr}}
 .card{background:var(--ca);border:1px solid var(--b1);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .ct{font-weight:700;font-size:14px;margin-bottom:12px}
 .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -1087,6 +1092,7 @@ tr:hover td{background:#F6F7F9}
     <button class="ni" onclick="oGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <button class="ni" onclick="oGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
     <button class="ni" onclick="oGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
+    <button class="ni" onclick="oGo('notifications',this)"><span class="nic" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="o-notif-badge"></span></span>Notifikasi</button>
     <div class="sb-sec">Keuangan</div>
     <button class="ni" onclick="oGo('kas',this)"><span class="nic"><i data-lucide="wallet"></i></span>Kas Kasir</button>
     <button class="ni" onclick="oGo('expenses',this)"><span class="nic"><i data-lucide="receipt"></i></span>Pengeluaran</button>
@@ -1903,6 +1909,92 @@ tr:hover td{background:#F6F7F9}
         </div>
       </div>
     </div>
+    <!-- Notification Settings -->
+    <div class="card" style="margin-top:16px">
+      <div class="set-card-hd" style="margin-bottom:16px">
+        <div class="set-card-icon"><i data-lucide="bell"></i></div>
+        <div><div class="ct" style="margin-bottom:1px">Pengaturan Notifikasi</div><div style="font-size:11px;color:var(--t2)">Kelola notifikasi otomatis untuk membantu operasional harian toko Anda.</div></div>
+      </div>
+      <div class="notif-g2">
+        <!-- Left: Jenis Notifikasi + Proses Kosong -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Jenis Notifikasi</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1.5px solid var(--b1);border-radius:var(--rs)">
+              <div style="width:32px;height:32px;border-radius:8px;background:#EDF5D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:1.75;color:var(--p);display:block"></i></div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px">Remind Pesanan Selesai Belum di WA</div><div style="font-size:11px;color:var(--t2);line-height:1.4">Kirim notifikasi jika pesanan sudah berstatus Selesai tetapi WA belum dikirim.</div></div>
+              <button class="toggle on" id="notif-wa-pending-btn" onclick="_toggleNotifBtn('notif-wa-pending','notif-wa-pending-btn')" style="flex-shrink:0;margin-top:2px"></button>
+              <input type="checkbox" id="notif-wa-pending" style="display:none" checked>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1.5px solid var(--b1);border-radius:var(--rs)">
+              <div style="width:32px;height:32px;border-radius:8px;background:#E3F2FD;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="bar-chart-2" style="width:15px;height:15px;stroke-width:1.75;color:var(--bl);display:block"></i></div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px">Remind Proses Berikutnya Kosong</div><div style="font-size:11px;color:var(--t2);line-height:1.4">Kirim notifikasi jika kolom proses berikutnya kosong atau hanya berisi 1 pesanan dalam durasi tertentu.</div></div>
+              <button class="toggle on" id="notif-proses-kosong-btn" onclick="_toggleNotifBtn('notif-proses-kosong','notif-proses-kosong-btn')" style="flex-shrink:0;margin-top:2px"></button>
+              <input type="checkbox" id="notif-proses-kosong" style="display:none" checked>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1.5px solid var(--b1);border-radius:var(--rs)">
+              <div style="width:32px;height:32px;border-radius:8px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="file-text" style="width:15px;height:15px;stroke-width:1.75;color:var(--am);display:block"></i></div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px">Remind Pesanan Selesai Belum Lunas</div><div style="font-size:11px;color:var(--t2);line-height:1.4">Kirim notifikasi jika pesanan selesai namun status pembayaran belum Lunas.</div></div>
+              <button class="toggle on" id="notif-belum-lunas-btn" onclick="_toggleNotifBtn('notif-belum-lunas','notif-belum-lunas-btn')" style="flex-shrink:0;margin-top:2px"></button>
+              <input type="checkbox" id="notif-belum-lunas" style="display:none" checked>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1.5px solid var(--b1);border-radius:var(--rs)">
+              <div style="width:32px;height:32px;border-radius:8px;background:#FFEBEE;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="clock" style="width:15px;height:15px;stroke-width:1.75;color:var(--re);display:block"></i></div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px">Remind Durasi Proses Terlalu Lama</div><div style="font-size:11px;color:var(--t2);line-height:1.4">Kirim notifikasi jika pesanan berada terlalu lama pada suatu proses.</div></div>
+              <button class="toggle on" id="notif-durasi-lama-btn" onclick="_toggleNotifBtn('notif-durasi-lama','notif-durasi-lama-btn')" style="flex-shrink:0;margin-top:2px"></button>
+              <input type="checkbox" id="notif-durasi-lama" style="display:none" checked>
+            </div>
+          </div>
+          <!-- Proses Kosong settings -->
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Proses Kosong</div>
+          <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:6px">Delay sebelum notifikasi dikirim</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <input type="number" id="notif-delay" value="15" min="1" max="120" style="width:80px;font-weight:700;text-align:center">
+            <span style="font-size:13px;color:var(--t2)">menit</span>
+          </div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.5">Jika kolom proses berikutnya kosong (atau hanya memiliki 1 pesanan) selama durasi ini, sistem akan mengirim notifikasi.</div>
+        </div>
+        <!-- Right: Durasi Proses -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Durasi Proses</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="border:1.5px solid var(--b1);border-radius:var(--rs);padding:12px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:28px;height:28px;border-radius:8px;background:#E3F2FD;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="washing-machine" style="width:14px;height:14px;stroke-width:1.75;color:#1565C0;display:block"></i></div>
+                <div style="font-size:13px;font-weight:600;color:var(--t1)">Dari Mencuci ke Mengeringkan</div>
+              </div>
+              <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Durasi proses standar: 90 menit</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:12px;color:var(--t2);flex:1">Kirim notifikasi setelah</span>
+                <input type="number" id="notif-dur-mencuci" value="100" min="10" max="480" style="width:80px;font-weight:700;text-align:center">
+                <span style="font-size:12px;color:var(--t2)">menit</span>
+              </div>
+              <div style="font-size:11px;color:var(--t3)">(Standar 90 menit + toleransi 10 menit)</div>
+            </div>
+            <div style="border:1.5px solid var(--b1);border-radius:var(--rs);padding:12px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:28px;height:28px;border-radius:8px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="wind" style="width:14px;height:14px;stroke-width:1.75;color:#E65100;display:block"></i></div>
+                <div style="font-size:13px;font-weight:600;color:var(--t1)">Dari Mengeringkan ke Menyetrika</div>
+              </div>
+              <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Durasi proses standar: 70 menit</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:12px;color:var(--t2);flex:1">Kirim notifikasi setelah</span>
+                <input type="number" id="notif-dur-mengeringkan" value="80" min="10" max="480" style="width:80px;font-weight:700;text-align:center">
+                <span style="font-size:12px;color:var(--t2)">menit</span>
+              </div>
+              <div style="font-size:11px;color:var(--t3)">(Standar 70 menit + toleransi 10 menit)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="btn bp bsm bpill" onclick="saveNotifSettings()">Simpan Pengaturan</button>
+      </div>
+      <div style="margin-top:12px;background:var(--pl);border:1.5px solid var(--p20);border-radius:var(--rs);padding:10px 12px;font-size:11px;color:#4a7c1a;display:flex;align-items:flex-start;gap:7px;line-height:1.5">
+        <i data-lucide="info" style="width:13px;height:13px;stroke-width:2;flex-shrink:0;margin-top:1px;display:block"></i>
+        Notifikasi akan dikirim ke perangkat yang sedang digunakan oleh akun Anda. Pastikan perangkat tetap aktif agar notifikasi dapat diterima.
+      </div>
+    </div>
   </div>
 
   <!-- TAB: MEMBERSHIP -->
@@ -2062,6 +2154,19 @@ tr:hover td{background:#F6F7F9}
   </div>
 </div>
 
+<!-- NOTIFICATIONS PAGE -->
+<div class="page" id="o-p-notifications">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div class="pt" style="margin-bottom:2px">Notifikasi</div>
+      <div style="font-size:12px;color:var(--t2)">Pemberitahuan operasional harian toko Anda.</div>
+    </div>
+    <button class="btn bsm" style="font-size:12px;color:var(--p);border-color:var(--p)" onclick="markAllNotifsRead()">Tandai semua dibaca</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div id="notif-list"></div>
+  </div>
+</div>
 </div><!-- end o-mc -->
 <nav class="bnav">
   <div class="bnav-inner">
@@ -2069,7 +2174,7 @@ tr:hover td{background:#F6F7F9}
     <button class="bni" onclick="oGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="oGo('new-order',null)">+</div>
     <button class="bni" onclick="oGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
-    <button class="bni" onclick="oGoB('reports',this)"><span class="bn-ic"><i data-lucide="bar-chart-2"></i></span>Laporan</button>
+    <button class="bni" onclick="oGoB('notifications',this)"><span class="bn-ic" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="o-notif-badge-b" style="border-color:var(--dk)"></span></span>Notifikasi</button>
   </div>
 </nav>
 </div><!-- end owner-app -->
@@ -2324,7 +2429,36 @@ tr:hover td{background:#F6F7F9}
     <button class="btn bp" onclick="saveEmp()">Simpan</button>
   </div>
 </div></div>
-<div class="mbg" id="m-outlet"><div class="mbox"><div class="mhd"><span class="mht" id="mo-title">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd"><div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div><div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Jl. Contoh No.12, Kota"></div><div class="fg"><label>Jam Operasional</label><input id="mo-h" placeholder="08.00 – 22.00"></div><div class="fg"><label>Warna Penanda</label><div style="display:flex;gap:10px;margin-top:6px" id="mo-colors"></div></div></div><div class="mft"><button class="btn" onclick="cm('m-outlet')">Batal</button><button class="btn bp" onclick="saveOutlet()">Simpan</button></div></div></div>
+<div class="mbg" id="m-outlet"><div class="mbox" style="max-width:480px"><div class="mhd"><span class="mht" id="mo-title">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd">
+  <div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div>
+  <div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Jl. Contoh No.12, Kota"></div>
+  <div class="fg"><label>Jam Operasional</label><input id="mo-h" placeholder="08.00 – 22.00"></div>
+  <div style="margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Kapasitas Mesin</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);background:var(--bg)">
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;height:30px;border-radius:8px;background:#E3F2FD;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="washing-machine" style="width:16px;height:16px;stroke-width:1.75;color:#1565C0;display:block"></i></div><span style="font-size:13px;font-weight:600;color:var(--t1)">Jumlah Mesin Cuci</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button type="button" class="btn bsm" onclick="adjMachine('washing',-1)" style="width:32px;height:32px;padding:0;font-size:18px;font-weight:700;flex-shrink:0;line-height:1">-</button>
+          <input type="number" id="mo-washing" value="1" min="1" max="20" style="width:56px;text-align:center;font-weight:700;font-size:15px;padding:6px 4px">
+          <button type="button" class="btn bsm" onclick="adjMachine('washing',1)" style="width:32px;height:32px;padding:0;font-size:18px;font-weight:700;flex-shrink:0;line-height:1">+</button>
+          <span style="font-size:12px;color:var(--t2);margin-left:2px">unit</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);background:var(--bg)">
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;height:30px;border-radius:8px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="wind" style="width:16px;height:16px;stroke-width:1.75;color:#E65100;display:block"></i></div><span style="font-size:13px;font-weight:600;color:var(--t1)">Jumlah Mesin Pengering</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button type="button" class="btn bsm" onclick="adjMachine('drying',-1)" style="width:32px;height:32px;padding:0;font-size:18px;font-weight:700;flex-shrink:0;line-height:1">-</button>
+          <input type="number" id="mo-drying" value="1" min="1" max="20" style="width:56px;text-align:center;font-weight:700;font-size:15px;padding:6px 4px">
+          <button type="button" class="btn bsm" onclick="adjMachine('drying',1)" style="width:32px;height:32px;padding:0;font-size:18px;font-weight:700;flex-shrink:0;line-height:1">+</button>
+          <span style="font-size:12px;color:var(--t2);margin-left:2px">unit</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--t2);margin-top:8px;line-height:1.5">Digunakan untuk mendeteksi proses kosong dan mengoptimalkan notifikasi operasional.</div>
+  </div>
+  <div class="fg"><label>Warna Penanda</label><div style="display:flex;gap:10px;margin-top:6px" id="mo-colors"></div></div>
+</div><div class="mft"><button class="btn" onclick="cm('m-outlet')">Batal</button><button class="btn bp" onclick="saveOutlet()">Simpan</button></div></div></div>
 <div class="mbg" id="m-promo"><div class="mbox" style="max-width:760px;display:flex;flex-direction:column;max-height:90vh">
   <div class="mhd" style="flex-shrink:0;border-radius:20px 20px 0 0">
     <span class="mht" id="m-promo-title">Tambah Promo</span>

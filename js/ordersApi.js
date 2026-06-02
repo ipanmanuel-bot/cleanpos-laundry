@@ -77,7 +77,7 @@ function deleteMemberTxn(id) { sbDelete('member_txns', id); }
 
 // --- Sync: Outlets ---
 function syncOutlet(o) {
-  sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color });
+  sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1 });
 }
 function deleteOutlet(id) { sbDelete('outlets', id); }
 
@@ -146,7 +146,8 @@ function syncSettings() {
     membership_expiry_enabled: membershipExpiryEnabled,
     membership_expiry_days: membershipExpiryDays,
     price_options: JSON.stringify(priceOptions),
-    kg_step: kgStep
+    kg_step: kgStep,
+    notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan})
   });
 }
 
@@ -169,7 +170,7 @@ async function supaLoadAll() {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
     const _hadDupes = _oMap.size < outletsData.length;
-    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, hours: r.hours||'', color: r.color }));
+    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, hours: r.hours||'', color: r.color, washingCount: r.washing_machine_count||1, dryingCount: r.drying_machine_count||1 }));
     // Update outletCtr so new outlets never collide with existing numeric IDs
     const _oNums = outlets.map(o => parseInt((o.id||'').replace(/\D/g,''))).filter(n => !isNaN(n) && n > 0);
     if (_oNums.length) outletCtr = Math.max(..._oNums) + 1;
@@ -211,7 +212,9 @@ async function supaLoadAll() {
     if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
     if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
     try { if (s.price_options) priceOptions = JSON.parse(s.price_options); } catch(e) { console.error('[parse] price_options:', e); }
+    priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
     if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
+    try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
   }
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
@@ -304,8 +307,9 @@ function supaSubscribeSettings() {
       if (s.membership_packages) { try { membershipPackages = JSON.parse(s.membership_packages); } catch(e){} }
       if (s.membership_expiry_enabled !== undefined) membershipExpiryEnabled = s.membership_expiry_enabled;
       if (s.membership_expiry_days !== undefined) membershipExpiryDays = s.membership_expiry_days;
-      if (s.price_options) { try { priceOptions = JSON.parse(s.price_options); } catch(e){} }
+      if (s.price_options) { try { priceOptions = JSON.parse(s.price_options); } catch(e){} priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; }); }
       if (s.kg_step !== undefined) kgStep = s.kg_step;
+      if (s.notif_settings) { try { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } catch(e){} }
       // Re-render UI to reflect new settings
       if (typeof renderSettings === 'function') renderSettings();
       if (typeof renderPricing === 'function') renderPricing();
@@ -340,7 +344,7 @@ async function supaPushAll() {
   await Promise.all([
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
     ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null })),
-    ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color })),
+    ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1 })),
     ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
     ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId })),
     ...expenses.map(e => sbUpsert('expenses', { user_id: currentUserId, id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),

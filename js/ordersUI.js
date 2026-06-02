@@ -132,6 +132,25 @@ function buildOrderForm(pre) {
     _noRebuildSvcCards();
     _noRebuildTierCards();
   }
+  // Rebuild sno-cat select from active price tiers, auto-select if only one
+  if (pre === 'sno') {
+    const snoCatSel = g('sno-cat');
+    if (snoCatSel && typeof _activePoOptions === 'function') {
+      const activeTiers = _activePoOptions('satuan');
+      if (activeTiers.length > 0) {
+        const curVal = snoCatSel.value;
+        snoCatSel.innerHTML = activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}</option>`).join('');
+        // Restore previous selection if still valid, else reset
+        if (activeTiers.find(po => po.key === curVal)) snoCatSel.value = curVal;
+        else snoCatSel.value = activeTiers[0].key;
+        // Auto-select single option
+        if (activeTiers.length === 1) {
+          snoCatSel.value = activeTiers[0].key;
+          if (typeof catChange === 'function') catChange('sno');
+        }
+      }
+    }
+  }
   if (typeof _applyKgStep === 'function') _applyKgStep();
 }
 
@@ -234,7 +253,7 @@ function buildSatuanOrderItems(pre) {
   if (pre === 'no') {
     const tierSel = g('no-sat-tier');
     if (tierSel) {
-      const activeTiers = typeof _activePoOptions === 'function' ? _activePoOptions() : [];
+      const activeTiers = typeof _activePoOptions === 'function' ? _activePoOptions('satuan') : [];
       tierSel.innerHTML = '<option value="">-- Opsi Harga --</option>' + activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
     }
   }
@@ -294,8 +313,18 @@ function _noUpdateSatPrice(){
   const priceEl=g('no-sat-price');
   if(!selEl||!tierEl) return;
   const itemId=selEl.value;
-  const tierKey=tierEl.value;
   const item=satuanItems.find(x=>x.id===itemId);
+  // Rebuild tier dropdown filtered by selected item's tierApply
+  if(tierEl&&typeof _activePoOptions==='function'){
+    const prevTier=tierEl.value;
+    const baseTiers=_activePoOptions('satuan');
+    const availTiers=item?baseTiers.filter(po=>(item.tierApply||{})[po.key]!==false):baseTiers;
+    tierEl.innerHTML='<option value="">-- Opsi Harga --</option>'+availTiers.map(po=>`<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
+    // Auto-select if only one tier available
+    if(availTiers.length===1){tierEl.value=availTiers[0].key;}
+    else if(availTiers.find(po=>po.key===prevTier)){tierEl.value=prevTier;}
+  }
+  const tierKey=tierEl.value;
   // Update estimasi badge
   const po=typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===tierKey):null;
   if(estEl){
