@@ -109,14 +109,15 @@ const _CARD_FIELDS_KEY = 'cleanpos_mbr_card_fields';
 const CARD_FONTS = ['Poppins','Montserrat','Raleway','Nunito','Lato','Open Sans','Roboto','Playfair Display','Dancing Script','Pacifico'];
 let memberCardBg = null;
 let memberCardFields = [
-  { id:'name',    label:'Nama',   x:50, y:70, fontSize:48, color:'#ffffff', bold:true,  shadow:true, align:'center', fontFamily:'Poppins' },
-  { id:'phone',   label:'No. WA', x:50, y:81, fontSize:30, color:'#eeeeee', bold:false, shadow:true, align:'center', fontFamily:'Poppins' },
-  { id:'balance', label:'Saldo',  x:50, y:91, fontSize:40, color:'#ffd700', bold:true,  shadow:true, align:'center', fontFamily:'Poppins' }
+  { id:'name',    label:'Nama',   x:50, y:70, fontSize:48, color:'#ffffff', bold:true,  shadow:true, align:'center', fontFamily:'Poppins', visible:true },
+  { id:'phone',   label:'No. WA', x:50, y:81, fontSize:30, color:'#eeeeee', bold:false, shadow:true, align:'center', fontFamily:'Poppins', visible:true },
+  { id:'balance', label:'Saldo',  x:50, y:91, fontSize:40, color:'#ffd700', bold:true,  shadow:true, align:'center', fontFamily:'Poppins', visible:true }
 ];
 let _cardActiveField = 'name';
 let _cardBgImg = null;
 let _cardSendCust = null;
 let _cardInteract = null; // { mode:'drag'|'resize', fieldId, startX, startY, origX, origY, origFontSize }
+let _cardFieldDragSrcId = null;
 
 // ===== ORDER TRACKING =====
 const _TRACKING_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -435,7 +436,7 @@ function oGo(pg,el){
   document.querySelectorAll('#o-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('o-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
   g('o-mc').scrollTop=0;
-  const pm={dashboard:refreshODash,orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings,notifications:renderNotifications};
+  const pm={dashboard:refreshODash,orders:renderOrders,tracking:()=>renderKanban('o'),wa:renderWaCenter,kas:renderKas,expenses:renderExpenses,reports:renderReports,employees:renderEmployees,outlets:renderOutlets,customers:renderCusts,pricing:renderPricing,promo:renderPromo,settings:renderSettings,notifications:renderNotifications,'card-design':renderMemberCardDesign};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('no');calcO();}
   closeDrawer();
@@ -627,6 +628,8 @@ function _resetCardFieldPos(){
 function initMemberCard() {
   try { const b=localStorage.getItem(_CARD_BG_KEY); if(b){memberCardBg=b;_cardBgImg=new Image();_cardBgImg.onload=()=>drawMemberCardPreview();_cardBgImg.src=b;} } catch(e){}
   try { const f=localStorage.getItem(_CARD_FIELDS_KEY); if(f) memberCardFields=JSON.parse(f); } catch(e){}
+  // Migrate: add visible:true if missing
+  memberCardFields.forEach(f=>{if(f.visible===undefined)f.visible=true;});
   // Preload all card fonts so canvas renders them correctly
   CARD_FONTS.forEach(fam=>{
     document.fonts.load('400 48px "'+fam+'"');
@@ -637,7 +640,7 @@ function initMemberCard() {
 function drawMemberCardPreview() {
   const canvas=g('card-preview-canvas'); if(!canvas) return;
   const wrap=g('card-canvas-wrap');
-  const maxW=Math.min(wrap?Math.max(200,(wrap.clientWidth||400)-4):400, 400);
+  const maxW=wrap?Math.max(300,(wrap.clientWidth||700)-4):700;
   const scale=maxW/1350;
   const W=Math.round(1350*scale),H=Math.round(1080*scale);
   canvas.width=W; canvas.height=H; canvas.style.width=W+'px'; canvas.style.height=H+'px';
@@ -664,8 +667,9 @@ function _drawCardOnCanvas(canvas,cust,scale,showHandles) {
     const gr=ctx.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#1a237e'); gr.addColorStop(1,'#4a148c');
     ctx.fillStyle=gr; ctx.fillRect(0,0,W,H);
   }
-  const vals={name:cust.name||'—',phone:cust.phone||'—',balance:'Saldo: '+fmt(cust.balance||0)};
+  const vals={name:cust.name||'—',phone:cust.phone||'—',balance:fmt(cust.balance||0)};
   memberCardFields.forEach(f=>{
+    if(f.visible===false)return;
     const text=vals[f.id]||''; const x=f.x/100*W,y=f.y/100*H;
     const fs=Math.max(8,Math.round(f.fontSize*scale));
     const ff='"'+(f.fontFamily||'Poppins')+'",sans-serif';
@@ -723,6 +727,8 @@ function selectCardField(id) {
   if(g('card-shadow')) g('card-shadow').checked=f.shadow;
   if(g('card-field-label')) g('card-field-label').textContent=f.label.toUpperCase();
   ['left','center','right'].forEach(a=>{const b=g('card-align-'+a);if(b)b.classList.toggle('bp',f.align===a);});
+  const _lmap={name:'Nama Pelanggan',phone:'Nomor WhatsApp',balance:'Saldo Member'};
+  if(g('card-active-label-text'))g('card-active-label-text').textContent=_lmap[f.id]||f.label;
   drawMemberCardPreview();
 }
 
@@ -757,7 +763,7 @@ function _getFieldBBoxPx(f, canvas) {
   const ff='"'+(f.fontFamily||'Poppins')+'",sans-serif';
   const ctx=canvas.getContext('2d');
   ctx.font=(f.bold?'bold ':'')+fs+'px '+ff;
-  const vals={name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:'Saldo: '+fmt(75000)};
+  const vals={name:'Nama Pelanggan',phone:'08xxxxxxxxxx',balance:fmt(75000)};
   const text=vals[f.id]||f.label;
   const mW=ctx.measureText(text).width+Math.round(16*scale);
   const mH=fs+Math.round(10*scale);
@@ -850,6 +856,92 @@ function saveMemberCardTemplate() {
     localStorage.setItem(_CARD_FIELDS_KEY,JSON.stringify(memberCardFields));
     toast('✅ Template kartu disimpan!');
   } catch(e){ toast('⚠️ Gagal menyimpan. Kompres gambar terlebih dahulu (ukuran besar = localStorage penuh).'); }
+}
+
+// ===== MEMBER CARD DESIGN PAGE =====
+function renderMemberCardDesign(){
+  _renderCardFieldsList();
+  _updateCardStylingPanel();
+  drawMemberCardPreview();
+}
+function _renderCardFieldsList(){
+  const el=g('card-fields-list');if(!el)return;
+  const lmap={name:'Nama Pelanggan',phone:'Nomor WhatsApp',balance:'Saldo Member'};
+  el.innerHTML=memberCardFields.map(f=>`
+    <div class="mcd-field-item" draggable="true" data-field-id="${f.id}"
+      ondragstart="_cardFieldDragStart(event,'${f.id}')"
+      ondragover="_cardFieldDragOver(event)"
+      ondrop="_cardFieldDrop(event,'${f.id}')">
+      <div class="mcd-drag-handle"><i data-lucide="grip-vertical" style="width:16px;height:16px;stroke-width:2;display:block"></i></div>
+      <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer">
+        <input type="checkbox" ${f.visible!==false?'checked':''} onchange="toggleCardFieldVisible('${f.id}',this.checked)" style="accent-color:var(--p);width:15px;height:15px;cursor:pointer">
+        <span style="font-size:13px;font-weight:600;color:var(--t1)">${lmap[f.id]||f.label}</span>
+      </label>
+    </div>`).join('');
+  if(typeof lucide!=='undefined')lucide.createIcons();
+}
+function toggleCardFieldVisible(id,checked){
+  const f=memberCardFields.find(x=>x.id===id);if(f){f.visible=checked;drawMemberCardPreview();}
+}
+function _cardFieldDragStart(e,id){_cardFieldDragSrcId=id;e.dataTransfer.effectAllowed='move';}
+function _cardFieldDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';}
+function _cardFieldDrop(e,targetId){
+  e.preventDefault();
+  if(!_cardFieldDragSrcId||_cardFieldDragSrcId===targetId)return;
+  const si=memberCardFields.findIndex(f=>f.id===_cardFieldDragSrcId);
+  const ti=memberCardFields.findIndex(f=>f.id===targetId);
+  if(si<0||ti<0)return;
+  const [moved]=memberCardFields.splice(si,1);
+  memberCardFields.splice(ti,0,moved);
+  _cardFieldDragSrcId=null;
+  _renderCardFieldsList();
+  drawMemberCardPreview();
+}
+function _updateCardStylingPanel(){
+  const f=memberCardFields.find(x=>x.id===_cardActiveField);if(!f)return;
+  const lmap={name:'Nama Pelanggan',phone:'Nomor WhatsApp',balance:'Saldo Member'};
+  if(g('card-active-label-text'))g('card-active-label-text').textContent=lmap[f.id]||f.label;
+  if(g('card-font'))g('card-font').value=f.fontFamily||'Poppins';
+  if(g('card-fs'))g('card-fs').value=f.fontSize;
+  if(g('card-color'))g('card-color').value=f.color;
+  if(g('card-bold'))g('card-bold').checked=f.bold;
+  if(g('card-shadow'))g('card-shadow').checked=f.shadow;
+  document.querySelectorAll('#card-styling-panel .set-color-sw').forEach(s=>{
+    const bg=s.style.backgroundColor||s.style.background;
+    try{const tc=document.createElement('canvas');tc.width=1;tc.height=1;const c=tc.getContext('2d');c.fillStyle=f.color;c.fillRect(0,0,1,1);const td=c.getImageData(0,0,1,1).data;c.fillStyle=bg;c.fillRect(0,0,1,1);const sd=c.getImageData(0,0,1,1).data;s.classList.toggle('on',Math.abs(td[0]-sd[0])<5&&Math.abs(td[1]-sd[1])<5&&Math.abs(td[2]-sd[2])<5);}catch(ex){s.classList.remove('on');}
+  });
+}
+function _resetCardFieldStyle(){
+  const SDEFS={name:{fontSize:48,color:'#ffffff',bold:true,shadow:true,fontFamily:'Poppins',align:'center'},phone:{fontSize:30,color:'#eeeeee',bold:false,shadow:true,fontFamily:'Poppins',align:'center'},balance:{fontSize:40,color:'#ffd700',bold:true,shadow:true,fontFamily:'Poppins',align:'center'}};
+  const f=memberCardFields.find(x=>x.id===_cardActiveField);
+  if(!f||!SDEFS[f.id])return;
+  Object.assign(f,SDEFS[f.id]);
+  _updateCardStylingPanel();
+  drawMemberCardPreview();
+}
+function _resetAllCardFieldPos(){
+  const PDEFS={name:{x:50,y:70},phone:{x:50,y:81},balance:{x:50,y:91}};
+  memberCardFields.forEach(f=>{if(PDEFS[f.id]){f.x=PDEFS[f.id].x;f.y=PDEFS[f.id].y;}});
+  drawMemberCardPreview();
+  toast('Posisi direset');
+}
+function downloadCardTemplate(){
+  const c=document.createElement('canvas');c.width=1350;c.height=1080;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1350,1080);
+  ctx.strokeStyle='#e8e8e8';ctx.lineWidth=1;
+  for(let x=0;x<=1350;x+=135){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,1080);ctx.stroke();}
+  for(let y=0;y<=1080;y+=108){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(1350,y);ctx.stroke();}
+  ctx.fillStyle='#c0c0c0';ctx.font='22px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('Template Kartu Member — 1350 × 1080 px',675,540);
+  const lnk=document.createElement('a');lnk.download='template-kartu-member.png';
+  lnk.href=c.toDataURL('image/png');lnk.click();
+  toast('Template diunduh');
+}
+function _previewCardWA(){
+  const phone=Object.keys(customers)[0];
+  if(phone)openSendMemberCard(phone);
+  else toast('Belum ada data pelanggan untuk preview.');
 }
 
 function downloadCardGuide() {
@@ -2068,8 +2160,15 @@ function adjMachine(type,delta){
 function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus permanen.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
 
 // ===== NOTIFICATION CENTER =====
-function _loadNotifications(){try{const d=localStorage.getItem(_NOTIF_KEY);if(d)appNotifications=JSON.parse(d);}catch(e){appNotifications=[];}}
-function _saveNotifications(){try{localStorage.setItem(_NOTIF_KEY,JSON.stringify(appNotifications.slice(0,100)));}catch(e){}}
+function _loadNotifications(){
+  try{const d=localStorage.getItem(_NOTIF_KEY);if(d){
+    const raw=JSON.parse(d);
+    // Deduplicate legacy data: keep only 1 entry per (type+outletId) key
+    const seen=new Map();
+    appNotifications=raw.filter(n=>{const k=n.type+(n.outletId||'');if(seen.has(k))return false;seen.set(k,true);return true;});
+  }}catch(e){appNotifications=[];}
+}
+function _saveNotifications(){try{localStorage.setItem(_NOTIF_KEY,JSON.stringify(appNotifications.slice(0,50)));}catch(e){}}
 function _updateNotifBadge(){
   const count=appNotifications.filter(n=>!n.read).length;
   ['o-notif-badge','o-notif-badge-b'].forEach(id=>{
@@ -2087,17 +2186,39 @@ function markNotifRead(id){
 function markAllNotifsRead(){
   appNotifications.forEach(n=>n.read=true);_saveNotifications();_updateNotifBadge();renderNotifications();
 }
+function clearAllNotifs(){
+  appNotifications=[];_saveNotifications();_updateNotifBadge();renderNotifications();
+}
 function _generateNotifications(){
-  const now=new Date();const newNotifs=[];
+  // Upsert pattern: each notification type has exactly 1 slot.
+  // - Condition active + body changed or was read → update & mark unread
+  // - Condition active + same body + already unread → no-op
+  // - Condition resolved → remove entry
+  const now=new Date();let changed=false;
+  function _upsert(type,outletId,title,body){
+    const idx=appNotifications.findIndex(n=>n.type===type&&(outletId?n.outletId===outletId:!n.outletId));
+    if(idx>=0){
+      const ex=appNotifications[idx];
+      if(ex.body!==body||ex.read){appNotifications[idx]={...ex,title,body,time:now.toISOString(),read:false};changed=true;}
+    }else{
+      appNotifications.unshift({id:'n'+Date.now()+'_'+type+(outletId||''),type,title,body,time:now.toISOString(),read:false,outletId:outletId||undefined});
+      changed=true;
+    }
+  }
+  function _resolve(type,outletId){
+    const before=appNotifications.length;
+    appNotifications=appNotifications.filter(n=>!(n.type===type&&(outletId?n.outletId===outletId:!n.outletId)));
+    if(appNotifications.length!==before)changed=true;
+  }
   // 1. WA Pending
-  if(notifWaPending){const count=orders.filter(o=>o.status==='Selesai'&&!o.waSent).length;if(count>0&&!appNotifications.some(n=>n.type==='wa-pending'&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_wa',type:'wa-pending',title:'Pesanan selesai belum di WA',body:`Ada ${count} pesanan selesai yang belum dikirim WhatsApp.`,time:now.toISOString(),read:false});}}
+  if(notifWaPending){const count=orders.filter(o=>o.status==='Selesai'&&!o.waSent).length;if(count>0)_upsert('wa-pending',null,'Pesanan selesai belum di WA',`Ada ${count} pesanan selesai yang belum dikirim WhatsApp.`);else _resolve('wa-pending',null);}
   // 2. Belum Lunas
-  if(notifBelumLunas){const count=orders.filter(o=>o.status==='Selesai'&&o.payStatus!=='Lunas').length;if(count>0&&!appNotifications.some(n=>n.type==='belum-lunas'&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_ln',type:'belum-lunas',title:'Pesanan selesai belum lunas',body:`Ada ${count} pesanan selesai yang belum berstatus Lunas.`,time:now.toISOString(),read:false});}}
+  if(notifBelumLunas){const count=orders.filter(o=>o.status==='Selesai'&&o.payStatus!=='Lunas').length;if(count>0)_upsert('belum-lunas',null,'Pesanan selesai belum lunas',`Ada ${count} pesanan selesai yang belum berstatus Lunas.`);else _resolve('belum-lunas',null);}
   // 3. Proses Kosong (per outlet)
-  if(notifProsesKosong){outlets.forEach(outlet=>{const mencuciCount=orders.filter(o=>o.status==='Mencuci'&&o.outletId===outlet.id).length;const pendingCount=orders.filter(o=>o.status==='Diterima'&&o.outletId===outlet.id).length;if(mencuciCount<=1&&pendingCount>0&&!appNotifications.some(n=>n.type==='proses-kosong'&&n.outletId===outlet.id&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_pk_'+outlet.id,type:'proses-kosong',title:'Kolom Mencuci kosong',body:`Kolom Mencuci di ${outlet.name} kosong selama ${notifProsesKosongDelay} menit. Segera proses ${pendingCount} pesanan yang diterima.`,time:now.toISOString(),read:false,outletId:outlet.id});}});}
+  if(notifProsesKosong){outlets.forEach(outlet=>{const mencuciCount=orders.filter(o=>o.status==='Mencuci'&&o.outletId===outlet.id).length;const pendingCount=orders.filter(o=>o.status==='Diterima'&&o.outletId===outlet.id).length;if(mencuciCount<=1&&pendingCount>0)_upsert('proses-kosong',outlet.id,'Kolom Mencuci kosong',`Kolom Mencuci di ${outlet.name} kosong selama ${notifProsesKosongDelay} menit. Segera proses ${pendingCount} pesanan yang diterima.`);else _resolve('proses-kosong',outlet.id);});}
   // 4. Durasi Lama
-  if(notifDurasiLama){const nowMs=now.getTime();const lama=orders.filter(o=>{if(o.status!=='Mencuci'||!o.isoDate)return false;try{const diff=(nowMs-new Date(o.isoDate).getTime())/60000;return diff>notifDurasiMencuci;}catch(e){return false;}});if(lama.length>0&&!appNotifications.some(n=>n.type==='durasi-lama'&&!n.read)){newNotifs.push({id:'n'+Date.now()+'_dl',type:'durasi-lama',title:'Durasi proses terlalu lama',body:`${lama.length} pesanan di proses Mencuci melebihi ${notifDurasiMencuci} menit.`,time:now.toISOString(),read:false});}}
-  if(newNotifs.length){appNotifications=[...newNotifs,...appNotifications].slice(0,100);_saveNotifications();_updateNotifBadge();const pg=g('o-p-notifications');if(pg&&pg.classList.contains('on'))renderNotifications();}
+  if(notifDurasiLama){const nowMs=now.getTime();const lama=orders.filter(o=>{if(o.status!=='Mencuci'||!o.isoDate)return false;try{return(nowMs-new Date(o.isoDate).getTime())/60000>notifDurasiMencuci;}catch(e){return false;}});if(lama.length>0)_upsert('durasi-lama',null,'Durasi proses terlalu lama',`${lama.length} pesanan di proses Mencuci melebihi ${notifDurasiMencuci} menit.`);else _resolve('durasi-lama',null);}
+  if(changed){_saveNotifications();_updateNotifBadge();const pg=g('o-p-notifications');if(pg&&pg.classList.contains('on'))renderNotifications();}
 }
 function _toggleNotifBtn(cbId,btnId){
   const cb=g(cbId);const btn=g(btnId);if(!cb||!btn)return;

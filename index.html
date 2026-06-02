@@ -232,6 +232,17 @@ tr:hover td{background:#F6F7F9}
 .set-kgchip.on{border-color:var(--p);background:var(--p);color:#fff}
 .set-printer-empty{text-align:center;padding:24px 16px}
 .set-card-split{display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start}
+/* Member Card Design Page */
+.mcd-layout{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+.mcd-sidebar{display:flex;flex-direction:column;gap:14px}
+.mcd-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap}
+.mcd-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1);flex-wrap:wrap}
+.mcd-field-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--b1)}
+.mcd-field-item:last-child{border-bottom:none}
+.mcd-drag-handle{color:var(--t3);cursor:grab;flex-shrink:0;display:flex;align-items:center}
+.mcd-drag-handle:active{cursor:grabbing}
+.mcd-field-item.drag-over{background:var(--pl);border-radius:var(--rs)}
+@media(max-width:900px){.mcd-layout{grid-template-columns:1fr}}
 .set-color-sw{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:.12s;flex-shrink:0;outline:1px solid rgba(0,0,0,.1)}
 .set-color-sw.on{outline:2px solid var(--p);outline-offset:2px}
 .set-pos-grid{display:grid;grid-template-columns:repeat(3,32px);grid-template-rows:repeat(3,32px);gap:4px;margin-bottom:8px}
@@ -2068,88 +2079,13 @@ tr:hover td{background:#F6F7F9}
       </div>
     </div>
 
-    <!-- Kartu Member Digital designer -->
-    <div class="card" id="member-card-designer-card">
-      <div style="margin-bottom:16px">
-        <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:2px">Desain Kartu Member Digital</div>
-        <div style="font-size:12px;color:var(--t2)">Atur tampilan kartu dan posisi informasi yang ditampilkan.</div>
+    <!-- Kartu Member Digital: link to dedicated page -->
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:2px">Desain Kartu Member Digital</div>
+        <div style="font-size:12px;color:var(--t2)">Atur tampilan, posisi teks, dan upload background kartu.</div>
       </div>
-      <div class="set-card-split">
-        <!-- LEFT: editor -->
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Pilih Teks untuk Diposisikan</div>
-          <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-            <button class="btn bsm bp" id="card-field-btn-name" onclick="selectCardField('name')">Nama</button>
-            <button class="btn bsm" id="card-field-btn-phone" onclick="selectCardField('phone')">No. WA</button>
-            <button class="btn bsm" id="card-field-btn-balance" onclick="selectCardField('balance')">Saldo</button>
-          </div>
-          <div class="fg" style="margin-bottom:10px">
-            <label>Jenis Font</label>
-            <select id="card-font" onchange="updateCardFieldStyle()" style="font-size:13px;border-radius:6px;padding:6px 8px;border:1px solid var(--b1);background:#fff;color:var(--t1);width:100%">
-              <option value="Poppins">Poppins</option><option value="Montserrat">Montserrat</option><option value="Raleway">Raleway</option><option value="Nunito">Nunito</option><option value="Lato">Lato</option><option value="Open Sans">Open Sans</option><option value="Roboto">Roboto</option><option value="Playfair Display">Playfair Display</option><option value="Dancing Script">Dancing Script</option><option value="Pacifico">Pacifico</option>
-            </select>
-          </div>
-          <div class="fg" style="margin-bottom:10px"><label>Ukuran Font</label>
-            <div style="display:flex;align-items:center;gap:8px"><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"><span style="font-size:13px;color:var(--t2)">px</span></div>
-          </div>
-          <div style="margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:6px">Warna Teks</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-              <div class="set-color-sw on" style="background:#ffffff" onclick="_setCardColor('#ffffff',this)"></div>
-              <div class="set-color-sw" style="background:#111111" onclick="_setCardColor('#111111',this)"></div>
-              <div class="set-color-sw" style="background:#ffd700" onclick="_setCardColor('#ffd700',this)"></div>
-              <div class="set-color-sw" style="background:#4CAF50" onclick="_setCardColor('#4CAF50',this)"></div>
-              <div class="set-color-sw" style="background:#7B1FA2" onclick="_setCardColor('#7B1FA2',this)"></div>
-              <input type="color" id="card-color" value="#ffffff" oninput="updateCardFieldStyle()" style="width:26px;height:26px;padding:1px;border-radius:6px;cursor:pointer;border:1px solid var(--b1)">
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-            <label style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-bold" onchange="updateCardFieldStyle()" style="accent-color:var(--p)"> Bold</label>
-            <label style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="card-shadow" checked onchange="updateCardFieldStyle()" style="accent-color:var(--p)"> Bayangan</label>
-          </div>
-          <label class="btn bg bsm bpill" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px">
-            <i data-lucide="upload" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Upload Background
-            <input type="file" accept="image/*" id="card-bg-upload" style="display:none" onchange="loadMemberCardBg(this)">
-          </label>
-          <button class="btn bg bsm bpill" id="card-clear-btn" onclick="clearMemberCardBg()" style="display:none;width:100%">Hapus Background</button>
-        </div>
-        <!-- RIGHT: preview + position -->
-        <div>
-          <div id="card-canvas-wrap" style="position:relative;background:var(--bg);border:2px dashed var(--b1);border-radius:10px;overflow:hidden;margin-bottom:12px;cursor:crosshair;user-select:none;min-height:160px">
-            <canvas id="card-preview-canvas" style="display:block;touch-action:none;cursor:crosshair"></canvas>
-            <div id="card-canvas-hint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);pointer-events:none;white-space:nowrap">
-              <i data-lucide="image" style="width:32px;height:32px;stroke-width:1.5;display:block;margin:0 auto 8px;opacity:.4"></i>
-              <div style="font-weight:700;font-size:13px">Upload background image</div>
-              <div style="font-size:11px;margin-top:3px">lalu klik untuk mengatur posisi teks</div>
-            </div>
-          </div>
-          <!-- Position controls -->
-          <div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:12px">
-            <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:10px">POSISI: <span id="card-field-label">NAMA</span></div>
-            <div class="set-pos-grid">
-              <div></div>
-              <button class="set-pos-btn" onclick="_moveCardField(0,-2)"><i data-lucide="arrow-up"></i></button>
-              <div></div>
-              <button class="set-pos-btn" onclick="_moveCardField(-2,0)"><i data-lucide="arrow-left"></i></button>
-              <div></div>
-              <button class="set-pos-btn" onclick="_moveCardField(2,0)"><i data-lucide="arrow-right"></i></button>
-              <div></div>
-              <button class="set-pos-btn" onclick="_moveCardField(0,2)"><i data-lucide="arrow-down"></i></button>
-              <div></div>
-            </div>
-            <button class="btn bg bsm bpill" style="width:100%;margin-bottom:10px" onclick="_resetCardFieldPos()">Reset Posisi</button>
-            <div style="display:flex;gap:4px;margin-bottom:6px">
-              <button class="btn bsm" id="card-align-left" onclick="setCardAlign('left')" style="flex:1">Kiri</button>
-              <button class="btn bsm bp" id="card-align-center" onclick="setCardAlign('center')" style="flex:1">Tengah</button>
-              <button class="btn bsm" id="card-align-right" onclick="setCardAlign('right')" style="flex:1">Kanan</button>
-            </div>
-            <div style="font-size:10px;color:var(--t2);line-height:1.5">Geser elemen pada preview atau gunakan tombol posisi di atas.</div>
-          </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:12px">
-            <button class="btn bp bsm bpill" onclick="saveMemberCardTemplate()">Simpan Desain</button>
-          </div>
-        </div>
-      </div>
+      <button class="btn bp bsm" onclick="oGo('card-design',null)" style="white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px"><i data-lucide="edit-2" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:2px"></i>Buka Editor</button>
     </div>
   </div>
 </div>
@@ -2161,10 +2097,130 @@ tr:hover td{background:#F6F7F9}
       <div class="pt" style="margin-bottom:2px">Notifikasi</div>
       <div style="font-size:12px;color:var(--t2)">Pemberitahuan operasional harian toko Anda.</div>
     </div>
-    <button class="btn bsm" style="font-size:12px;color:var(--p);border-color:var(--p)" onclick="markAllNotifsRead()">Tandai semua dibaca</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn bsm" style="font-size:12px;color:var(--p);border-color:var(--p)" onclick="markAllNotifsRead()">Tandai semua dibaca</button>
+      <button class="btn bsm" style="font-size:12px;color:var(--re);border-color:var(--re)" onclick="clearAllNotifs()"><i data-lucide="trash-2" style="width:12px;height:12px;stroke-width:2;display:inline;vertical-align:-1px;margin-right:4px"></i>Hapus semua</button>
+    </div>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <div id="notif-list"></div>
+  </div>
+</div>
+<!-- CARD DESIGN PAGE -->
+<div class="page" id="o-p-card-design">
+  <div class="mcd-header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn bsm bg" onclick="oGo('settings',null)" style="display:flex;align-items:center;gap:5px;flex-shrink:0"><i data-lucide="arrow-left" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Kembali</button>
+      <div>
+        <div class="pt" style="margin-bottom:1px">Desain Kartu Member Digital</div>
+        <div style="font-size:12px;color:var(--t2)">Atur tampilan kartu dan posisi informasi yang ditampilkan.</div>
+      </div>
+    </div>
+    <button class="btn bsm bg" onclick="downloadCardGuide()" style="display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0"><i data-lucide="help-circle" style="width:13px;height:13px;stroke-width:2;display:block"></i>Panduan Penggunaan</button>
+  </div>
+  <div class="mcd-layout">
+    <!-- LEFT SIDEBAR -->
+    <div class="mcd-sidebar">
+      <!-- 1. Template Kartu -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">1. Template Kartu</div>
+        <button class="btn bsm bfull" onclick="downloadCardTemplate()" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:5px;color:var(--p);border-color:var(--p);background:var(--pl)">
+          <i data-lucide="download" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Download Template
+        </button>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:14px">Ukuran rekomendasi: 1350 × 1080 px</div>
+        <label class="btn bg bsm bfull" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:5px">
+          <i data-lucide="upload" style="width:13px;height:13px;stroke-width:2.5;display:block"></i>Upload Background
+          <input type="file" accept="image/*" id="card-bg-upload" style="display:none" onchange="loadMemberCardBg(this)">
+        </label>
+        <button class="btn bg bsm bfull" id="card-clear-btn" onclick="clearMemberCardBg()" style="display:none;margin-bottom:5px">Hapus Background</button>
+        <div style="font-size:11px;color:var(--t2)">Format: JPG, PNG · Maks. 5MB</div>
+      </div>
+      <!-- 2. Informasi yang Ditampilkan -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">2. Informasi yang Ditampilkan</div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:12px">Pilih informasi yang ingin ditampilkan di kartu.</div>
+        <div id="card-fields-list"></div>
+      </div>
+      <!-- 3. Styling -->
+      <div class="card" id="card-styling-panel" style="padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">3. Styling</div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:12px">Klik elemen pada preview untuk mengatur style.</div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:6px">Elemen Aktif</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--b1)">
+            <div style="width:24px;height:24px;border-radius:6px;background:var(--pl);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="type" style="width:12px;height:12px;stroke-width:2.5;display:block;color:var(--p)"></i></div>
+            <span id="card-active-label-text" style="font-size:13px;font-weight:600;color:var(--t1)">Nama Pelanggan</span>
+          </div>
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label>Font</label>
+          <select id="card-font" onchange="updateCardFieldStyle()" style="font-size:13px;border-radius:6px;padding:6px 8px;border:1px solid var(--b1);background:var(--ca);color:var(--t1);width:100%">
+            <option value="Poppins">Poppins</option><option value="Montserrat">Montserrat</option><option value="Raleway">Raleway</option><option value="Nunito">Nunito</option><option value="Lato">Lato</option><option value="Open Sans">Open Sans</option><option value="Roboto">Roboto</option><option value="Playfair Display">Playfair Display</option><option value="Dancing Script">Dancing Script</option><option value="Pacifico">Pacifico</option>
+          </select>
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label>Ukuran Font</label>
+          <div style="display:flex;align-items:center;gap:8px"><input type="number" id="card-fs" min="10" max="200" value="48" oninput="updateCardFieldStyle()" style="width:74px"><span style="font-size:13px;color:var(--t2)">px</span></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:8px">Warna Teks</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <div class="set-color-sw on" style="background:#ffffff" onclick="_setCardColor('#ffffff',this)" title="Putih"></div>
+            <div class="set-color-sw" style="background:#111111" onclick="_setCardColor('#111111',this)" title="Hitam"></div>
+            <div class="set-color-sw" style="background:#ffd700" onclick="_setCardColor('#ffd700',this)" title="Kuning"></div>
+            <div class="set-color-sw" style="background:#4CAF50" onclick="_setCardColor('#4CAF50',this)" title="Hijau"></div>
+            <div class="set-color-sw" style="background:#7B1FA2" onclick="_setCardColor('#7B1FA2',this)" title="Ungu"></div>
+            <div class="set-color-sw" style="background:#1976D2" onclick="_setCardColor('#1976D2',this)" title="Biru"></div>
+            <input type="color" id="card-color" value="#ffffff" oninput="updateCardFieldStyle()" style="width:26px;height:26px;padding:1px;border-radius:6px;cursor:pointer;border:1px solid var(--b1)">
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;margin-bottom:14px">
+          <label style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="card-bold" onchange="updateCardFieldStyle()" style="accent-color:var(--p)"> Bold</label>
+          <label style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="card-shadow" checked onchange="updateCardFieldStyle()" style="accent-color:var(--p)"> Bayangan</label>
+        </div>
+        <button class="btn bg bsm bfull" onclick="_resetCardFieldStyle()" style="display:flex;align-items:center;justify-content:center;gap:5px">
+          <i data-lucide="rotate-ccw" style="width:12px;height:12px;stroke-width:2;display:block"></i>Reset Style
+        </button>
+      </div>
+      <!-- Tips -->
+      <div style="background:var(--pl);border:1px solid rgba(76,175,80,.2);border-radius:var(--r);padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+        <i data-lucide="info" style="width:15px;height:15px;stroke-width:2;color:var(--p);flex-shrink:0;margin-top:1px;display:block"></i>
+        <div style="font-size:12px;color:var(--pd);line-height:1.5"><strong>Tips:</strong> Gunakan background dengan kontras yang baik agar teks mudah dibaca.</div>
+      </div>
+    </div>
+    <!-- RIGHT: Preview -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--t1)">Preview Kartu</div>
+          <div style="font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px;margin-top:3px">
+            <i data-lucide="info" style="width:12px;height:12px;stroke-width:2;display:inline;vertical-align:-1px"></i>
+            Klik dan drag elemen untuk memindahkan posisi.
+          </div>
+        </div>
+      </div>
+      <div id="card-canvas-wrap" style="position:relative;background:var(--bg);border:2px dashed var(--b1);border-radius:var(--r);overflow:hidden;cursor:crosshair;user-select:none;min-height:280px">
+        <canvas id="card-preview-canvas" style="display:block;touch-action:none;cursor:crosshair;width:100%"></canvas>
+        <div id="card-canvas-hint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);pointer-events:none;white-space:nowrap">
+          <i data-lucide="image" style="width:44px;height:44px;stroke-width:1.25;display:block;margin:0 auto 12px;opacity:.3"></i>
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">Upload background image</div>
+          <div style="font-size:12px">lalu klik untuk mengatur posisi teks</div>
+        </div>
+      </div>
+      <!-- Bottom actions -->
+      <div class="mcd-actions">
+        <button class="btn bsm bg" onclick="_resetAllCardFieldPos()" style="display:flex;align-items:center;gap:6px">
+          <i data-lucide="rotate-ccw" style="width:13px;height:13px;stroke-width:2;display:block"></i>Reset Posisi
+        </button>
+        <button class="btn bsm bg" onclick="_previewCardWA()" style="display:flex;align-items:center;gap:6px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Preview WhatsApp
+        </button>
+        <button class="btn bp bsm" onclick="saveMemberCardTemplate()" style="display:flex;align-items:center;gap:6px">
+          <i data-lucide="save" style="width:13px;height:13px;stroke-width:2;display:block"></i>Simpan Desain
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 </div><!-- end o-mc -->
