@@ -107,49 +107,23 @@ function buildOrderForm(pre) {
     if (pre === 'sno' && curStaff?.oid) oel.value = curStaff.oid;
     else oel.value = outlets[0]?.id || '';
   }
-  const el = g(pre + '-addons'); if (!el) return;
-  if (pre === 'no') {
-    // Build addons grid
-    const addGrid = g('no-addons');
-    if (addGrid) {
-      addGrid.innerHTML = addons.filter(a => a.active !== false).map(a => {
-        const unit = a.unit === 'order' ? '/order' : `/${a.unit||'pcs'}`;
-        return `<div class="no-addon-card" id="no-addon-card-${a.id}" onclick="_noToggleAddon('${a.id}')">
-          <div class="no-addon-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div class="no-addon-name">${esc(a.name)}</div>
-          <div class="no-addon-price">${fmt(a.price||0)}${unit}</div>
-        </div>`;
-      }).join('') || '<div style="color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';
-    }
-  } else {
-    const ch = 'calcS';
-    el.innerHTML = addons.map(a =>
-      `<label id="${pre}-lbl-${a.id}" style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1);transition:all .15s"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}();toggleAddonLbl('${pre}','${a.id}',this.checked)"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit === 'per_qty' ? '/qty' : ''})</span></label>`
-    ).join('');
+  // Build addons visual cards (unified for all prefixes)
+  const addGrid = g(pre + '-addons');
+  if (addGrid) {
+    addGrid.innerHTML = addons.filter(a => a.active !== false).map(a => {
+      const unit = a.unit === 'order' ? '/order' : `/${a.unit||'pcs'}`;
+      const toggleFn = pre === 'no' ? `_noToggleAddon('${a.id}')` : `_toggleAddon('${pre}','${a.id}')`;
+      return `<div class="no-addon-card" id="${pre}-addon-card-${a.id}" onclick="${toggleFn}">
+        <div class="no-addon-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="no-addon-name">${esc(a.name)}</div>
+        <div class="no-addon-price">${fmt(a.price||0)}${unit}</div>
+      </div>`;
+    }).join('') || '<div style="color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';
   }
-  // Rebuild visual type/tier cards for new order page
-  if (pre === 'no' && typeof _noRebuildSvcCards === 'function') {
-    _noRebuildSvcCards();
-    _noRebuildTierCards();
-  }
-  // Rebuild sno-cat select from active price tiers, auto-select if only one
-  if (pre === 'sno') {
-    const snoCatSel = g('sno-cat');
-    if (snoCatSel && typeof _activePoOptions === 'function') {
-      const activeTiers = _activePoOptions('satuan');
-      if (activeTiers.length > 0) {
-        const curVal = snoCatSel.value;
-        snoCatSel.innerHTML = activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}</option>`).join('');
-        // Restore previous selection if still valid, else reset
-        if (activeTiers.find(po => po.key === curVal)) snoCatSel.value = curVal;
-        else snoCatSel.value = activeTiers[0].key;
-        // Auto-select single option
-        if (activeTiers.length === 1) {
-          snoCatSel.value = activeTiers[0].key;
-          if (typeof catChange === 'function') catChange('sno');
-        }
-      }
-    }
+  // Rebuild visual type/tier cards for all prefixes
+  if (typeof _noRebuildSvcCards === 'function') {
+    _noRebuildSvcCards(pre);
+    _noRebuildTierCards(pre);
   }
   if (typeof _applyKgStep === 'function') _applyKgStep();
 }
@@ -249,13 +223,11 @@ function buildSatuanOrderItems(pre) {
       ? '<option value="">-- Pilih Item --</option>' + activeItems.map(item => `<option value="${item.id}">${esc(item.name)} — ${esc(item.unit || 'pcs')}</option>`).join('')
       : '<option value="">Belum ada item satuan</option>';
   }
-  // Populate tier dropdown for new order
-  if (pre === 'no') {
-    const tierSel = g('no-sat-tier');
-    if (tierSel) {
-      const activeTiers = typeof _activePoOptions === 'function' ? _activePoOptions('satuan') : [];
-      tierSel.innerHTML = '<option value="">-- Opsi Harga --</option>' + activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
-    }
+  // Populate tier dropdown
+  const tierSel = g(pre + '-sat-tier');
+  if (tierSel) {
+    const activeTiers = typeof _activePoOptions === 'function' ? _activePoOptions('satuan') : [];
+    tierSel.innerHTML = '<option value="">-- Opsi Harga --</option>' + activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
   }
   _renderSatuanCartTable(pre);
 }
@@ -267,50 +239,32 @@ function _renderSatuanCartTable(pre) {
     el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah Item.</div>';
     return;
   }
-  if (pre === 'no') {
-    // Full table with OPSI HARGA + ESTIMASI columns
-    el.innerHTML = `<div class="sat-cart-wrap">
-      <table class="sat-cart-tbl">
-        <thead><tr>
-          <th>Item</th><th>Opsi Harga</th><th>Estimasi</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th></th>
-        </tr></thead>
-        <tbody>
-          ${cart.map((line, idx) => `<tr>
-            <td><span style="font-weight:600">${esc(line.name)}</span></td>
-            <td><span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 7px;border-radius:20px;font-weight:700">${esc(line.tierLabel||line.tierKey||'–')}</span></td>
-            <td><span style="font-size:11px;color:var(--t2)">${esc(line.tierEst||'–')}</span></td>
-            <td>${line.qty} ${esc(line.unit||'pcs')}</td>
-            <td>${fmt(line.unitPrice)}</td>
-            <td style="font-weight:700">${fmt(line.lineTotal)}</td>
-            <td><button onclick="removeFromSatuanCart('${pre}',${idx})" style="border:none;background:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Hapus">×</button></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`;
-  } else {
-    // Simple table for staff/SNO
-    el.innerHTML = `<div class="sat-cart-wrap">
-      <table class="sat-cart-tbl">
-        <thead><tr><th>Item</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th></th></tr></thead>
-        <tbody>
-          ${cart.map((line, idx) => `<tr>
-            <td><span style="font-weight:600">${esc(line.name)}</span><br><span style="font-size:10px;color:var(--t2)">${esc(line.unit||'pcs')}</span></td>
-            <td>${line.qty}</td>
-            <td>${fmt(line.unitPrice)}</td>
-            <td style="font-weight:700">${fmt(line.lineTotal)}</td>
-            <td><button onclick="removeFromSatuanCart('${pre}',${idx})" style="border:none;background:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Hapus">×</button></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`;
-  }
+  // Full table with OPSI HARGA + ESTIMASI columns (unified for all prefixes)
+  el.innerHTML = `<div class="sat-cart-wrap">
+    <table class="sat-cart-tbl">
+      <thead><tr>
+        <th>Item</th><th>Opsi Harga</th><th>Estimasi</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${cart.map((line, idx) => `<tr>
+          <td><span style="font-weight:600">${esc(line.name)}</span></td>
+          <td><span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 7px;border-radius:20px;font-weight:700">${esc(line.tierLabel||line.tierKey||'–')}</span></td>
+          <td><span style="font-size:11px;color:var(--t2)">${esc(line.tierEst||'–')}</span></td>
+          <td>${line.qty} ${esc(line.unit||'pcs')}</td>
+          <td>${fmt(line.unitPrice)}</td>
+          <td style="font-weight:700">${fmt(line.lineTotal)}</td>
+          <td><button onclick="removeFromSatuanCart('${pre}',${idx})" style="border:none;background:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Hapus">×</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
 }
 
-function _noUpdateSatPrice(){
-  const selEl=g('no-sat-sel');
-  const tierEl=g('no-sat-tier');
-  const estEl=g('no-sat-est');
-  const priceEl=g('no-sat-price');
+function _updateSatPrice(pre='no'){
+  const selEl=g(pre+'-sat-sel');
+  const tierEl=g(pre+'-sat-tier');
+  const estEl=g(pre+'-sat-est');
+  const priceEl=g(pre+'-sat-price');
   if(!selEl||!tierEl) return;
   const itemId=selEl.value;
   const item=satuanItems.find(x=>x.id===itemId);
@@ -341,6 +295,8 @@ function _noUpdateSatPrice(){
     }
   }
 }
+function _noUpdateSatPrice(){_updateSatPrice('no');}
+function _snoUpdateSatPrice(){_updateSatPrice('sno');}
 
 function addToSatuanCart(pre) {
   const selEl = g(pre + '-sat-sel');
@@ -350,36 +306,23 @@ function addToSatuanCart(pre) {
   const qty = parseInt(qtyEl?.value) || 1;
   const itemId = selEl.value;
   const item = satuanItems.find(x => x.id === itemId); if (!item) return;
-  // Per-item tier for new order; global tier for staff order
-  let tierKey, tierLabel, tierEst;
-  if (pre === 'no') {
-    const tierEl = g('no-sat-tier');
-    if (!tierEl || !tierEl.value) { toast('⚠️ Pilih opsi harga terlebih dahulu'); return; }
-    tierKey = tierEl.value;
-    const po = typeof priceOptions !== 'undefined' ? priceOptions.find(p => p.key === tierKey) : null;
-    tierLabel = po?.label || tierKey;
-    tierEst = po?.est || '';
-  } else {
-    tierKey = g(pre + '-cat')?.value || 'regular';
-    const po = typeof priceOptions !== 'undefined' ? priceOptions.find(p => p.key === tierKey) : null;
-    tierLabel = po?.label || tierKey;
-    tierEst = po?.est || '';
-  }
+  // Per-item tier selection (unified for all prefixes)
+  const tierEl = g(pre + '-sat-tier');
+  if (!tierEl || !tierEl.value) { toast('⚠️ Pilih opsi harga terlebih dahulu'); return; }
+  const tierKey = tierEl.value;
+  const po = typeof priceOptions !== 'undefined' ? priceOptions.find(p => p.key === tierKey) : null;
+  const tierLabel = po?.label || tierKey;
+  const tierEst = po?.est || '';
   const unitPrice = item.prices?.[tierKey] || 0;
   const cart = _getSatuanCart(pre);
-  // For 'no' prefix, each item+tier combo is a separate line
-  if (pre === 'no') {
-    const existing = cart.find(l => l.id === itemId && l.tierKey === tierKey);
-    if (existing) { existing.qty += qty; existing.lineTotal = existing.unitPrice * existing.qty; }
-    else { cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty, tierKey, tierLabel, tierEst }); }
-  } else {
-    const existing = cart.find(l => l.id === itemId);
-    if (existing) { existing.qty += qty; existing.lineTotal = existing.unitPrice * existing.qty; }
-    else { cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty, tierKey, tierLabel, tierEst }); }
-  }
+  // Each item+tier combo is a separate line
+  const existing = cart.find(l => l.id === itemId && l.tierKey === tierKey);
+  if (existing) { existing.qty += qty; existing.lineTotal = existing.unitPrice * existing.qty; }
+  else { cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty, tierKey, tierLabel, tierEst }); }
   if (qtyEl) qtyEl.value = '1';
   _renderSatuanCartTable(pre);
-  if (pre === 'no') { _noUpdateSatPrice(); calcO(); } else calcS();
+  _updateSatPrice(pre);
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function removeFromSatuanCart(pre, idx) {
@@ -457,23 +400,20 @@ function calcBase(pre) {
   const EST = { regular: '2-3 hari', sameday: '± 8 jam', express: '1 hari' };
   const est = g(pre + '-est'); if (est) est.value = poEst != null ? poEst : (EST[cat] || '');
 
-  // Helper to check addon selection (supports both checkbox and card)
+  // Helper to check addon selection (card for all prefixes, checkbox as fallback)
   function isAddonSelected(a) {
-    if (pre === 'no') {
-      const card = g('no-addon-card-' + a.id);
-      return card && card.classList.contains('on');
-    }
+    const card = g(pre + '-addon-card-' + a.id);
+    if (card) return card.classList.contains('on');
     const ck = g(pre + '-ck-' + a.id);
     return ck && ck.checked;
   }
 
   if (type === 'satuan') {
-    // Cart-based: read from _getSatuanCart
+    // Cart-based: read from _getSatuanCart (always use per-item tierKey)
     const cart = _getSatuanCart(pre);
-    // For 'no' prefix, use per-item tierKey; for others use global cat
     const satuanLines = cart.map(line => {
       const item = satuanItems.find(x => x.id === line.id);
-      const tierKey = (pre === 'no' && line.tierKey) ? line.tierKey : cat;
+      const tierKey = line.tierKey || cat;
       const unitPrice = item ? (item.prices?.[tierKey] || 0) : line.unitPrice;
       return { id: line.id, name: line.name, unit: line.unit || 'pcs', qty: line.qty, unitPrice, lineTotal: unitPrice * line.qty, tierKey: line.tierKey };
     });
@@ -555,6 +495,11 @@ function _noToggleAddon(id) {
   const card = g('no-addon-card-' + id);
   if (card) card.classList.toggle('on');
   calcO();
+}
+function _toggleAddon(pre, id) {
+  const card = g(pre + '-addon-card-' + id);
+  if (card) card.classList.toggle('on');
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function _noTogglePromo() {
@@ -711,16 +656,13 @@ function buildOrder(pre) {
   const _phoneRaw = (g(pre + '-phone')?.value || '').trim().replace(/^[-—]+$/, '');
   const phone = _phoneRaw || '—';
   const res = doCalc(pre, pre === 'no');
-  // Read addons: card state for 'no', checkbox for others
+  // Read addons: card state (checkbox as fallback)
   const addOns = [];
   addons.forEach(a => {
-    if (pre === 'no') {
-      const card = g('no-addon-card-' + a.id);
-      if (card && card.classList.contains('on')) addOns.push({ id: a.id, name: a.name });
-    } else {
-      const ck = g(pre + '-ck-' + a.id);
-      if (ck && ck.checked) addOns.push({ id: a.id, name: a.name });
-    }
+    const card = g(pre + '-addon-card-' + a.id);
+    if (card && card.classList.contains('on')) { addOns.push({ id: a.id, name: a.name }); return; }
+    const ck = g(pre + '-ck-' + a.id);
+    if (ck && ck.checked) addOns.push({ id: a.id, name: a.name });
   });
   // Normalize payment method and status for 'no' prefix (new values)
   const pmRaw = g(pre + '-pm')?.value || 'Tunai';
@@ -776,12 +718,16 @@ function buildOrder(pre) {
     }
   }
   [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  addons.forEach(a => {
+    const card = g(pre + '-addon-card-' + a.id); if (card) card.classList.remove('on');
+    const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false;
+  });
   if (pre === 'no') {
-    addons.forEach(a => { const card = g('no-addon-card-' + a.id); if (card) card.classList.remove('on'); });
     const kgEl = g('no-kg'); if (kgEl) kgEl.value = '1';
     const icEl = g('no-item-count'); if (icEl) icEl.value = '';
   } else {
-    addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false; });
+    const kgEl = g('sno-qty'); if (kgEl) kgEl.value = '1';
+    const icEl = g('sno-item-count'); if (icEl) icEl.value = '';
   }
   const qq = g(pre + '-qty'); if (qq) qq.value = '1';
   const dt = g(pre + '-disc-type'); if (dt) dt.value = 'none';

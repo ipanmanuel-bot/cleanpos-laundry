@@ -447,7 +447,7 @@ function sGo(pg,el){
   document.querySelectorAll('#s-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('s-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
   g('s-mc').scrollTop=0;
-  const pm={dashboard:refreshSDash,orders:renderOrders,tracking:()=>renderKanban('s'),wa:renderSWa,membership:renderMembership,printer:renderPrinters};
+  const pm={dashboard:refreshSDash,orders:renderOrders,tracking:()=>renderKanban('s'),wa:renderSWa,membership:renderMembership,printer:renderPrinters,notifications:renderNotifications};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('sno');calcS();}
   closeDrawer();
@@ -530,7 +530,7 @@ function initOwner(){
   }
   _resetIdleTimer();
 }
-function initStaff(){loadPrintersFromStorage();g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
+function initStaff(){loadPrintersFromStorage();_updateNotifBadge();g('staff-role-lbl').textContent='\uD83D\uDC64 '+curStaff.name;g('s-greet').textContent='Halo, '+curStaff.name+'!';updStaffClk();buildOrderForm('sno');calcS();refreshSDash();_resetIdleTimer();}
 function renderSettings(){
   renderSubCard();
   renderPrinters();
@@ -2171,7 +2171,7 @@ function _loadNotifications(){
 function _saveNotifications(){try{localStorage.setItem(_NOTIF_KEY,JSON.stringify(appNotifications.slice(0,50)));}catch(e){}}
 function _updateNotifBadge(){
   const count=appNotifications.filter(n=>!n.read).length;
-  ['o-notif-badge','o-notif-badge-b'].forEach(id=>{
+  ['o-notif-badge','o-notif-badge-b','s-notif-badge','s-notif-badge-b','s-notif-badge-h'].forEach(id=>{
     const el=g(id);if(!el)return;
     if(count>0){el.textContent=count>99?'99+':count;el.style.display='flex';}
     else el.style.display='none';
@@ -2181,7 +2181,7 @@ function _fmtNotifTime(iso){if(!iso)return'';try{const d=new Date(iso);return d.
 function markNotifRead(id){
   const n=appNotifications.find(x=>x.id===id);if(!n)return;
   n.read=true;_saveNotifications();_updateNotifBadge();
-  const el=g('notif-item-'+id);if(el){el.classList.remove('notif-unread');const dot=el.querySelector('.notif-dot');if(dot)dot.style.display='none';}
+  document.querySelectorAll('[id="notif-item-'+id+'"]').forEach(el=>{el.classList.remove('notif-unread');const dot=el.querySelector('.notif-dot');if(dot)dot.style.display='none';});
 }
 function markAllNotifsRead(){
   appNotifications.forEach(n=>n.read=true);_saveNotifications();_updateNotifBadge();renderNotifications();
@@ -2218,7 +2218,7 @@ function _generateNotifications(){
   if(notifProsesKosong){outlets.forEach(outlet=>{const mencuciCount=orders.filter(o=>o.status==='Mencuci'&&o.outletId===outlet.id).length;const pendingCount=orders.filter(o=>o.status==='Diterima'&&o.outletId===outlet.id).length;if(mencuciCount<=1&&pendingCount>0)_upsert('proses-kosong',outlet.id,'Kolom Mencuci kosong',`Kolom Mencuci di ${outlet.name} kosong selama ${notifProsesKosongDelay} menit. Segera proses ${pendingCount} pesanan yang diterima.`);else _resolve('proses-kosong',outlet.id);});}
   // 4. Durasi Lama
   if(notifDurasiLama){const nowMs=now.getTime();const lama=orders.filter(o=>{if(o.status!=='Mencuci'||!o.isoDate)return false;try{return(nowMs-new Date(o.isoDate).getTime())/60000>notifDurasiMencuci;}catch(e){return false;}});if(lama.length>0)_upsert('durasi-lama',null,'Durasi proses terlalu lama',`${lama.length} pesanan di proses Mencuci melebihi ${notifDurasiMencuci} menit.`);else _resolve('durasi-lama',null);}
-  if(changed){_saveNotifications();_updateNotifBadge();const pg=g('o-p-notifications');if(pg&&pg.classList.contains('on'))renderNotifications();}
+  if(changed){_saveNotifications();_updateNotifBadge();const opg=g('o-p-notifications');const spg=g('s-p-notifications');if((opg&&opg.classList.contains('on'))||(spg&&spg.classList.contains('on')))renderNotifications();}
 }
 function _toggleNotifBtn(cbId,btnId){
   const cb=g(cbId);const btn=g(btnId);if(!cb||!btn)return;
@@ -2236,8 +2236,9 @@ function saveNotifSettings(){
   syncSettings();toast('Pengaturan notifikasi disimpan');
 }
 function renderNotifications(){
-  const el=g('notif-list');if(!el)return;
   _updateNotifBadge();
+  ['notif-list','s-notif-list'].forEach(listId=>{
+  const el=g(listId);if(!el)return;
   if(!appNotifications.length){
     el.innerHTML=`<div style="text-align:center;padding:48px 20px;color:var(--t2)"><div style="width:48px;height:48px;border-radius:50%;background:var(--bg);border:2px solid var(--b1);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="bell" style="width:22px;height:22px;stroke-width:1.5;display:block;color:var(--t3)"></i></div><div style="font-size:14px;font-weight:600;margin-bottom:4px">Tidak ada notifikasi</div><div style="font-size:12px">Notifikasi operasional akan muncul di sini.</div></div>`;
     if(typeof lucide!=='undefined')lucide.createIcons();return;
@@ -2263,6 +2264,7 @@ function renderNotifications(){
     </div>`;
   }).join('');
   if(typeof lucide!=='undefined')lucide.createIcons();
+  }); // end forEach listId
 }
 
 // ===== CUSTOMERS =====
@@ -3720,16 +3722,16 @@ function renderSvcTypeList(){}
 function renderSatuanItemsList(){}
 
 // ─── New Order: visual type/tier cards ───
-function _noRebuildSvcCards(){
-  const el=g('no-stype-cards');if(!el)return;
-  const noTypeInp=g('no-type');
-  let curType=noTypeInp?.value||'';
+function _noRebuildSvcCards(pre='no'){
+  const el=g(pre+'-stype-cards');if(!el)return;
+  const typeInp=g(pre+'-type');
+  let curType=typeInp?.value||'';
   // If current type is not a valid service ID and not 'satuan', default to first service
   const validIds=serviceTypes.map(s=>s.id);
   if(!validIds.includes(curType)&&curType!=='satuan'){
     curType=serviceTypes[0]?.id||'kiloan';
-    if(noTypeInp)noTypeInp.value=curType;
-    const kgSect=g('no-kg-sect');const satSect=g('no-satuan-sect');
+    if(typeInp)typeInp.value=curType;
+    const kgSect=g(pre+'-kg-sect');const satSect=g(pre+'-satuan-sect');
     if(kgSect)kgSect.style.display='block';
     if(satSect)satSect.style.display='none';
   }
@@ -3739,7 +3741,7 @@ function _noRebuildSvcCards(){
   // Adjust grid columns (max 3 per row)
   el.style.gridTemplateColumns=`repeat(${Math.min(types.length,3)},1fr)`;
   el.innerHTML=types.map(t=>`
-    <div class="no-type-card${curType===t.key?' on':''}" onclick="_noPickType('${t.key}')">
+    <div class="no-type-card${curType===t.key?' on':''}" onclick="_noPickType('${t.key}','${pre}')">
       <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
       <div class="no-type-body">
         <div class="no-type-lbl">${esc(t.label)}</div>
@@ -3749,11 +3751,11 @@ function _noRebuildSvcCards(){
     </div>
   `).join('');
 }
-function _noRebuildTierCards(){
-  const el=g('no-tier-cards');if(!el)return;
-  const curCat=g('no-cat')?.value||'regular';
-  const type=g('no-type')?.value||'kiloan';
-  const tierSect=g('no-tier-sect');
+function _noRebuildTierCards(pre='no'){
+  const el=g(pre+'-tier-cards');if(!el)return;
+  const curCat=g(pre+'-cat')?.value||'regular';
+  const type=g(pre+'-type')?.value||'kiloan';
+  const tierSect=g(pre+'-tier-sect');
   if(tierSect)tierSect.style.display=(type==='satuan'?'none':'block');
   let activeTiers=_activePoOptions('kiloan');
   // Filter by service's tierApply if applicable
@@ -3763,7 +3765,7 @@ function _noRebuildTierCards(){
   }
   el.style.gridTemplateColumns=`repeat(${Math.max(activeTiers.length,1)},1fr)`;
   el.innerHTML=activeTiers.map(po=>`
-    <div class="no-type-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}')" style="padding:10px 12px">
+    <div class="no-type-card${curCat===po.key?' on':''}" onclick="_noPickTier('${po.key}','${pre}')" style="padding:10px 12px">
       <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
       <div class="no-type-body">
         <div class="no-type-lbl" style="font-size:12px">${esc(po.label)}</div>
@@ -3772,30 +3774,30 @@ function _noRebuildTierCards(){
     </div>
   `).join('');
   if(activeTiers.length===1&&curCat!==activeTiers[0].key){
-    const sel=g('no-cat');if(sel)sel.value=activeTiers[0].key;
-    catChange('no');
+    const sel=g(pre+'-cat');if(sel)sel.value=activeTiers[0].key;
+    catChange(pre);
   }
 }
-function _noPickType(key){
-  const inp=g('no-type');if(inp)inp.value=key;
+function _noPickType(key,pre='no'){
+  const inp=g(pre+'-type');if(inp)inp.value=key;
   // Show/hide kg vs satuan sections
-  const kgSect=g('no-kg-sect');const satSect=g('no-satuan-sect');
+  const kgSect=g(pre+'-kg-sect');const satSect=g(pre+'-satuan-sect');
   if(kgSect)kgSect.style.display=(key!=='satuan'?'block':'none');
   if(satSect)satSect.style.display=(key==='satuan'?'block':'none');
   // Update card styling (only service type cards, not tier cards)
-  const svcGrid=g('no-stype-cards');
+  const svcGrid=g(pre+'-stype-cards');
   if(svcGrid)svcGrid.querySelectorAll('.no-type-card').forEach(c=>{
     const onclick=c.getAttribute('onclick')||'';
     c.classList.toggle('on',onclick.includes(`'${key}'`));
   });
-  if(typeof _noRebuildTierCards==='function')_noRebuildTierCards();
-  if(key==='satuan'&&typeof buildSatuanOrderItems==='function')buildSatuanOrderItems('no');
-  calcO();
+  if(typeof _noRebuildTierCards==='function')_noRebuildTierCards(pre);
+  if(key==='satuan'&&typeof buildSatuanOrderItems==='function')buildSatuanOrderItems(pre);
+  if(pre==='no')calcO();else calcS();
 }
-function _noPickTier(key){
-  const sel=g('no-cat');if(sel){sel.value=key;}
-  _noRebuildTierCards();
-  catChange('no');
+function _noPickTier(key,pre='no'){
+  const sel=g(pre+'-cat');if(sel){sel.value=key;}
+  _noRebuildTierCards(pre);
+  catChange(pre);
 }
 function _noUpdateSatSelPrices(){
   const cat=g('no-cat')?.value||'regular';

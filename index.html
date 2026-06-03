@@ -2245,6 +2245,7 @@ tr:hover td{background:#F6F7F9}
     <button class="ni" onclick="sGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <button class="ni" onclick="sGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
     <button class="ni" onclick="sGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
+    <button class="ni" onclick="sGo('notifications',this)"><span class="nic" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="s-notif-badge"></span></span>Notifikasi</button>
     <button class="ni" id="s-nav-membership" onclick="sGo('membership',this)"><span class="nic"><i data-lucide="credit-card"></i></span>Membership</button>
     <button class="ni" onclick="sGo('printer',this)"><span class="nic"><i data-lucide="printer"></i></span>Printer</button>
   </div>
@@ -2254,6 +2255,7 @@ tr:hover td{background:#F6F7F9}
 <header class="mob-header">
   <button class="mob-hbg" onclick="openDrawer()"><i data-lucide="menu"></i></button>
   <img src="img/Black_1.svg" class="mob-logo" alt="CleanPOS">
+  <button class="mob-hbg" onclick="sGo('notifications',null)" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="s-notif-badge-h" style="border-color:var(--ca)"></span></button>
 </header>
 <div class="mc" id="s-mc">
   <div class="page on" id="s-p-dashboard">
@@ -2283,76 +2285,144 @@ tr:hover td{background:#F6F7F9}
     </div>
   </div>
   <div class="page" id="s-p-new-order">
-    <div class="pt">Buat Pesanan</div>
-    <div class="g2 og">
+    <div class="sh" style="margin-bottom:20px">
+      <div><div class="pt">Buat Pesanan</div></div>
+    </div>
+    <div class="no-layout">
+      <!-- ── LEFT: Steps ───────────────────────── -->
       <div>
-        <div class="card"><div class="ct">Data Pelanggan</div>
-          <div class="fg"><label>Outlet</label><select id="sno-outlet"></select></div>
-          <div class="fg" style="position:relative;margin-bottom:10px">
-            <label>Cari Pelanggan Lama</label>
-            <input id="sno-cust-srch" placeholder="Ketik nama atau nomor WA..." oninput="custSearch('sno')" autocomplete="off">
-            <div id="sno-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
+        <!-- Step 1: Data Pelanggan -->
+        <div class="no-step-card">
+          <div class="no-step-hdr">
+            <div class="no-step-num">1</div>
+            <div class="no-step-title">Data Pelanggan</div>
           </div>
-          <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan (baru atau pilih di atas)"></div>
-          <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xx-xxxx-xxxx" oninput="updWalletOption('sno')"></div>
-          <div class="fg" style="margin-bottom:0"><label>Catatan</label><textarea id="sno-note" rows="2" placeholder="Preferensi khusus..."></textarea></div>
-        </div>
-        <div class="card"><div class="ct">Detail Layanan</div>
-          <div class="g2">
-            <div class="fg" style="margin-bottom:0"><label>Jenis</label><select id="sno-type" onchange="typeChange('sno')"></select></div>
-            <div class="fg" style="margin-bottom:0"><label>Kategori</label><select id="sno-cat" onchange="catChange('sno')"><option value="regular">Regular</option><option value="sameday">Same-day</option><option value="express">Express</option></select></div>
-          </div>
-          <div class="div_"></div>
-          <div id="sno-satuan-sect" style="display:none">
-            <div class="sat-picker">
-              <select id="sno-sat-sel" style="flex:1;padding:8px 10px;font-size:13px;font-family:inherit;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);outline:none"></select>
-              <input type="number" id="sno-sat-qty" value="1" min="1" step="1" style="width:62px;text-align:center;font-size:14px;font-weight:700;padding:7px 8px">
-              <button class="btn bp bsm" onclick="addToSatuanCart('sno')">+ Tambah</button>
+          <div class="g2" style="margin-bottom:12px">
+            <div class="fg"><label>Outlet *</label><select id="sno-outlet" onchange="calcS()"></select></div>
+            <div class="fg" style="position:relative;overflow:visible">
+              <label>Cari Pelanggan Lama</label>
+              <input id="sno-cust-srch" placeholder="Nama / No. WA..." oninput="custSearch('sno')" autocomplete="off">
+              <div id="sno-cust-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-top:none;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto"></div>
             </div>
-            <div id="sno-satuan-items"></div>
-            <div class="div_"></div>
           </div>
+          <div class="g2" style="margin-bottom:12px">
+            <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan" oninput="calcS()"></div>
+            <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xxxxxxxxxx" oninput="updWalletOption('sno');calcS()"></div>
+          </div>
+          <div class="fg"><label>Catatan</label><input id="sno-note" placeholder="Catatan pesanan (opsional)"></div>
+        </div>
+
+        <!-- Step 2: Jenis Pesanan -->
+        <div class="no-step-card">
+          <div class="no-step-hdr">
+            <div class="no-step-num">2</div>
+            <div class="no-step-title">Jenis Pesanan</div>
+          </div>
+          <div class="no-type-grid" id="sno-stype-cards">
+            <!-- Rendered by _noRebuildSvcCards('sno') -->
+          </div>
+          <input type="hidden" id="sno-type" value="kiloan">
+          <input type="hidden" id="sno-cat" value="regular">
+          <input type="hidden" id="sno-est">
+        </div>
+
+        <!-- Step 3: Detail Layanan -->
+        <div class="no-step-card">
+          <div class="no-step-hdr">
+            <div class="no-step-num">3</div>
+            <div class="no-step-title">Detail Layanan</div>
+          </div>
+          <!-- Kiloan -->
           <div id="sno-kg-sect">
-            <div class="g2">
-              <div class="fg" style="margin-bottom:0"><label id="sno-qty-lbl">Berat (kg) <span id="sno-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
-                <input type="number" id="sno-qty" value="1" min="0.5" step="0.5" oninput="calcS()">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="fg" style="margin-bottom:0;flex:0 0 auto">
+                <label id="sno-qty-lbl">Berat (kg) <span id="sno-min-b" style="font-size:9px;background:var(--amb);color:var(--am);padding:1px 6px;border-radius:10px;display:none">min.3kg</span></label>
+                <input type="number" id="sno-qty" value="1" min="0.5" step="0.5" oninput="calcS()" style="max-width:140px">
                 <div id="sno-min-w" style="font-size:11px;color:var(--am);margin-top:3px;display:none">→ Dihitung 3kg</div>
               </div>
-              <div class="fg" style="margin-bottom:0"><label>Estimasi</label><input id="sno-est" readonly style="color:var(--t2)"></div>
+              <div class="fg" style="margin-bottom:0;flex:1;min-width:120px">
+                <label>Jumlah Item <span style="font-size:10px;font-weight:400;color:var(--t2)">(opsional)</span></label>
+                <input type="number" id="sno-item-count" min="1" step="1" placeholder="Cth: 5" style="max-width:140px">
+              </div>
             </div>
-            <div class="fg" style="margin-bottom:0;margin-top:8px">
-              <label>Jumlah Item <span style="font-size:10px;font-weight:400;color:var(--t2)">(opsional)</span></label>
-              <input type="number" id="sno-item-count" min="1" step="1" placeholder="Cth: 5" style="max-width:140px">
-            </div>
-            <div class="div_"></div>
           </div>
-          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Layanan Tambahan</div>
-          <div id="sno-addons" class="g2"></div>
+          <!-- Satuan -->
+          <div id="sno-satuan-sect" style="display:none">
+            <div class="sat-add-row">
+              <select id="sno-sat-sel" onchange="_snoUpdateSatPrice()"><option value="">-- Pilih Item --</option></select>
+              <select id="sno-sat-tier" onchange="_snoUpdateSatPrice()" style="min-width:110px"><option value="">-- Opsi Harga --</option></select>
+              <span class="sat-est-badge" id="sno-sat-est" style="display:none">2-3 Hari</span>
+              <input type="number" id="sno-sat-qty" value="1" min="1" style="width:60px;text-align:center">
+              <span class="sat-price-lbl" id="sno-sat-price"></span>
+              <button class="btn bp bsm" onclick="addToSatuanCart('sno')">+ Tambah Item</button>
+            </div>
+            <div id="sno-satuan-items">
+              <div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah Item.</div>
+            </div>
+            <div class="sat-info-tip">
+              <span>ℹ️</span>
+              <span>Pilih item, tentukan opsi harga dan qty, lalu klik 'Tambah Item'.</span>
+            </div>
+          </div>
+          <!-- Tier selection -->
+          <div id="sno-tier-sect" style="margin-top:4px">
+            <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Opsi Harga</div>
+            <div id="sno-tier-cards" style="display:grid;gap:8px"></div>
+          </div>
+        </div>
+
+        <!-- Step 4: Layanan Tambahan -->
+        <div class="no-step-card">
+          <div class="no-step-hdr">
+            <div class="no-step-num">4</div>
+            <div class="no-step-title">Layanan Tambahan</div>
+          </div>
+          <div class="no-addon-grid" id="sno-addons"></div>
         </div>
       </div>
+
+      <!-- ── RIGHT: Summary ─────────────────────── -->
       <div>
-        <!-- Voucher Code Input -->
-        <div class="card" style="margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Kode Voucher</div>
-          <div id="sno-voucher-applied" style="display:none"></div>
-          <div id="sno-voucher-input-row" style="display:flex;gap:7px">
-            <input id="sno-voucher-input" placeholder="Masukkan kode voucher..." style="flex:1;text-transform:uppercase;font-size:13px" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')applyVoucherCode('sno')">
-            <button type="button" class="btn bp bsm" onclick="applyVoucherCode('sno')">Terapkan</button>
+        <div class="no-sum-card">
+          <div class="no-sum-hdr">Ringkasan Pesanan</div>
+          <div style="padding:16px 20px;border-bottom:1px solid var(--b1)">
+            <div id="sno-preview"></div>
+            <div class="sr tot" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)">
+              <span>Total</span>
+              <span id="sno-total" style="color:var(--p);font-weight:700">Rp 0</span>
+            </div>
           </div>
-        </div>
-        <div id="sno-promo-box"></div>
-        <div class="card"><div class="ct">Ringkasan</div><div id="sno-preview"></div><div class="div_"></div><div class="sr tot"><span>Total</span><span id="sno-total" style="color:var(--p)">Rp 0</span></div></div>
-        <div class="card"><div class="ct">Pembayaran</div>
-          <div class="g2">
-            <div class="fg" style="margin-bottom:0"><label>Metode</label><select id="sno-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select></div>
-            <div class="fg" style="margin-bottom:0"><label>Status</label><select id="sno-ps" onchange="dpTgl('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select></div>
+          <!-- Voucher -->
+          <div style="padding:12px 20px;border-bottom:1px solid var(--b1)">
+            <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Kode Voucher</div>
+            <div id="sno-voucher-applied" style="display:none"></div>
+            <div id="sno-voucher-input-row" style="display:flex;gap:7px">
+              <input id="sno-voucher-input" placeholder="Masukkan kode voucher..." style="flex:1;text-transform:uppercase;font-size:13px" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')applyVoucherCode('sno')">
+              <button type="button" class="btn bp bsm" onclick="applyVoucherCode('sno')" style="white-space:nowrap;font-size:12px;font-weight:600">Terapkan</button>
+            </div>
           </div>
-          <div id="sno-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-top:6px;margin-bottom:0"></div>
-          <div class="fg" id="sno-dp-g" style="display:none;margin-top:8px;margin-bottom:0"><label>Jumlah DP</label><input type="number" id="sno-dp" placeholder="0"></div>
-          <div class="div_"></div>
-          <div class="fg"><label>Uang Diterima</label><input type="number" id="sno-cash" oninput="calcChg('sno')" placeholder="0"></div>
-          <div style="background:var(--bg);border-radius:10px;padding:12px;display:flex;justify-content:space-between;font-size:14px;margin-bottom:12px"><span>Kembalian</span><span id="sno-chg" style="font-weight:700">Rp 0</span></div>
-          <button class="btn bp bfull bpill" onclick="submitO('s')">Simpan Pesanan</button>
+          <div id="sno-promo-box"></div>
+          <div class="no-sum-pay">
+            <div id="sno-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-bottom:10px"></div>
+            <div class="fg" style="margin-bottom:10px">
+              <label>Metode Pembayaran</label>
+              <select id="sno-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select>
+            </div>
+            <div class="fg" style="margin-bottom:10px">
+              <label>Status Pembayaran</label>
+              <select id="sno-ps" onchange="dpTgl('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select>
+            </div>
+            <div class="fg" id="sno-dp-g" style="display:none;margin-bottom:10px"><label>Jumlah DP</label><input type="number" id="sno-dp" placeholder="0"></div>
+            <div class="fg" style="margin-bottom:6px">
+              <label>Uang Diterima</label>
+              <input type="number" id="sno-cash" oninput="calcChg('sno')" placeholder="0">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0;margin-bottom:12px">
+              <span style="color:var(--t2)">Kembalian</span>
+              <span id="sno-chg" style="font-weight:700">Rp 0</span>
+            </div>
+            <button class="no-sum-savebtn" onclick="submitO('s')">Simpan Pesanan</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2407,6 +2477,21 @@ tr:hover td{background:#F6F7F9}
       <div id="s-printer-list"></div>
     </div>
   </div>
+  <div class="page" id="s-p-notifications">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="pt" style="margin-bottom:2px">Notifikasi</div>
+        <div style="font-size:12px;color:var(--t2)">Pemberitahuan operasional harian toko Anda.</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bsm" style="font-size:12px;color:var(--p);border-color:var(--p)" onclick="markAllNotifsRead()">Tandai semua dibaca</button>
+        <button class="btn bsm" style="font-size:12px;color:var(--re);border-color:var(--re)" onclick="clearAllNotifs()"><i data-lucide="trash-2" style="width:12px;height:12px;stroke-width:2;display:inline;vertical-align:-1px;margin-right:4px"></i>Hapus semua</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="s-notif-list"></div>
+    </div>
+  </div>
 </div>
 <nav class="bnav">
   <div class="bnav-inner">
@@ -2414,7 +2499,7 @@ tr:hover td{background:#F6F7F9}
     <button class="bni" onclick="sGoB('orders',this)"><span class="bn-ic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <div class="bfab" onclick="sGo('new-order',null)">+</div>
     <button class="bni" onclick="sGoB('tracking',this)"><span class="bn-ic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
-    <button class="bni" onclick="sGoB('membership',this)"><span class="bn-ic"><i data-lucide="credit-card"></i></span>Member</button>
+    <button class="bni" onclick="sGoB('notifications',this)"><span class="bn-ic" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="s-notif-badge-b" style="border-color:var(--dk)"></span></span>Notif</button>
   </div>
 </nav>
 </div><!-- end staff-app -->
