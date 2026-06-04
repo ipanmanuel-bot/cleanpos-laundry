@@ -8,7 +8,7 @@ function orderToRow(o) {
     user_id: currentUserId,
     id: o.id, name: o.name, phone: o.phone,
     svc_type: o.svcType, svc_cat: o.svcCat,
-    qty: o.qty, raw_qty: o.rawQty,
+    qty: o.qty, raw_qty: o.rawQty, item_count: o.itemCount || null,
     satuan_lines: JSON.stringify(o.satuanLines || []),
     add_ons: JSON.stringify(o.addOns), add_on_amt: o.addOnAmt,
     base: o.base, disc_type: o.discType, disc_amt: o.discAmt,
@@ -31,7 +31,7 @@ function rowToOrder(r) {
   return {
     id: r.id, name: r.name, phone: r.phone,
     svcType: r.svc_type, svcCat: r.svc_cat,
-    qty: r.qty, rawQty: r.raw_qty,
+    qty: r.qty, rawQty: r.raw_qty, itemCount: r.item_count || null,
     satuanLines, addOns, addOnAmt: r.add_on_amt,
     base: r.base, discType: r.disc_type, discAmt: r.disc_amt,
     promoAmt: r.promo_amt, total: r.total,
@@ -77,7 +77,7 @@ function deleteMemberTxn(id) { sbDelete('member_txns', id); }
 
 // --- Sync: Outlets ---
 function syncOutlet(o) {
-  sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color });
+  sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1 });
 }
 function deleteOutlet(id) { sbDelete('outlets', id); }
 
@@ -87,7 +87,8 @@ function syncEmployee(e) {
     user_id: currentUserId,
     id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid,
     pin: e.pin, status: e.status, cuti_used: e.cutiUsed,
-    clock_in: e.clockIn, clock_out: e.clockOut
+    clock_in: e.clockIn, clock_out: e.clockOut,
+    phone: e.phone||'', last_login_date: e.lastLoginDate||null
   });
 }
 function deleteEmployee(id) { sbDelete('employees', String(id)); }
@@ -97,7 +98,7 @@ function syncKas(l) {
   sbUpsert('kas_log', {
     user_id: currentUserId,
     id: String(l.id), type: l.type, desc: l.desc, note: l.note,
-    amount: l.amount, time: l.time, outlet_id: l.outletId
+    amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId
   });
 }
 
@@ -123,7 +124,61 @@ function deletePrinter_sb(id) { sbDelete('printers', id); }
 
 // --- Sync: Settings (one row per user, id='main') ---
 // NOTE: owner_pwd is stored as a SHA-256 hash (prefixed 'sha256:'), never plain text
+const _LS_SETTINGS_KEY = 'cleanpos_settings_local';
+function _saveSettingsLocal() {
+  try {
+    localStorage.setItem(_LS_SETTINGS_KEY, JSON.stringify({
+      store_name: storeName, store_addr: storeAddr, store_wa: storeWa, store_footer: storeFooter,
+      service_types: JSON.stringify(serviceTypes),
+      satuan_items: JSON.stringify(satuanItems),
+      addons: JSON.stringify(addons),
+      promos: JSON.stringify(promos),
+      wa_tpl_selesai: waTplSelesai,
+      wa_tpl_new: JSON.stringify(waTplNew),
+      cuti_per_bulan: cutiPerBulan,
+      membership_enabled: membershipEnabled,
+      membership_bonus: membershipBonus,
+      membership_style: membershipStyle,
+      membership_min_deposit: membershipMinDeposit,
+      membership_packages: JSON.stringify(membershipPackages),
+      membership_expiry_enabled: membershipExpiryEnabled,
+      membership_expiry_days: membershipExpiryDays,
+      price_options: JSON.stringify(priceOptions),
+      kg_step: kgStep,
+      notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan})
+    }));
+  } catch(e) { console.warn('[ls] gagal simpan settings lokal:', e); }
+}
+function _applySettingsObj(s) {
+  if (!s) return;
+  if (s.store_name)   storeName   = s.store_name;
+  if (s.store_addr)   storeAddr   = s.store_addr;
+  if (s.store_wa)     storeWa     = s.store_wa;
+  if (s.store_footer) storeFooter = s.store_footer;
+  if (s.owner_pwd)    ownerPwd    = s.owner_pwd;
+  try { if (s.service_types) serviceTypes = JSON.parse(s.service_types); } catch(e) {}
+  try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) {}
+  try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) {}
+  try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) {}
+  if (promos.length) { const mx=promos.reduce((m,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0); if(mx>=promoCtr)promoCtr=mx+1; }
+  if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
+  try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) {}
+  if (s.cuti_per_bulan != null) cutiPerBulan = Number(s.cuti_per_bulan);
+  if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
+  if (s.membership_bonus   != null) membershipBonus   = Number(s.membership_bonus);
+  if (s.membership_style)  membershipStyle  = s.membership_style;
+  if (s.membership_min_deposit != null) membershipMinDeposit = Number(s.membership_min_deposit);
+  try { if (s.membership_packages) membershipPackages = JSON.parse(s.membership_packages); } catch(e) {}
+  if (membershipPackages.length) membershipPkgCtr = membershipPackages.reduce((mx,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?mx:Math.max(mx,n);},0)+1;
+  if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
+  if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
+  try { if (s.price_options) priceOptions = JSON.parse(s.price_options); } catch(e) {}
+  priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
+  if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
+  try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+}
 function syncSettings() {
+  _saveSettingsLocal(); // always persist locally first
   sbUpsert('settings', {
     user_id: currentUserId,
     id: 'main',
@@ -143,7 +198,10 @@ function syncSettings() {
     membership_min_deposit: membershipMinDeposit,
     membership_packages: JSON.stringify(membershipPackages),
     membership_expiry_enabled: membershipExpiryEnabled,
-    membership_expiry_days: membershipExpiryDays
+    membership_expiry_days: membershipExpiryDays,
+    price_options: JSON.stringify(priceOptions),
+    kg_step: kgStep,
+    notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan})
   });
 }
 
@@ -166,7 +224,7 @@ async function supaLoadAll() {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
     const _hadDupes = _oMap.size < outletsData.length;
-    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, color: r.color }));
+    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, hours: r.hours||'', color: r.color, washingCount: r.washing_machine_count||1, dryingCount: r.drying_machine_count||1 }));
     // Update outletCtr so new outlets never collide with existing numeric IDs
     const _oNums = outlets.map(o => parseInt((o.id||'').replace(/\D/g,''))).filter(n => !isNaN(n) && n > 0);
     if (_oNums.length) outletCtr = Math.max(..._oNums) + 1;
@@ -174,11 +232,11 @@ async function supaLoadAll() {
     if (_hadDupes) { console.warn('[supa] Ditemukan outlet dengan ID duplikat — data dibersihkan otomatis'); outlets.forEach(o => syncOutlet(o)); }
   }
   if (empsData)     {
-    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out }));
+    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null }));
     // Use max id to avoid collisions (length-based counter fails if ids aren't sequential)
     empCtr = employees.reduce((mx, e) => Math.max(mx, e.id || 0), 0) + 1;
   }
-  if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, outletId: r.outlet_id })); kasCtr = kasLog.reduce((mx,l)=>Math.max(mx,l.id||0),0)+1; }
+  if (kasData)      { kasLog = kasData.map(r => ({ id: Number(r.id), type: r.type, desc: r.desc, note: r.note, amount: r.amount, time: r.time, date: r.date||null, outletId: r.outlet_id })); kasCtr = kasLog.reduce((mx,l)=>Math.max(mx,l.id||0),0)+1; }
   if (expData)      { expenses = expData.map(r => ({ id: Number(r.id), cat: r.cat, label: r.label, nominal: r.nominal, date: r.date, note: r.note, src: r.src, outletId: r.outlet_id })); expCtr = expenses.reduce((mx,e)=>Math.max(mx,e.id||0),0)+1; }
   if (settingsData && settingsData.length) {
     const s = settingsData[0];
@@ -191,6 +249,11 @@ async function supaLoadAll() {
     try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) { console.error('[parse] satuan_items:', e); }
     try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) { console.error('[parse] addons:', e); }
     try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) { console.error('[parse] promos:', e); }
+    // Recalibrate promoCtr so new promos never collide with loaded IDs
+    if (promos.length) {
+      const _maxN = promos.reduce((mx, p) => { const n = parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
+      if (typeof promoCtr !== 'undefined' && _maxN >= promoCtr) promoCtr = _maxN + 1;
+    }
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) { console.error('[parse] wa_tpl_new:', e); }
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
@@ -202,6 +265,17 @@ async function supaLoadAll() {
     if (membershipPackages.length) membershipPkgCtr = membershipPackages.reduce((mx,p)=>{ const n=parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n)?mx:Math.max(mx,n); },0)+1;
     if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
     if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
+    try { if (s.price_options) priceOptions = JSON.parse(s.price_options); } catch(e) { console.error('[parse] price_options:', e); }
+    priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
+    if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
+    try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+  }
+  // If Supabase settings are missing key pricing fields (e.g. migration not run yet), fall back to localStorage
+  if (!settingsData?.length || !settingsData[0]?.service_types) {
+    try {
+      const _ls = localStorage.getItem(_LS_SETTINGS_KEY);
+      if (_ls) { _applySettingsObj(JSON.parse(_ls)); console.log('[settings] Restored from localStorage fallback'); }
+    } catch(e) { console.warn('[settings] localStorage fallback failed:', e); }
   }
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
@@ -232,8 +306,15 @@ async function supaLoadAll() {
     sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'trial', expires_at: currentPlanExpiry }, 'user_id');
   }
   checkExpiredBalances();
+  if (typeof renderPlanBadge === 'function') renderPlanBadge();
+  if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
   toast('✅ Data cloud berhasil dimuat!');
+  // Re-render dashboard if it's already visible (e.g. after background cloud sync)
+  if (curRole === 'owner' && typeof refreshODash === 'function') refreshODash();
+  else if (curRole === 'staff' && typeof refreshSDash === 'function') refreshSDash();
   supaSubscribeOrders();
+  supaSubscribeSettings();
+  supaSubscribeEmployees();
 }
 
 // --- Realtime: subscribe to orders table changes ---
@@ -257,6 +338,65 @@ function supaSubscribeOrders() {
     .subscribe();
 }
 
+// --- Realtime: subscribe to settings & employees for multi-device sync ---
+let supaSettingsCh = null;
+let supaEmployeesCh = null;
+
+function supaSubscribeSettings() {
+  if (!supaEnabled || !supabase) return;
+  if (supaSettingsCh) supabase.removeChannel(supaSettingsCh);
+  supaSettingsCh = supabase.channel('settings-rt')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, async payload => {
+      if (payload.new?.user_id !== currentUserId) return;
+      const s = payload.new;
+      // Apply updated settings directly without full reload
+      if (s.store_name !== undefined) storeName = s.store_name;
+      if (s.store_addr !== undefined) storeAddr = s.store_addr;
+      if (s.store_wa !== undefined) storeWa = s.store_wa;
+      if (s.store_footer !== undefined) storeFooter = s.store_footer;
+      if (s.service_types) { try { serviceTypes = JSON.parse(s.service_types); } catch(e){} }
+      if (s.satuan_items) { try { satuanItems = JSON.parse(s.satuan_items); } catch(e){} }
+      if (s.addons) { try { addons = JSON.parse(s.addons); } catch(e){} }
+      if (s.promos) { try { promos = JSON.parse(s.promos); } catch(e){} }
+      if (s.wa_tpl_selesai !== undefined) waTplSelesai = s.wa_tpl_selesai;
+      if (s.wa_tpl_new) { try { waTplNew = JSON.parse(s.wa_tpl_new); } catch(e){} }
+      if (s.cuti_per_bulan !== undefined) cutiPerBulan = s.cuti_per_bulan;
+      if (s.membership_enabled !== undefined) membershipEnabled = s.membership_enabled;
+      if (s.membership_bonus !== undefined) membershipBonus = s.membership_bonus;
+      if (s.membership_style !== undefined) membershipStyle = s.membership_style;
+      if (s.membership_min_deposit !== undefined) membershipMinDeposit = s.membership_min_deposit;
+      if (s.membership_packages) { try { membershipPackages = JSON.parse(s.membership_packages); } catch(e){} }
+      if (s.membership_expiry_enabled !== undefined) membershipExpiryEnabled = s.membership_expiry_enabled;
+      if (s.membership_expiry_days !== undefined) membershipExpiryDays = s.membership_expiry_days;
+      if (s.price_options) { try { priceOptions = JSON.parse(s.price_options); } catch(e){} priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; }); }
+      if (s.kg_step !== undefined) kgStep = s.kg_step;
+      if (s.notif_settings) { try { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } catch(e){} }
+      // Re-render UI to reflect new settings
+      if (typeof renderSettings === 'function') renderSettings();
+      if (typeof renderPricing === 'function') renderPricing();
+    })
+    .subscribe();
+}
+
+function supaSubscribeEmployees() {
+  if (!supaEnabled || !supabase) return;
+  if (supaEmployeesCh) supabase.removeChannel(supaEmployeesCh);
+  supaEmployeesCh = supabase.channel('employees-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, payload => {
+      if ((payload.new?.user_id || payload.old?.user_id) !== currentUserId) return;
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const r = payload.new;
+        const emp = { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out };
+        const idx = employees.findIndex(e => String(e.id) === String(r.id));
+        if (idx >= 0) employees[idx] = emp; else employees.push(emp);
+      } else if (payload.eventType === 'DELETE') {
+        employees = employees.filter(e => String(e.id) !== String(payload.old.id));
+      }
+      if (typeof renderEmployees === 'function') renderEmployees();
+    })
+    .subscribe();
+}
+
 // --- Push all local data to Supabase (initial migration) ---
 async function supaPushAll() {
   if (!supaEnabled) { toast('⚠️ Hubungkan Supabase dulu'); return; }
@@ -265,9 +405,9 @@ async function supaPushAll() {
   await Promise.all([
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
     ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null })),
-    ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color })),
+    ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1 })),
     ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
-    ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, outlet_id: l.outletId })),
+    ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId })),
     ...expenses.map(e => sbUpsert('expenses', { user_id: currentUserId, id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),
     ...printers.map(p => sbUpsert('printers', { user_id: currentUserId, id: p.id, name: p.name, conn: p.conn, ip: p.ip, width: p.width, role: p.role, status: p.status })),
     ...memberTxns.map(t => syncMemberTxn(t)),

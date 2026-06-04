@@ -106,19 +106,28 @@ function _refreshSyncUI() {
 
 // --- Base CRUD helpers ---
 // All tables use composite unique key (user_id, id) — see SQL migration
+// Tables where schema errors must be shown (data loss otherwise)
+const _CRITICAL_TABLES = new Set(['orders', 'customers', 'employees', 'kas_log', 'expenses', 'member_txns', 'outlets', 'settings']);
+
 async function sbUpsert(table, data, onConflict = 'user_id,id') {
   if (!supaEnabled || !supabase) return;
   _syncStart();
   const { error } = await supabase.from(table).upsert(data, { onConflict });
   if (error) {
-    // Log full detail to console only — never expose DB internals to the UI
     console.error(`[supa] upsert ${table}:`, error.message);
-    if (error.message.includes('schema cache') || error.message.includes('column')) {
+    const isSchemaErr = error.message.includes('schema cache') || error.message.includes('column') || error.message.includes('does not exist');
+    if (isSchemaErr && !_CRITICAL_TABLES.has(table)) {
+      // Non-critical tables (settings, printers): silent — developer deploys migration
       console.warn(`[supa] Kolom belum ada di tabel "${table}". Jalankan SQL migration di Supabase Dashboard.`);
-      _syncDone(true); // schema issues are silent — don't alarm user
+      _syncDone(true);
     } else {
+      // Critical tables or non-schema errors: always show error
       _syncDone(false);
-      toast(`⚠️ Gagal menyimpan data. Coba lagi atau refresh halaman.`);
+      if (isSchemaErr) {
+        toast(`⚠️ Tabel "${table}" perlu diperbarui. Buka Supabase Dashboard → SQL Editor dan jalankan migration terbaru.`);
+      } else {
+        toast(`⚠️ Gagal menyimpan data. Coba lagi atau refresh halaman.`);
+      }
     }
   } else {
     _syncDone(true);

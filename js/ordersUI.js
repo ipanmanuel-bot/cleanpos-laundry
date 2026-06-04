@@ -2,6 +2,102 @@
 // Covers: order form, order list, kanban tracking, receipt/detail modals, WA notifications
 // Depends on global state and helpers defined in main.js (resolved at call-time).
 
+// ─── Satuan cart state ───
+let _noSatuanCart = [];
+let _snoSatuanCart = [];
+function _getSatuanCart(pre){ return pre==='no' ? _noSatuanCart : _snoSatuanCart; }
+function _setSatuanCart(pre, cart){ if(pre==='no') _noSatuanCart=cart; else _snoSatuanCart=cart; }
+
+// ─── Voucher code state ───
+const _voucherState = {};
+function _getVS(pre){ if(!_voucherState[pre])_voucherState[pre]={code:'',promo:null}; return _voucherState[pre]; }
+
+// ─── Dismissed auto-promo state (per prefix) ───
+const _dismissedPromo = {};
+function dismissAutoPromo(pre) {
+  const type = g(pre + '-type')?.value;
+  const cat  = g(pre + '-cat')?.value;
+  if (type && cat) {
+    const p = getActivePromo(type, cat);
+    if (p) _dismissedPromo[pre] = p.id;
+  }
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function applyVoucherCode(pre) {
+  const input = g(pre + '-voucher-input');
+  const code = (input?.value || '').trim().toUpperCase();
+  if (!code) { toast('Masukkan kode voucher terlebih dahulu'); return; }
+  const today = String(typeof TODAY_DAY !== 'undefined' ? TODAY_DAY : new Date().getDay());
+  const todayISO = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : new Date().toISOString().split('T')[0];
+  const curOid = (typeof curStaff !== 'undefined' && curStaff?.oid) || (typeof curOutlet !== 'undefined' && curOutlet?.id) || 'all';
+  const promo = (typeof promos !== 'undefined' ? promos : []).find(p => {
+    if (!p.active || !p.useCode) return false;
+    const dayOk = !p.days?.length || p.days.includes(today);
+    const dateOk = (!p.from || todayISO >= p.from) && (!p.to || todayISO <= p.to);
+    const outletOk = !p.outlets?.length || p.outlets.includes(curOid);
+    if (!dayOk || !dateOk || !outletOk) return false;
+    if (p.codeType === 'bulk') return p.codes?.some(c => (c.code||'').toUpperCase() === code && !c.used);
+    return (p.code || '').toUpperCase() === code;
+  });
+  const vs = _getVS(pre);
+  if (!promo) {
+    toast('❌ Kode voucher tidak valid atau sudah digunakan');
+    vs.code = ''; vs.promo = null;
+    _renderVoucherApplied(pre, null);
+    if (pre === 'no') calcO(); else calcS();
+    return;
+  }
+  vs.code = code; vs.promo = promo;
+  toast('✅ Voucher diterapkan: ' + promo.name);
+  _renderVoucherApplied(pre, promo);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function removeVoucherCode(pre) {
+  const vs = _getVS(pre);
+  vs.code = ''; vs.promo = null;
+  const input = g(pre + '-voucher-input');
+  if (input) input.value = '';
+  _renderVoucherApplied(pre, null);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function _renderVoucherApplied(pre, promo) {
+  const box = g(pre + '-voucher-applied');
+  const row = g(pre + '-voucher-input-row');
+  if (!box) return;
+  if (promo) {
+    const vs = _getVS(pre);
+    box.style.display = 'block';
+    box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--pl);border-radius:9px;padding:9px 12px;margin-bottom:8px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--p)">🎟️ ${esc(promo.name)}</div>
+        <div style="font-size:11px;color:var(--pd);margin-top:2px">${esc(vs.code)}</div>
+      </div>
+      <button type="button" onclick="removeVoucherCode('${pre}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:20px;padding:0 0 0 8px;line-height:1">×</button>
+    </div>`;
+    if (row) row.style.display = 'none';
+  } else {
+    box.style.display = 'none'; box.innerHTML = '';
+    if (row) row.style.display = 'flex';
+  }
+}
+
+function _markVoucherUsed(pre, orderId) {
+  const vs = _getVS(pre);
+  if (!vs.promo || !vs.code) return;
+  const p = (typeof promos !== 'undefined' ? promos : []).find(x => x.id === vs.promo.id);
+  if (!p) return;
+  if (p.codeType === 'bulk' && p.codes) {
+    const entry = p.codes.find(c => (c.code||'').toUpperCase() === vs.code && !c.used);
+    if (entry) { entry.used = true; entry.usedAt = new Date().toISOString(); entry.orderId = orderId; }
+  }
+  // single-code promos don't get "used" marked (reusable by nature)
+  if (typeof syncSettings === 'function') syncSettings();
+  vs.code = ''; vs.promo = null;
+}
+
 // ===== ORDER FORM =====
 function buildOrderForm(pre) {
   buildOrderTypeDropdowns();
@@ -11,11 +107,25 @@ function buildOrderForm(pre) {
     if (pre === 'sno' && curStaff?.oid) oel.value = curStaff.oid;
     else oel.value = outlets[0]?.id || '';
   }
-  const el = g(pre + '-addons'); if (!el) return;
-  const ch = pre === 'no' ? 'calcO' : 'calcS';
-  el.innerHTML = addons.map(a =>
-    `<label id="${pre}-lbl-${a.id}" style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid var(--b1);transition:all .15s"><input type="checkbox" id="${pre}-ck-${a.id}" onchange="${ch}();toggleAddonLbl('${pre}','${a.id}',this.checked)"> ${a.name} <span style="font-size:11px;color:var(--t2)">(+${Number(a.price).toLocaleString('id-ID')}${a.unit === 'per_qty' ? '/qty' : ''})</span></label>`
-  ).join('');
+  // Build addons visual cards (unified for all prefixes)
+  const addGrid = g(pre + '-addons');
+  if (addGrid) {
+    addGrid.innerHTML = addons.filter(a => a.active !== false).map(a => {
+      const unit = a.unit === 'order' ? '/order' : `/${a.unit||'pcs'}`;
+      const toggleFn = pre === 'no' ? `_noToggleAddon('${a.id}')` : `_toggleAddon('${pre}','${a.id}')`;
+      return `<div class="no-addon-card" id="${pre}-addon-card-${a.id}" onclick="${toggleFn}">
+        <div class="no-addon-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="no-addon-name">${esc(a.name)}</div>
+        <div class="no-addon-price">${fmt(a.price||0)}${unit}</div>
+      </div>`;
+    }).join('') || '<div style="color:var(--t2);font-size:13px">Belum ada layanan tambahan.</div>';
+  }
+  // Rebuild visual type/tier cards for all prefixes
+  if (typeof _noRebuildSvcCards === 'function') {
+    _noRebuildSvcCards(pre);
+    _noRebuildTierCards(pre);
+  }
+  if (typeof _applyKgStep === 'function') _applyKgStep();
 }
 
 function updWalletOption(pre) {
@@ -81,6 +191,7 @@ function pickCust(pre, phone) {
 // Close customer dropdowns when clicking outside
 document.addEventListener('click', e => {
   ['no','sno'].forEach(pre => {
+    // Legacy (SNO) dropdown
     const wrap = g(pre+'-cust-srch')?.parentElement;
     if (wrap && !wrap.contains(e.target)) {
       const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
@@ -104,20 +215,121 @@ function bQty(type, cat, qty) {
 }
 
 function buildSatuanOrderItems(pre) {
+  const selId = pre + '-sat-sel';
+  const satSel = g(selId);
+  if (satSel) {
+    const activeItems = satuanItems.filter(x => x.active !== false);
+    satSel.innerHTML = activeItems.length
+      ? '<option value="">-- Pilih Item --</option>' + activeItems.map(item => `<option value="${item.id}">${esc(item.name)} — ${esc(item.unit || 'pcs')}</option>`).join('')
+      : '<option value="">Belum ada item satuan</option>';
+  }
+  // Populate tier dropdown
+  const tierSel = g(pre + '-sat-tier');
+  if (tierSel) {
+    const activeTiers = typeof _activePoOptions === 'function' ? _activePoOptions('satuan') : [];
+    tierSel.innerHTML = '<option value="">-- Opsi Harga --</option>' + activeTiers.map(po => `<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
+  }
+  _renderSatuanCartTable(pre);
+}
+
+function _renderSatuanCartTable(pre) {
   const el = g(pre + '-satuan-items'); if (!el) return;
-  const cat = g(pre + '-cat')?.value || 'regular';
-  if (!satuanItems.length) {
-    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:8px 0">Belum ada item satuan. Tambah di menu Harga.</div>';
+  const cart = _getSatuanCart(pre);
+  if (!cart.length) {
+    el.innerHTML = '<div style="color:var(--t2);font-size:13px;padding:10px 0;text-align:center">Belum ada item. Pilih item di atas lalu klik + Tambah Item.</div>';
     return;
   }
-  const ch = pre === 'no' ? 'calcO()' : 'calcS()';
-  el.innerHTML = satuanItems.map(item => {
-    const price = item.prices[cat] || 0;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)">
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(item.name)}</div><div style="font-size:11px;color:var(--t2)">${fmt(price)} / pcs</div></div>
-      <input type="number" id="${pre}-sat-${item.id}" value="0" min="0" step="1" style="width:60px;text-align:center;font-size:16px;font-weight:700;padding:6px 8px" oninput="${ch}">
-    </div>`;
-  }).join('');
+  // Full table with OPSI HARGA + ESTIMASI columns (unified for all prefixes)
+  el.innerHTML = `<div class="sat-cart-wrap">
+    <table class="sat-cart-tbl">
+      <thead><tr>
+        <th>Item</th><th>Opsi Harga</th><th>Estimasi</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${cart.map((line, idx) => `<tr>
+          <td><span style="font-weight:600">${esc(line.name)}</span></td>
+          <td><span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 7px;border-radius:20px;font-weight:700">${esc(line.tierLabel||line.tierKey||'–')}</span></td>
+          <td><span style="font-size:11px;color:var(--t2)">${esc(line.tierEst||'–')}</span></td>
+          <td>${line.qty} ${esc(line.unit||'pcs')}</td>
+          <td>${fmt(line.unitPrice)}</td>
+          <td style="font-weight:700">${fmt(line.lineTotal)}</td>
+          <td><button onclick="removeFromSatuanCart('${pre}',${idx})" style="border:none;background:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Hapus">×</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function _updateSatPrice(pre='no'){
+  const selEl=g(pre+'-sat-sel');
+  const tierEl=g(pre+'-sat-tier');
+  const estEl=g(pre+'-sat-est');
+  const priceEl=g(pre+'-sat-price');
+  if(!selEl||!tierEl) return;
+  const itemId=selEl.value;
+  const item=satuanItems.find(x=>x.id===itemId);
+  // Rebuild tier dropdown filtered by selected item's tierApply
+  if(tierEl&&typeof _activePoOptions==='function'){
+    const prevTier=tierEl.value;
+    const baseTiers=_activePoOptions('satuan');
+    const availTiers=item?baseTiers.filter(po=>(item.tierApply||{})[po.key]!==false):baseTiers;
+    tierEl.innerHTML='<option value="">-- Opsi Harga --</option>'+availTiers.map(po=>`<option value="${po.key}">${esc(po.label)}${po.est?' ('+esc(po.est)+')':''}</option>`).join('');
+    // Auto-select if only one tier available
+    if(availTiers.length===1){tierEl.value=availTiers[0].key;}
+    else if(availTiers.find(po=>po.key===prevTier)){tierEl.value=prevTier;}
+  }
+  const tierKey=tierEl.value;
+  // Update estimasi badge
+  const po=typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===tierKey):null;
+  if(estEl){
+    if(po&&po.est){estEl.textContent=po.est;estEl.style.display='inline-flex';}
+    else estEl.style.display='none';
+  }
+  // Update price display
+  if(priceEl){
+    if(item&&tierKey){
+      const p=item.prices?.[tierKey]||0;
+      priceEl.textContent=p?'Harga Satuan '+fmt(p):'Harga: –';
+    } else {
+      priceEl.textContent='';
+    }
+  }
+}
+function _noUpdateSatPrice(){_updateSatPrice('no');}
+function _snoUpdateSatPrice(){_updateSatPrice('sno');}
+
+function addToSatuanCart(pre) {
+  const selEl = g(pre + '-sat-sel');
+  const qtyEl = g(pre + '-sat-qty');
+  if (!selEl || !selEl.value) { toast('⚠️ Pilih item terlebih dahulu'); return; }
+  if (!qtyEl || parseInt(qtyEl.value) < 1) { toast('⚠️ Qty harus minimal 1'); return; }
+  const qty = parseInt(qtyEl?.value) || 1;
+  const itemId = selEl.value;
+  const item = satuanItems.find(x => x.id === itemId); if (!item) return;
+  // Per-item tier selection (unified for all prefixes)
+  const tierEl = g(pre + '-sat-tier');
+  if (!tierEl || !tierEl.value) { toast('⚠️ Pilih opsi harga terlebih dahulu'); return; }
+  const tierKey = tierEl.value;
+  const po = typeof priceOptions !== 'undefined' ? priceOptions.find(p => p.key === tierKey) : null;
+  const tierLabel = po?.label || tierKey;
+  const tierEst = po?.est || '';
+  const unitPrice = item.prices?.[tierKey] || 0;
+  const cart = _getSatuanCart(pre);
+  // Each item+tier combo is a separate line
+  const existing = cart.find(l => l.id === itemId && l.tierKey === tierKey);
+  if (existing) { existing.qty += qty; existing.lineTotal = existing.unitPrice * existing.qty; }
+  else { cart.push({ id: itemId, name: item.name, unit: item.unit || 'pcs', qty, unitPrice, lineTotal: unitPrice * qty, tierKey, tierLabel, tierEst }); }
+  if (qtyEl) qtyEl.value = '1';
+  _renderSatuanCartTable(pre);
+  _updateSatPrice(pre);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function removeFromSatuanCart(pre, idx) {
+  const cart = _getSatuanCart(pre);
+  cart.splice(idx, 1);
+  _renderSatuanCartTable(pre);
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function typeChange(pre) {
@@ -140,18 +352,35 @@ function getActivePromo(type, cat) {
   const curOid = curStaff?.oid || (curOutlet?.id) || 'all';
   return promos.find(p => {
     if (!p.active) return false;
+    if (p.useCode) return false; // code-required promos only apply via voucher input
     const dm = p.days.length === 0 || p.days.includes(String(TODAY_DAY));
     const dateOk = (!p.from || TODAY_ISO >= p.from) && (!p.to || TODAY_ISO <= p.to);
-    const svcOk = p.svc === 'all' || p.svc === key;
     const outletOk = !p.outlets || p.outlets.length === 0 || p.outlets.includes(curOid);
-    return dm && dateOk && svcOk && outletOk;
+    if (!dm || !dateOk || !outletOk) return false;
+    if (p.targets) {
+      if (type === 'satuan') {
+        const st = p.targets.satuan || [];
+        if (!st.length) return false;
+        if (st[0] === 'all') return true;
+        return st.some(t => t.endsWith('-' + cat) || t === cat);
+      } else {
+        const kt = p.targets.kiloan || [];
+        if (!kt.length) return false;
+        if (kt[0] === 'all') return true;
+        return kt.includes(cat);
+      }
+    }
+    const svcOk = p.svc === 'all' || p.svc === key || p.svc === type + '-all';
+    return svcOk;
   });
 }
 
 function calcPromoDisc(p, base, qty) {
   if (!p) return 0;
-  if (p.discType === 'persen') return base * (p.discVal / 100);
-  if (p.discType === 'flat')   return p.discVal;
+  if (p.discType === 'persen')     return base * (p.discVal / 100);
+  if (p.discType === 'flat')       return p.discVal;
+  if (p.discType === 'persen_qty') return base * (p.discVal / 100) * qty;
+  if (p.discType === 'per_qty')    return p.discVal * qty;
   return p.discVal * qty;
 }
 
@@ -162,31 +391,46 @@ function discTypeChange(pre) {
 }
 
 function calcBase(pre) {
-  const type = g(pre + '-type').value, cat = g(pre + '-cat').value;
+  const typeEl = g(pre + '-type');
+  const catEl = g(pre + '-cat');
+  if (!typeEl || !catEl) return { type: 'kiloan', cat: 'regular', rawQty: 1, bq: 1, base: 0, addTotal: 0, addonLines: [], subtotal: 0, actPromo: null, satuanLines: [] };
+  const type = typeEl.value, cat = catEl.value;
+  // Use priceOptions for est if available
+  const poEst = (typeof priceOptions !== 'undefined' ? priceOptions.find(po => po.key === cat)?.est : null);
   const EST = { regular: '2-3 hari', sameday: '± 8 jam', express: '1 hari' };
-  const est = g(pre + '-est'); if (est) est.value = EST[cat] || '';
+  const est = g(pre + '-est'); if (est) est.value = poEst != null ? poEst : (EST[cat] || '');
+
+  // Helper to check addon selection (card for all prefixes, checkbox as fallback)
+  function isAddonSelected(a) {
+    const card = g(pre + '-addon-card-' + a.id);
+    if (card) return card.classList.contains('on');
+    const ck = g(pre + '-ck-' + a.id);
+    return ck && ck.checked;
+  }
 
   if (type === 'satuan') {
-    const satuanLines = [];
-    satuanItems.forEach(item => {
-      const qEl = g(pre + '-sat-' + item.id);
-      const qty = parseInt(qEl?.value) || 0;
-      if (qty > 0) {
-        const unitPrice = item.prices[cat] || 0;
-        satuanLines.push({ id: item.id, name: item.name, qty, unitPrice, lineTotal: unitPrice * qty });
-      }
+    // Cart-based: read from _getSatuanCart (always use per-item tierKey)
+    const cart = _getSatuanCart(pre);
+    const satuanLines = cart.map(line => {
+      const item = satuanItems.find(x => x.id === line.id);
+      const tierKey = line.tierKey || cat;
+      const unitPrice = item ? (item.prices?.[tierKey] || 0) : line.unitPrice;
+      return { id: line.id, name: line.name, unit: line.unit || 'pcs', qty: line.qty, unitPrice, lineTotal: unitPrice * line.qty, tierKey: line.tierKey };
     });
+    // Sync prices back to cart
+    cart.forEach((line, i) => { line.unitPrice = satuanLines[i].unitPrice; line.lineTotal = satuanLines[i].lineTotal; });
     const base = satuanLines.reduce((s, l) => s + l.lineTotal, 0);
     const bq = satuanLines.reduce((s, l) => s + l.qty, 0);
     let addTotal = 0; const addonLines = [];
     addons.forEach(a => {
-      const ck = g(pre + '-ck-' + a.id);
-      if (ck && ck.checked) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
+      if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
     });
     return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines };
   }
 
-  const rawQty = parseFloat(g(pre + '-qty').value) || 1;
+  // Kiloan: support both 'no-kg' (new UI) and 'no-qty' (legacy/SNO)
+  const qtyInput = pre === 'no' ? (g('no-kg') || g('no-qty')) : g(pre + '-qty');
+  const rawQty = parseFloat(qtyInput?.value) || 1;
   const bq = bQty(type, cat, rawQty);
   const svc = getSvcById(type);
   const apply = svc?.minKgApply || {};
@@ -198,21 +442,27 @@ function calcBase(pre) {
   const base = (getP()[type]?.[cat] || 0) * bq;
   let addTotal = 0; const addonLines = [];
   addons.forEach(a => {
-    const ck = g(pre + '-ck-' + a.id);
-    if (ck && ck.checked) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
+    if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
   });
   return { type, cat, rawQty, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines: [] };
 }
 
 function doCalc(pre, hasDisc) {
   const res = calcBase(pre);
-  const { type, cat, bq, base, addTotal, addonLines, subtotal, actPromo, satuanLines } = res;
-  let promoEnabled = true; const pc = g(pre + '-promo-chk'); if (pc) promoEnabled = pc.checked;
-  let promoAmt = actPromo && promoEnabled ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
+  const { type, cat, bq, base, addTotal, addonLines, subtotal, satuanLines } = res;
+  // Voucher promo overrides auto-detected promo; dismissed promos are skipped
+  const vs = _getVS(pre);
+  const isVoucher = !!vs.promo;
+  const autoPromo = (_dismissedPromo[pre] && res.actPromo?.id === _dismissedPromo[pre]) ? null : res.actPromo;
+  const actPromo = vs.promo || autoPromo;
+  let promoAmt = actPromo ? Math.min(calcPromoDisc(actPromo, subtotal, bq), subtotal) : 0;
   const pb = g(pre + '-promo-box');
-  if (actPromo && pb) {
-    pb.innerHTML = `<div class="${promoEnabled ? 'pb-act' : 'pb-off'}"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:${promoEnabled ? '#3d6b10' : 'var(--t2)'}">${actPromo.name}</div><div style="font-size:11px;color:${promoEnabled ? '#4a7a15' : 'var(--t3)'}">${actPromo.discType === 'persen' ? actPromo.discVal + '%' : fmt(calcPromoDisc(actPromo, subtotal, bq))} diskon</div></div></div><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="${pre}-promo-chk" ${promoEnabled ? 'checked' : ''} onchange="${pre === 'no' ? 'calcO' : 'calcS'}()"> Pakai promo</label></div></div>`;
-  } else if (pb) pb.innerHTML = '';
+  if (autoPromo && !isVoucher && pb) {
+    // Show auto-promo box with X dismiss button
+    const discLbl = autoPromo.discType === 'persen' ? autoPromo.discVal + '%' : fmt(calcPromoDisc(autoPromo, subtotal, bq));
+    pb.style.display = 'block';
+    pb.innerHTML = `<div class="pb-act" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🎟️</span><div><div style="font-weight:700;font-size:13px;color:#3d6b10">${esc(autoPromo.name)}</div><div style="font-size:11px;color:#4a7a15">${esc(discLbl)} diskon otomatis</div></div></div><button type="button" onclick="dismissAutoPromo('${pre}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:20px;padding:0 4px;line-height:1;flex-shrink:0" title="Hapus promo ini">×</button></div>`;
+  } else if (pb) { pb.style.display = 'none'; pb.innerHTML = ''; }
   let discType = 'none', discAmt = 0;
   if (hasDisc) {
     discType = g(pre + '-disc-type')?.value || 'none';
@@ -238,11 +488,161 @@ function doCalc(pre, hasDisc) {
     pv.innerHTML = html;
   }
   const tv = g(pre + '-total'); if (tv) tv.textContent = fmt(total);
-  return { type, cat, bq, rawQty: res.rawQty, base, addTotal, addonLines, promoAmt, discType, discAmt, total, actPromo };
+  return { type, cat, bq, rawQty: res.rawQty, base, addTotal, addonLines, promoAmt, discType, discAmt, total, actPromo, subtotal, satuanLines };
 }
 
-function calcO() { doCalc('no', true); calcChg('no'); }
-function calcS() { doCalc('sno', false); calcChg('sno'); }
+function _noToggleAddon(id) {
+  const card = g('no-addon-card-' + id);
+  if (card) card.classList.toggle('on');
+  calcO();
+}
+function _toggleAddon(pre, id) {
+  const card = g(pre + '-addon-card-' + id);
+  if (card) card.classList.toggle('on');
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function _noTogglePromo(pre='no') {
+  const box = g(pre+'-promo-box');
+  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+function _noUpdateSummary(res, pre='no') {
+  const el = g(pre+'-sum-body'); if (!el) return;
+  const name = (g(pre+'-name')?.value||'').trim();
+  const phone = (g(pre+'-phone')?.value||'').trim();
+  const outletId = g(pre+'-outlet')?.value;
+  const outletName = (typeof outlets !== 'undefined' ? outlets.find(o=>String(o.id)===String(outletId))?.name : null) || outletId || '–';
+
+  if (!res) {
+    el.innerHTML = '<div style="padding:20px;color:var(--t2);font-size:13px;text-align:center">Isi form di sebelah kiri untuk melihat ringkasan pesanan.</div>';
+    return;
+  }
+
+  // Customer avatar initials
+  const initials = name ? name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2) : '?';
+  const custHtml = `<div class="no-sum-cust">
+    <div class="no-sum-av">${initials}</div>
+    <div class="no-sum-av-info">
+      <div class="no-sum-av-name">${esc(name||'Pelanggan Baru')}</div>
+      <div class="no-sum-av-phone">${esc(phone||'–')}</div>
+    </div>
+  </div>`;
+
+  // Outlet row
+  const outletHtml = `<div class="no-sum-sect-lbl">Outlet</div>
+    <div class="no-sum-row"><span>${esc(outletName)}</span></div>`;
+
+  // Items section
+  let itemsHtml = '';
+  if (res.type === 'satuan' && res.satuanLines && res.satuanLines.length) {
+    const cnt = res.satuanLines.length;
+    itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan (${cnt})</div>
+      <div>${res.satuanLines.map(line=>{
+        const cartLine = _getSatuanCart(pre).find(l=>l.id===line.id&&l.tierKey===line.tierKey);
+        const tierLbl = cartLine?.tierLabel || '';
+        const tierEst = cartLine?.tierEst || '';
+        return `<div class="no-sum-item-row">
+          <div class="no-sum-item-name">
+            <span>${esc(line.name)}</span>
+            <span class="no-sum-item-badge">${tierLbl?esc(tierLbl)+(tierEst?' · '+esc(tierEst):''):''} × ${line.qty} ${esc(line.unit||'pcs')}</span>
+          </div>
+          <div class="no-sum-item-val">${fmt(line.lineTotal)}</div>
+        </div>`;
+      }).join('')}</div>`;
+  } else if (res.type === 'kiloan' || (res.type !== 'satuan')) {
+    const tierLbl = (typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===res.cat)?.label:null)||res.cat||'';
+    const svcName = (typeof serviceTypes!=='undefined'?serviceTypes.find(s=>s.id===res.type)?.name:null)||'Kiloan';
+    const itemCnt = parseInt(g(pre+'-item-count')?.value)||null;
+    itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan</div>
+      <div class="no-sum-item-row">
+        <div class="no-sum-item-name">
+          <span>${esc(svcName)}</span>
+          <span class="no-sum-item-badge">${esc(tierLbl)} · ${res.rawQty||0} kg${itemCnt?` · ${itemCnt} item`:''}</span>
+        </div>
+        <div class="no-sum-item-val">${fmt(res.base||0)}</div>
+      </div>`;
+  }
+
+  // Addons
+  let addonsHtml = '';
+  if (res.addonLines && res.addonLines.length) {
+    addonsHtml = `<div class="no-sum-sect-lbl">Layanan Tambahan (${res.addonLines.length})</div>
+      <div>${res.addonLines.map(a=>`<div class="no-sum-item-row">
+        <div class="no-sum-item-name">${esc(a.n||a.name)}</div>
+        <div class="no-sum-item-val">${fmt(a.v||a.total||0)}</div>
+      </div>`).join('')}</div>`;
+  }
+
+  // Subtotal + discount + total
+  const promoAmt = res.promoAmt || 0;
+  const manualDiscAmt = res.discAmt || 0;
+  const total = res.total || Math.max(0, (res.subtotal||0) - promoAmt - manualDiscAmt);
+
+  let financeHtml = `<div class="no-sum-row" style="margin-top:10px"><span style="color:var(--t2)">Subtotal</span><span style="font-weight:600">${fmt(res.subtotal||0)}</span></div>`;
+  if (promoAmt > 0 && res.actPromo) {
+    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon (${esc(res.actPromo?.name||'Promo')})</span><span style="color:#e53935;font-weight:600">–${fmt(promoAmt)}</span></div>`;
+  }
+  if (manualDiscAmt > 0) {
+    financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon Manual</span><span style="color:#e53935;font-weight:600">–${fmt(manualDiscAmt)}</span></div>`;
+  }
+  financeHtml += `<a class="no-sum-discount" onclick="_noTogglePromo('${pre}')">+ Tambah Diskon</a>`;
+  financeHtml += `<div class="no-sum-row total"><span>Total</span><span>${fmt(total)}</span></div>`;
+
+  el.innerHTML = custHtml + outletHtml + itemsHtml + addonsHtml + financeHtml;
+
+  // Update total element (for calcChg) and change display
+  const tv = g(pre+'-total'); if (tv) tv.textContent = fmt(total);
+  const cash = parseFloat(g(pre+'-cash')?.value||'0')||0;
+  const chgEl = g(pre+'-chg'); if(chgEl) chgEl.textContent = fmt(Math.max(0,cash-total));
+}
+
+// New order wrappers for new HTML
+function searchCust(pre, val) {
+  // Adapts the new no-cust-search input to work with custSearch/pickCust logic
+  const q = (val||'').toLowerCase().trim();
+  const resultsEl = g(pre + '-cust-results');
+  if (!resultsEl) { custSearch(pre); return; }
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const matches = Object.values(customers).filter(c =>
+    c.name.toLowerCase().includes(q) || c.phone.includes(q)
+  ).slice(0,8);
+  if (!matches.length) { resultsEl.innerHTML = ''; return; }
+  resultsEl.innerHTML = `<div style="position:absolute;top:0;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-radius:var(--rs);box-shadow:var(--sh2);z-index:100;max-height:220px;overflow-y:auto">${
+    matches.map(c => {
+      const bal = c.balance||0;
+      const balBadge = typeof membershipEnabled !== 'undefined' && membershipEnabled && bal > 0
+        ? `<span style="font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:1px 8px;border-radius:10px;margin-left:6px">💳 ${fmt(bal)}</span>`
+        : '';
+      return `<div onclick="pickNewCust('${pre}','${esc(c.phone)}')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--b1)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-weight:600;font-size:13px">${esc(c.name)}${balBadge}</div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+function pickNewCust(pre, phone) {
+  const c = customers[phone]; if (!c) return;
+  const nameEl = g(pre+'-name'); if (nameEl) nameEl.value = c.name;
+  const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
+  const srchEl = g(pre+'-cust-search'); if (srchEl) srchEl.value = '';
+  const resEl = g(pre+'-cust-results'); if (resEl) resEl.innerHTML = '';
+  if (pre === 'no') calcO(); else calcS();
+}
+
+function submitOrder() {
+  submitO('o');
+}
+
+function saveDraft() {
+  const name = (g('no-name')?.value||'').trim();
+  if (!name) { toast('⚠️ Isi nama pelanggan terlebih dahulu'); return; }
+  toast('✓ Draft disimpan: ' + name);
+}
+
+function calcO() { const res = doCalc('no', true); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res, 'no'); else calcChg('no'); }
+function calcS() { const res = doCalc('sno', false); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res, 'sno'); else calcChg('sno'); }
 function calcChg(pre) {
   const tot = parseInt((g(pre + '-total')?.textContent || '').replace(/\D/g, '')) || 0;
   const rcv = parseInt(g(pre + '-cash')?.value) || 0;
@@ -257,14 +657,28 @@ function buildOrder(pre) {
   const _phoneRaw = (g(pre + '-phone')?.value || '').trim().replace(/^[-—]+$/, '');
   const phone = _phoneRaw || '—';
   const res = doCalc(pre, pre === 'no');
-  const addOns = []; addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck && ck.checked) addOns.push({ id: a.id, name: a.name }); });
+  // Read addons: card state (checkbox as fallback)
+  const addOns = [];
+  addons.forEach(a => {
+    const card = g(pre + '-addon-card-' + a.id);
+    if (card && card.classList.contains('on')) { addOns.push({ id: a.id, name: a.name }); return; }
+    const ck = g(pre + '-ck-' + a.id);
+    if (ck && ck.checked) addOns.push({ id: a.id, name: a.name });
+  });
+  // Normalize payment method and status for 'no' prefix (new values)
+  const pmRaw = g(pre + '-pm')?.value || 'Tunai';
+  const psRaw = g(pre + '-ps')?.value || 'Belum Bayar';
+  const pmMap = { cash: 'Tunai', transfer: 'Transfer', qris: 'QRIS', other: 'Lainnya' };
+  const psMap = { paid: 'Lunas', dp: 'DP', unpaid: 'Belum Bayar' };
+  const payMethod = (pre === 'no' ? (pmMap[pmRaw] || pmRaw) : pmRaw);
+  const payStatus = (pre === 'no' ? (psMap[psRaw] || psRaw) : psRaw);
   const o = {
     id: genId(), name, phone, svcType: res.type, svcCat: res.cat,
-    qty: res.bq, rawQty: res.rawQty, satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
+    qty: res.bq, rawQty: res.rawQty, itemCount: parseInt(g(pre+'-item-count')?.value)||null,
+    satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
     base: res.base, discType: res.discType, discAmt: res.discAmt,
     promoAmt: res.promoAmt, total: res.total,
-    payMethod: g(pre + '-pm')?.value || 'Tunai',
-    payStatus: g(pre + '-ps')?.value || 'Belum Bayar',
+    payMethod, payStatus,
     status: 'Diterima', notes: g(pre + '-note')?.value || '',
     date: TODAY_STR, isoDate: new Date().toISOString(), pickupDate: null, waSent: false,
     handledBy: curStaff ? curStaff.name : 'Owner',
@@ -287,9 +701,15 @@ function buildOrder(pre) {
     o.payStatus = 'Lunas';
   }
   orders.push(o); orderCtr++;
+  // Mark voucher code as used (for bulk unique codes)
+  _markVoucherUsed(pre, o.id);
+  // Reset voucher + dismissed promo state
+  _renderVoucherApplied(pre, null);
+  const vi = g(pre + '-voucher-input'); if (vi) vi.value = '';
+  _dismissedPromo[pre] = null;
   if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
-    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId });
+    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
   if (membershipEnabled && o.payMethod === 'Dompet Member' && phone !== '—') {
     const cust = customers[phone];
     if (cust) {
@@ -299,14 +719,26 @@ function buildOrder(pre) {
     }
   }
   [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
-  addons.forEach(a => { const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false; });
+  addons.forEach(a => {
+    const card = g(pre + '-addon-card-' + a.id); if (card) card.classList.remove('on');
+    const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false;
+  });
+  if (pre === 'no') {
+    const kgEl = g('no-kg'); if (kgEl) kgEl.value = '1';
+    const icEl = g('no-item-count'); if (icEl) icEl.value = '';
+  } else {
+    const kgEl = g('sno-qty'); if (kgEl) kgEl.value = '1';
+    const icEl = g('sno-item-count'); if (icEl) icEl.value = '';
+  }
   const qq = g(pre + '-qty'); if (qq) qq.value = '1';
   const dt = g(pre + '-disc-type'); if (dt) dt.value = 'none';
   const dv = g(pre + '-disc-val'); if (dv) dv.value = '0';
   const dw = g(pre + '-dv-w');  if (dw) dw.style.display = 'none';
-  const ps = g(pre + '-ps');    if (ps) ps.value = 'Belum Bayar';
+  const ps = g(pre + '-ps');    if (ps) ps.value = pre === 'no' ? 'unpaid' : 'Belum Bayar';
   const dpg = g(pre + '-dp-g'); if (dpg) dpg.style.display = 'none';
-  if (res.type === 'satuan') satuanItems.forEach(item => { const el = g(pre + '-sat-' + item.id); if (el) el.value = '0'; });
+  // Reset satuan cart (new cart-based approach)
+  _setSatuanCart(pre, []);
+  if (res.type === 'satuan') buildSatuanOrderItems(pre);
   if (membershipEnabled) updWalletOption(pre);
   if (pre === 'no') calcO(); else calcS();
   return o;
@@ -327,9 +759,9 @@ function setOrdFpy(v) { ordFpy = v; _ordPage = 1; _renderOrdFilterChips(); rende
 
 function setOrdDateFilter(f) {
   ordDateFilter = f; _ordPage = 1;
-  // Keep staff date buttons working
+  // Keep staff date chips working
   ['all','today','week','month','custom'].forEach(k => {
-    const sb = g('sodf-'+k); if (sb) sb.className = 'btn bsm bpill' + (f===k?' bp':'');
+    const sb = g('sodf-'+k); if (sb) sb.className = 'chip' + (f===k?' on':'');
   });
   const scr = g('sodf-custom-range'); if (scr) scr.style.display = f==='custom'?'flex':'none';
   // Update owner filter panel
@@ -351,6 +783,9 @@ function setOrdPage(p) {
 }
 
 function openOrdFilterPanel() {
+  // Hide outlet section for staff (they always see only their outlet)
+  const orfOutletSec = g('orf-outlet')?.closest('.orf-section');
+  if (orfOutletSec) orfOutletSec.style.display = curRole === 'owner' ? '' : 'none';
   // Outlet chips
   const oc = g('orf-outlet');
   if (oc) oc.innerHTML = [{id:'all',name:'Semua'},...outlets.map(o=>({id:o.id,name:o.name}))]
@@ -380,25 +815,26 @@ function _renderOrdFilterChips() {
 }
 
 function _renderOrdActiveChips() {
-  const wrap = g('ord-active-chips'); if (!wrap) return;
+  const isO = curRole === 'owner';
+  const wrap = g(isO ? 'ord-active-chips' : 's-ord-active-chips'); if (!wrap) return;
   const dtL = {today:'Hari Ini',week:'Minggu Ini',month:'Bulan Ini',custom:'Custom'};
   const chips = [];
-  if (ordOutlet !== 'all') { const oc=go(ordOutlet); chips.push(`<span class="ofc ofc-out">${esc(oc?.name||ordOutlet)}<button class="ofc-x" onclick="setOrdOutlet('all')">×</button></span>`); }
-  if (ordFst !== '')        chips.push(`<span class="ofc ofc-st">${esc(ordFst)}<button class="ofc-x" onclick="setOrdFst('')">×</button></span>`);
-  if (ordFpy !== '')        { const cls=ordFpy==='Lunas'?'ofc-pay-ok':ordFpy==='DP'?'ofc-pay-dp':'ofc-pay-no'; chips.push(`<span class="ofc ${cls}">${esc(ordFpy)}<button class="ofc-x" onclick="setOrdFpy('')">×</button></span>`); }
+  if (isO && ordOutlet !== 'all') { const oc=go(ordOutlet); chips.push(`<span class="ofc ofc-out">${esc(oc?.name||ordOutlet)}<button class="ofc-x" onclick="setOrdOutlet('all')">×</button></span>`); }
+  if (ordFst !== '')     chips.push(`<span class="ofc ofc-st">${esc(ordFst)}<button class="ofc-x" onclick="setOrdFst('')">×</button></span>`);
+  if (ordFpy !== '')     { const cls=ordFpy==='Lunas'?'ofc-pay-ok':ordFpy==='DP'?'ofc-pay-dp':'ofc-pay-no'; chips.push(`<span class="ofc ${cls}">${esc(ordFpy)}<button class="ofc-x" onclick="setOrdFpy('')">×</button></span>`); }
   if (ordDateFilter!=='all') chips.push(`<span class="ofc ofc-dt">${dtL[ordDateFilter]||ordDateFilter}<button class="ofc-x" onclick="setOrdDateFilter('all')">×</button></span>`);
   wrap.innerHTML = chips.join('');
   wrap.style.display = chips.length ? 'flex' : 'none';
   const cnt = chips.length;
-  const badge = g('ord-filter-badge'); if (badge) { badge.textContent=cnt; badge.style.display=cnt?'inline':'none'; }
-  const btn = g('ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
+  const badge = g(isO ? 'ord-filter-badge' : 's-ord-filter-badge'); if (badge) { badge.textContent=cnt; badge.style.display=cnt?'inline':'none'; }
+  const btn = g(isO ? 'ord-filter-btn' : 's-ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
 }
 
 function renderOrders() {
   const isO = curRole === 'owner';
   const q = ((isO ? g('o-srch') : g('s-srch'))?.value || '').toLowerCase();
-  const fs = isO ? ordFst : (g('s-fst')?.value || '');
-  const fp = isO ? ordFpy : (g('s-fpy')?.value || '');
+  const fs = ordFst;
+  const fp = ordFpy;
 
   // Date filter range
   let dateFrom = null, dateTo = null;
@@ -414,8 +850,8 @@ function renderOrders() {
     dateFrom = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-01`;
     dateTo = TODAY_ISO;
   } else if (ordDateFilter === 'custom') {
-    dateFrom = g('o-date-from')?.value || '';
-    dateTo   = g('o-date-to')?.value   || '';
+    dateFrom = g('o-date-from')?.value || g('s-date-from')?.value || '';
+    dateTo   = g('o-date-to')?.value   || g('s-date-to')?.value   || '';
   }
 
   const fullList = orders.filter(o => {
@@ -433,16 +869,16 @@ function renderOrders() {
   if (_ordPage > _totalPages) _ordPage = _totalPages;
   const list = fullList.slice((_ordPage - 1) * _PER_PAGE, _ordPage * _PER_PAGE);
 
-  if (isO) _renderOrdActiveChips();
+  _renderOrdActiveChips();
 
-  // Mobile cards (owner only)
-  const cardWrap = isO ? g('ord-cards') : null;
+  // Mobile cards
+  const cardWrap = g(isO ? 'ord-cards' : 's-ord-cards');
   if (cardWrap) _renderOrdCards(list, cardWrap);
 
   // Table
   const tbId = isO ? 'ord-tb' : 's-ord-tb';
   const tb = g(tbId); if (!tb) return;
-  const colspan = isO ? 11 : 9;
+  const colspan = isO ? 11 : 10;
   if (!fullList.length) {
     tb.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pesanan ditemukan</td></tr>`;
     if (isO) _renderOrdPager(0, 1);
@@ -463,26 +899,27 @@ function renderOrders() {
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
     </tr>`; }).join('');
   } else {
     tb.innerHTML = list.map(o => `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td style="font-weight:600">${esc(o.name)}</td>
+      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
+      <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
       <td><button class="badge ${SL_PAY[o.payStatus]}" style="cursor:pointer;border:none;font-family:inherit;font-size:inherit" onclick="openPayPicker('${o.id}',this)">${esc(o.payStatus)}</button></td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button></div></td>
     </tr>`).join('');
   }
-  if (isO) _renderOrdPager(fullList.length, _totalPages);
+  _renderOrdPager(fullList.length, _totalPages);
 }
 
 function _renderOrdPager(total, totalPages) {
-  const wrap = g('ord-pager'); if (!wrap) return;
+  const wrap = g(curRole === 'owner' ? 'ord-pager' : 's-ord-pager'); if (!wrap) return;
   if (totalPages <= 1) { wrap.innerHTML = ''; return; }
   const p = _ordPage;
   let btns = '';
@@ -501,7 +938,27 @@ function _renderOrdPager(total, totalPages) {
   </div>`;
 }
 
+function copyTrackingLink(id) {
+  const o = orders.find(x => x.id === id); if (!o) return;
+  if (!o.tracking_token) {
+    o.tracking_token = genTrackingToken();
+    if (typeof syncOrder === 'function') syncOrder(o);
+  }
+  const url = window.location.origin + window.location.pathname + '?track=' + o.tracking_token;
+  navigator.clipboard.writeText(url).then(() => {
+    toast('🔗 Link tracking disalin!');
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('🔗 Link tracking disalin!');
+  });
+}
+
 const _IC_EYE = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const _IC_LINK = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 const _IC_RECEIPT = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
 const _IC_MSG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 const _IC_CHECK = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
@@ -550,8 +1007,9 @@ function _renderOrdCards(list, wrap) {
         <div class="ocard-acts">
           <button class="oib blu" onclick="showDetail('${esc(o.id)}')" title="Detail">${_IC_EYE}</button>
           <button class="oib" onclick="showRcpt('${esc(o.id)}')" title="Struk">${_IC_RECEIPT}</button>
+          <button class="oib" onclick="copyTrackingLink('${esc(o.id)}')" title="Salin link tracking">${_IC_LINK}</button>
           ${waAct}
-          <button class="oib red" onclick="deleteOrder('${esc(o.id)}')" title="Hapus">${_IC_TRASH}</button>
+          ${curRole === 'owner' ? `<button class="oib red" onclick="deleteOrder('${esc(o.id)}')" title="Hapus">${_IC_TRASH}</button>` : ''}
           <button class="btn bsm bp" onclick="openPayPicker('${esc(o.id)}',this)" style="margin-left:auto;border-radius:var(--rp)">${esc(o.payStatus)}</button>
         </div>
       </div>
@@ -567,33 +1025,154 @@ function toggleOrdCard(id) {
 }
 
 // ===== KANBAN / TRACKING =====
+var _trkAccOpen = null;
+
 function setTrkOutlet(id) { trkOutlet = id; renderKanban('o'); }
+
+function _trkTime(o) {
+  if (!o.isoDate) return '';
+  try { const d = new Date(o.isoDate); return d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}); } catch(e) { return ''; }
+}
+
+function _trkBadge(o) {
+  const c = (o.svcCat || '').toLowerCase();
+  if (c.includes('express')) return '<span class="trk-badge-express">Express</span>';
+  if (c.includes('sameday') || c.includes('same day')) return '<span class="trk-badge-sameday">Sameday</span>';
+  return '';
+}
+
+function _trkCardHtml(o, st, role) {
+  const t = _trkTime(o);
+  const badge = _trkBadge(o);
+  const nextMap = {Diterima:'Mencuci', Mencuci:'Mengeringkan', Mengeringkan:'Menyetrika', Menyetrika:'Selesai'};
+  const ctaLbl = {Diterima:'Mulai Mencuci', Mencuci:'Lanjut Mengeringkan', Mengeringkan:'Lanjut Menyetrika', Menyetrika:'Selesaikan'};
+  const next = nextMap[st];
+  let ctaHtml = '';
+  if (next) {
+    ctaHtml = `<button class="trk-card-btn" onclick="updSt('${o.id}','${next}','${role}')">${ctaLbl[st]}</button>`;
+  } else if (st === 'Selesai') {
+    if (!o.waSent) {
+      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">
+        <button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>
+        <button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>
+      </div>`;
+    } else {
+      ctaHtml = `<button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>`;
+    }
+  }
+  return `<div class="trk-card">
+    <div class="trk-card-id">${esc(o.id)}</div>
+    <div class="trk-card-name">${esc(o.name)}</div>
+    <div class="trk-card-svc">${esc(o.svcType)} · ${o.qty}${getSvcUnit(o.svcType)}</div>
+    <div class="trk-card-time">${t ? `<span class="trk-card-time-txt">${t}</span>` : ''}${badge}</div>
+    ${ctaHtml}
+  </div>`;
+}
+
+var _TRK_COL_IC   = {Diterima:'inbox', Mencuci:'droplets', Mengeringkan:'wind', Menyetrika:'thermometer', Selesai:'check-circle'};
+var _TRK_COL_BG   = {Diterima:'#e3f2fd', Mencuci:'#e8f5e9', Mengeringkan:'#f3e5f5', Menyetrika:'#fff3e0', Selesai:'#e8f5e9'};
+var _TRK_COL_CLR  = {Diterima:'#1565c0', Mencuci:'#2e7d32', Mengeringkan:'#7b1fa2', Menyetrika:'#e65100', Selesai:'#2e7d32'};
+var _trkShowAll = {};
+
+function _trkShowAllToggle(st, role) {
+  _trkShowAll[st] = !_trkShowAll[st];
+  renderKanban(role);
+}
+
+function _trkColHtml(st, items, role) {
+  const ic = _TRK_COL_IC[st] || 'circle';
+  const bg = _TRK_COL_BG[st] || 'var(--pl)';
+  const clr = _TRK_COL_CLR[st] || 'var(--p)';
+  const MAX = 3;
+  const showAll = !!_trkShowAll[st];
+  const shown = showAll ? items : items.slice(0, MAX);
+  const extra = items.length - MAX;
+  const cards = shown.map(o => _trkCardHtml(o, st, role)).join('');
+  const moreTxt = extra > 0
+    ? `<button class="trk-col-more" onclick="_trkShowAllToggle('${st}','${role}')">${showAll ? 'Sembunyikan' : `+${extra} pesanan lainnya`}</button>`
+    : '';
+  const emptyTxt = items.length === 0 ? '<div class="trk-col-empty">Kosong</div>' : '';
+  return `<div class="trk-col">
+    <div class="trk-col-hd">
+      <div class="trk-col-ic" style="background:${bg}"><i data-lucide="${ic}" style="color:${clr}"></i></div>
+      <span class="trk-col-title" style="color:${clr}">${st}</span>
+      <span class="trk-col-cnt">${items.length}</span>
+    </div>
+    <div class="trk-col-body">${cards}${moreTxt}${emptyTxt}</div>
+  </div>`;
+}
+
+function _trkAccordionHtml(groups, role) {
+  return Object.entries(groups).map(([st, items]) => {
+    const ic = _TRK_COL_IC[st] || 'circle';
+    const bg = _TRK_COL_BG[st] || 'var(--pl)';
+    const clr = _TRK_COL_CLR[st] || 'var(--p)';
+    const isOpen = _trkAccOpen === st;
+    const safeId = st.replace(/\s/g, '');
+    const cards = items.map(o => _trkCardHtml(o, st, role)).join('');
+    return `<div>
+      <div class="trk-acc-hd${isOpen ? ' on' : ''}" onclick="_trkAccToggle('${st}','${role}')">
+        <div class="trk-acc-ic" style="background:${bg}"><i data-lucide="${ic}" style="color:${clr}"></i></div>
+        <span class="trk-acc-title">${st}</span>
+        ${items.length ? `<span class="trk-acc-cnt">${items.length}</span>` : ''}
+        <svg class="trk-acc-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div id="trk-acc-body-${safeId}" style="display:${isOpen ? 'flex' : 'none'};flex-direction:column;gap:6px;padding:0 0 6px">${cards || '<div class="trk-col-empty">Kosong</div>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function _trkAccToggle(st, role) {
+  _trkAccOpen = (_trkAccOpen === st) ? null : st;
+  renderKanban(role);
+}
 
 function renderKanban(role) {
   const cols = ['Diterima', 'Mencuci', 'Mengeringkan', 'Menyetrika', 'Selesai'];
-  const aId = role === 'o' ? 'o-trk-alert' : 's-trk-alert';
-  const kId = role === 'o' ? 'o-kanban' : 's-kanban';
-  if (role === 'o') { const tc = g('trk-outlet-chips'); if (tc) tc.innerHTML = buildOutletFilterChips(trkOutlet, 'setTrkOutlet'); }
-  const filtOrders = role === 'o'
+  if (role === 'o') {
+    const tc = g('trk-outlet-chips');
+    if (tc) tc.innerHTML = buildOutletFilterChips(trkOutlet, 'setTrkOutlet');
+  }
+  const src = role === 'o'
     ? (trkOutlet !== 'all' ? orders.filter(o => o.outletId === trkOutlet) : orders)
     : (curStaff ? orders.filter(o => o.outletId === curStaff.oid) : orders);
+
+  const searchId = role === 'o' ? 'trk-search' : 's-trk-search';
+  const q = (g(searchId) ? g(searchId).value.trim().toLowerCase() : '');
+  const filtOrders = q
+    ? src.filter(o => o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q))
+    : src;
+
+  const aId = role === 'o' ? 'o-trk-alert' : 's-trk-alert';
   const wp = filtOrders.filter(o => o.status === 'Selesai' && !o.waSent);
-  const al = g(aId); if (al) al.innerHTML = wp.length ? `<div style="background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:11px 14px;font-size:13px;color:#3d6b10;margin-bottom:10px">💬 ${wp.length} cucian selesai belum dinotif WA</div>` : '';
-  const kb = g(kId); if (!kb) return;
-  kb.innerHTML = cols.map(st => {
-    const items = filtOrders.filter(o => o.status === st);
-    return `<div class="kcol"><div class="khd"><span>${st}</span><span style="background:var(--ca);padding:1px 7px;border-radius:12px;font-size:10px">${items.length}</span></div>${items.length
-      ? items.map(o => { const _oc=go(o.outletId);const _ocColor=_oc?.color?safeColor(_oc.color):'var(--t2)'; return `<div class="kcard${st === 'Selesai' ? ' kdone' : ''}">
-          <div style="font-size:10px;font-family:monospace;color:var(--t2)">${esc(o.id)}</div>
-          <div style="font-weight:700;font-size:12px;margin:3px 0">${esc(o.name)}</div>
-          <div style="font-size:10px;font-weight:600;color:${_ocColor};">${esc(_oc?.name || '')}</div>
-          <div style="font-size:11px;color:var(--t2)">${esc(o.svcType)}·${o.qty}${getSvcUnit(o.svcType)}</div>
-          ${st === 'Selesai' ? `<div style="margin-top:8px">${o.waSent ? '<span class="badge gg" style="font-size:10px">✓ WA Terkirim</span>' : `<button class="btn bp bpill" style="width:100%;padding:6px;font-size:11px" onclick="openWaMod('${o.id}')">💬 Kirim WA</button>`}</div>` : ''}
-          ${st === 'Selesai' ? `<div style="margin-top:6px"><button class="btn bpill" style="width:100%;padding:7px;font-size:11px;font-weight:700;background:var(--p);color:#fff;border-color:var(--p)" onclick="updSt('${o.id}','Diambil','${role}')">✓ Sudah Diambil</button></div>` : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:8px">${STATUS_LIST.filter(s => s !== 'Diambil').map(s => `<button class="btn bsm${s === st ? ' bp' : ''}" style="font-size:10px;padding:3px 6px" onclick="updSt('${o.id}','${s}','${role}')">${s}</button>`).join('')}</div>
-        </div>`; }).join('')
-      : '<div style="font-size:11px;color:var(--t2);text-align:center;padding:14px">Kosong</div>'}</div>`;
-  }).join('');
+  const al = g(aId);
+  if (al) al.innerHTML = wp.length
+    ? `<div style="background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:10px 14px;font-size:13px;color:#3d6b10;margin-bottom:10px;display:flex;align-items:center;gap:7px"><i data-lucide="message-circle" style="width:15px;height:15px;stroke-width:2;flex-shrink:0;display:block"></i>${wp.length} cucian selesai belum dinotif WA</div>`
+    : '';
+
+  const groups = {};
+  cols.forEach(st => { groups[st] = filtOrders.filter(o => o.status === st); });
+
+  const kb = g(role === 'o' ? 'o-kanban' : 's-kanban');
+  if (kb) kb.innerHTML = cols.map(st => _trkColHtml(st, groups[st], role)).join('');
+
+  const acc = g(role === 'o' ? 'o-trk-acc' : 's-trk-acc');
+  if (acc) acc.innerHTML = _trkAccordionHtml(groups, role);
+
+  const bbar = g(role === 'o' ? 'o-trk-bbar' : 's-trk-bbar');
+  if (bbar) {
+    const active = filtOrders.filter(o => o.status !== 'Diambil').length;
+    const inProg = filtOrders.filter(o => !['Selesai', 'Diambil'].includes(o.status)).length;
+    const selesai = groups['Selesai'].length;
+    bbar.innerHTML = `
+      <span class="trk-bottom-stat">Aktif: <b>${active}</b></span>
+      <span class="trk-bottom-stat">Diproses: <b>${inProg}</b></span>
+      <span class="trk-bottom-stat">Selesai: <b>${selesai}</b></span>
+      ${wp.length ? `<span style="color:var(--am);font-weight:600;margin-left:auto">${wp.length} belum dinotif WA</span>` : ''}
+    `;
+  }
+
+  lucide.createIcons();
 }
 
 function updSt(id, st, role) {
@@ -731,6 +1310,7 @@ function showDetail(id) {
     <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${esc(go(o.outletId)?.name || '—')}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>
+    ${o.itemCount ? `<div class="rrow"><span style="color:var(--t2)">Jumlah Item</span><span>${o.itemCount} item</span></div>` : ''}
     <div class="rrow"><span style="color:var(--t2)">Metode Bayar</span><span style="font-weight:600">${esc(o.payMethod || '—')}</span></div>
     <div class="rrow rb" style="border-top:1px dashed #ccc;padding-top:5px;margin-top:4px"><span>Total</span><span>${fmt(o.total)}</span></div>
   </div>
@@ -914,13 +1494,15 @@ function buildMsg(tpl, o) {
   const trackingUrl = o.tracking_token
     ? (window.location.origin + window.location.pathname + '?track=' + o.tracking_token)
     : '';
+  const bayarTxt = o.payStatus === 'Lunas' ? 'Lunas' : o.payStatus === 'DP' ? 'DP (Belum Lunas)' : 'Belum Lunas';
   return tpl
     .replace(/{nama}/g, o.name)
     .replace(/{id}/g, o.id)
     .replace(/{total}/g, fmt(o.total))
     .replace(/{layanan}/g, o.svcType + ' ' + o.svcCat)
     .replace(/{est}/g, { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[o.svcCat] || '')
-    .replace(/{link}/g, trackingUrl);
+    .replace(/{link}/g, trackingUrl)
+    .replace(/{bayar}/g, bayarTxt);
 }
 
 function fmtPh(p) {
@@ -981,20 +1563,71 @@ function switchWaTplTab(type, el) {
 
 function prevTpl() {
   const el = g('wa-tpl'), p = g('wa-prev'); if (!el || !p) return;
+  const linkOn = g('wa-link-toggle')?.classList.contains('on') !== false;
+  const exLink = linkOn ? 'https://cleanpos.app/track/LDRY-001' : '';
   p.innerHTML = el.value
     .replace(/{nama}/g,    '<strong>Budi Santoso</strong>')
     .replace(/{id}/g,      '<strong>LDRY-001</strong>')
     .replace(/{total}/g,   '<strong>Rp 21.000</strong>')
     .replace(/{layanan}/g, 'kiloan regular')
     .replace(/{est}/g,     '2-3 hari')
+    .replace(/{link}/g,    exLink ? '<a href="#" style="color:#0a5c7a">' + exLink + '</a>' : '<em style="color:#aaa">[link tracking]</em>')
+    .replace(/{bayar}/g,   '<strong>Lunas</strong>')
     .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+    .replace(/_(.*?)_/g,   '<em>$1</em>')
+    .replace(/~(.*?)~/g,   '<s>$1</s>')
     .replace(/\n/g, '<br>');
+  const cc = g('wa-char-count'); if (cc) cc.textContent = el.value.length + ' karakter';
+}
+
+function insertWaVar(varStr) {
+  const ta = g('wa-tpl'); if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + varStr + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + varStr.length;
+  ta.focus();
+  prevTpl();
+}
+
+function waTplWrap(open, close) {
+  const ta = g('wa-tpl'); if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'teks';
+  ta.value = ta.value.slice(0, s) + open + sel + close + ta.value.slice(e);
+  ta.selectionStart = s + open.length;
+  ta.selectionEnd = s + open.length + sel.length;
+  ta.focus();
+  prevTpl();
+}
+
+function waTplList() {
+  const ta = g('wa-tpl'); if (!ta) return;
+  const s = ta.selectionStart;
+  const insert = '\n• Item 1\n• Item 2\n• Item 3';
+  ta.value = ta.value.slice(0, s) + insert + ta.value.slice(s);
+  ta.selectionStart = ta.selectionEnd = s + insert.length;
+  ta.focus();
+  prevTpl();
+}
+
+const WA_TPL_DEFAULTS = {
+  selesai:     `Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n💳 Status: {bayar}\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`,
+  konfirmasi:  `Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,
+  tagih_dp:    `Halo {nama} 👋\n\nPesanan Anda sudah dicatat!\n📋 No: *{id}*\n💰 Total: *{total}*\n\nMohon transfer DP 50% ke:\n🏦 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! 🙏`,
+  tagih_lunas: `Halo {nama} 👋\n\nKonfirmasi pembayaran:\n📋 No: *{id}*\n💰 Total: *{total}*\n\nTransfer ke:\n🏦 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. 🙏`
+};
+
+function resetWaTpl() {
+  const def = WA_TPL_DEFAULTS[curWaTplTab];
+  if (!def) return;
+  const ta = g('wa-tpl'); if (ta) { ta.value = def; prevTpl(); }
 }
 
 function saveTpl() {
   const val = g('wa-tpl')?.value || '';
   if (curWaTplTab === 'selesai') { waTplSelesai = val; }
   else { waTplNew[curWaTplTab] = val; }
+  if (typeof syncSettings === 'function') syncSettings();
   toast('✓ Template "' + { selesai: 'Pesanan Selesai', tagih_dp: 'Tagih DP', tagih_lunas: 'Tagih Lunas', konfirmasi: 'Konfirmasi Terima' }[curWaTplTab] + '" tersimpan!');
 }
 
