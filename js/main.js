@@ -3741,7 +3741,7 @@ function _noRebuildSvcCards(pre='no'){
   // Adjust grid columns (max 3 per row)
   el.style.gridTemplateColumns=`repeat(${Math.min(types.length,3)},1fr)`;
   el.innerHTML=types.map(t=>`
-    <div class="no-type-card${curType===t.key?' on':''}" onclick="_noPickType('${t.key}','${pre}')">
+    <div class="no-type-card${curType===t.key?' on':''}" data-type-key="${esc(t.key)}" onclick="_noPickType('${t.key}','${pre}')">
       <div class="no-type-radio"><div class="no-type-radio-dot"></div></div>
       <div class="no-type-body">
         <div class="no-type-lbl">${esc(t.label)}</div>
@@ -3787,8 +3787,7 @@ function _noPickType(key,pre='no'){
   // Update card styling (only service type cards, not tier cards)
   const svcGrid=g(pre+'-stype-cards');
   if(svcGrid)svcGrid.querySelectorAll('.no-type-card').forEach(c=>{
-    const onclick=c.getAttribute('onclick')||'';
-    c.classList.toggle('on',onclick.includes(`'${key}'`));
+    c.classList.toggle('on', c.dataset.typeKey === key);
   });
   if(typeof _noRebuildTierCards==='function')_noRebuildTierCards(pre);
   if(key==='satuan'&&typeof buildSatuanOrderItems==='function')buildSatuanOrderItems(pre);
