@@ -502,16 +502,16 @@ function _toggleAddon(pre, id) {
   if (pre === 'no') calcO(); else calcS();
 }
 
-function _noTogglePromo() {
-  const box = g('no-promo-box');
+function _noTogglePromo(pre='no') {
+  const box = g(pre+'-promo-box');
   if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
 }
 
-function _noUpdateSummary(res) {
-  const el = g('no-sum-body'); if (!el) return;
-  const name = (g('no-name')?.value||'').trim();
-  const phone = (g('no-phone')?.value||'').trim();
-  const outletId = g('no-outlet')?.value;
+function _noUpdateSummary(res, pre='no') {
+  const el = g(pre+'-sum-body'); if (!el) return;
+  const name = (g(pre+'-name')?.value||'').trim();
+  const phone = (g(pre+'-phone')?.value||'').trim();
+  const outletId = g(pre+'-outlet')?.value;
   const outletName = (typeof outlets !== 'undefined' ? outlets.find(o=>String(o.id)===String(outletId))?.name : null) || outletId || '–';
 
   if (!res) {
@@ -539,7 +539,7 @@ function _noUpdateSummary(res) {
     const cnt = res.satuanLines.length;
     itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan (${cnt})</div>
       <div>${res.satuanLines.map(line=>{
-        const cartLine = _noSatuanCart.find(l=>l.id===line.id&&l.tierKey===line.tierKey);
+        const cartLine = _getSatuanCart(pre).find(l=>l.id===line.id&&l.tierKey===line.tierKey);
         const tierLbl = cartLine?.tierLabel || '';
         const tierEst = cartLine?.tierEst || '';
         return `<div class="no-sum-item-row">
@@ -553,7 +553,7 @@ function _noUpdateSummary(res) {
   } else if (res.type === 'kiloan' || (res.type !== 'satuan')) {
     const tierLbl = (typeof priceOptions!=='undefined'?priceOptions.find(p=>p.key===res.cat)?.label:null)||res.cat||'';
     const svcName = (typeof serviceTypes!=='undefined'?serviceTypes.find(s=>s.id===res.type)?.name:null)||'Kiloan';
-    const itemCnt = parseInt(g('no-item-count')?.value)||null;
+    const itemCnt = parseInt(g(pre+'-item-count')?.value)||null;
     itemsHtml = `<div class="no-sum-sect-lbl">Item Pesanan</div>
       <div class="no-sum-item-row">
         <div class="no-sum-item-name">
@@ -586,14 +586,15 @@ function _noUpdateSummary(res) {
   if (manualDiscAmt > 0) {
     financeHtml += `<div class="no-sum-row"><span style="color:#e53935">Diskon Manual</span><span style="color:#e53935;font-weight:600">–${fmt(manualDiscAmt)}</span></div>`;
   }
-  financeHtml += `<a class="no-sum-discount" onclick="_noTogglePromo()">+ Tambah Diskon</a>`;
+  financeHtml += `<a class="no-sum-discount" onclick="_noTogglePromo('${pre}')">+ Tambah Diskon</a>`;
   financeHtml += `<div class="no-sum-row total"><span>Total</span><span>${fmt(total)}</span></div>`;
 
   el.innerHTML = custHtml + outletHtml + itemsHtml + addonsHtml + financeHtml;
 
-  // Update change
-  const cash = parseFloat(g('no-cash')?.value||'0')||0;
-  const chgEl = g('no-chg'); if(chgEl) chgEl.textContent = fmt(Math.max(0,cash-total));
+  // Update total element (for calcChg) and change display
+  const tv = g(pre+'-total'); if (tv) tv.textContent = fmt(total);
+  const cash = parseFloat(g(pre+'-cash')?.value||'0')||0;
+  const chgEl = g(pre+'-chg'); if(chgEl) chgEl.textContent = fmt(Math.max(0,cash-total));
 }
 
 // New order wrappers for new HTML
@@ -627,7 +628,7 @@ function pickNewCust(pre, phone) {
   const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
   const srchEl = g(pre+'-cust-search'); if (srchEl) srchEl.value = '';
   const resEl = g(pre+'-cust-results'); if (resEl) resEl.innerHTML = '';
-  calcO();
+  if (pre === 'no') calcO(); else calcS();
 }
 
 function submitOrder() {
@@ -640,8 +641,8 @@ function saveDraft() {
   toast('✓ Draft disimpan: ' + name);
 }
 
-function calcO() { const res = doCalc('no', true); calcChg('no'); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res); }
-function calcS() { doCalc('sno', false); calcChg('sno'); }
+function calcO() { const res = doCalc('no', true); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res, 'no'); else calcChg('no'); }
+function calcS() { const res = doCalc('sno', false); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res, 'sno'); else calcChg('sno'); }
 function calcChg(pre) {
   const tot = parseInt((g(pre + '-total')?.textContent || '').replace(/\D/g, '')) || 0;
   const rcv = parseInt(g(pre + '-cash')?.value) || 0;
