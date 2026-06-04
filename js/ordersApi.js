@@ -124,7 +124,61 @@ function deletePrinter_sb(id) { sbDelete('printers', id); }
 
 // --- Sync: Settings (one row per user, id='main') ---
 // NOTE: owner_pwd is stored as a SHA-256 hash (prefixed 'sha256:'), never plain text
+const _LS_SETTINGS_KEY = 'cleanpos_settings_local';
+function _saveSettingsLocal() {
+  try {
+    localStorage.setItem(_LS_SETTINGS_KEY, JSON.stringify({
+      store_name: storeName, store_addr: storeAddr, store_wa: storeWa, store_footer: storeFooter,
+      service_types: JSON.stringify(serviceTypes),
+      satuan_items: JSON.stringify(satuanItems),
+      addons: JSON.stringify(addons),
+      promos: JSON.stringify(promos),
+      wa_tpl_selesai: waTplSelesai,
+      wa_tpl_new: JSON.stringify(waTplNew),
+      cuti_per_bulan: cutiPerBulan,
+      membership_enabled: membershipEnabled,
+      membership_bonus: membershipBonus,
+      membership_style: membershipStyle,
+      membership_min_deposit: membershipMinDeposit,
+      membership_packages: JSON.stringify(membershipPackages),
+      membership_expiry_enabled: membershipExpiryEnabled,
+      membership_expiry_days: membershipExpiryDays,
+      price_options: JSON.stringify(priceOptions),
+      kg_step: kgStep,
+      notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan})
+    }));
+  } catch(e) { console.warn('[ls] gagal simpan settings lokal:', e); }
+}
+function _applySettingsObj(s) {
+  if (!s) return;
+  if (s.store_name)   storeName   = s.store_name;
+  if (s.store_addr)   storeAddr   = s.store_addr;
+  if (s.store_wa)     storeWa     = s.store_wa;
+  if (s.store_footer) storeFooter = s.store_footer;
+  if (s.owner_pwd)    ownerPwd    = s.owner_pwd;
+  try { if (s.service_types) serviceTypes = JSON.parse(s.service_types); } catch(e) {}
+  try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) {}
+  try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) {}
+  try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) {}
+  if (promos.length) { const mx=promos.reduce((m,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0); if(mx>=promoCtr)promoCtr=mx+1; }
+  if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
+  try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) {}
+  if (s.cuti_per_bulan != null) cutiPerBulan = Number(s.cuti_per_bulan);
+  if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
+  if (s.membership_bonus   != null) membershipBonus   = Number(s.membership_bonus);
+  if (s.membership_style)  membershipStyle  = s.membership_style;
+  if (s.membership_min_deposit != null) membershipMinDeposit = Number(s.membership_min_deposit);
+  try { if (s.membership_packages) membershipPackages = JSON.parse(s.membership_packages); } catch(e) {}
+  if (membershipPackages.length) membershipPkgCtr = membershipPackages.reduce((mx,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?mx:Math.max(mx,n);},0)+1;
+  if (s.membership_expiry_enabled != null) membershipExpiryEnabled = !!s.membership_expiry_enabled;
+  if (s.membership_expiry_days    != null) membershipExpiryDays    = Number(s.membership_expiry_days);
+  try { if (s.price_options) priceOptions = JSON.parse(s.price_options); } catch(e) {}
+  priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
+  if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
+  try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+}
 function syncSettings() {
+  _saveSettingsLocal(); // always persist locally first
   sbUpsert('settings', {
     user_id: currentUserId,
     id: 'main',
@@ -215,6 +269,13 @@ async function supaLoadAll() {
     priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
     if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
     try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+  }
+  // If Supabase settings are missing key pricing fields (e.g. migration not run yet), fall back to localStorage
+  if (!settingsData?.length || !settingsData[0]?.service_types) {
+    try {
+      const _ls = localStorage.getItem(_LS_SETTINGS_KEY);
+      if (_ls) { _applySettingsObj(JSON.parse(_ls)); console.log('[settings] Restored from localStorage fallback'); }
+    } catch(e) { console.warn('[settings] localStorage fallback failed:', e); }
   }
   if (memberTxnData) {
     memberTxns = memberTxnData.map(r => ({ id: r.id, phone: r.phone, type: r.type, amount: r.amount, baseAmount: r.base_amount, bonusAmount: r.bonus_amount, note: r.note, orderId: r.order_id, time: r.time }));
