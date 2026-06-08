@@ -5427,6 +5427,7 @@ function _showNewPasswordModal() {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
+            if (curRole) return; // user already logged in while data was loading — don't override
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
           });
@@ -5436,6 +5437,7 @@ function _showNewPasswordModal() {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
+            if (curRole) return; // user already logged in while data was loading — don't override
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login'); // advance to login now that data is ready
           });

@@ -309,9 +309,14 @@ async function supaLoadAll() {
   if (typeof renderPlanBadge === 'function') renderPlanBadge();
   if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
   toast('✅ Data cloud berhasil dimuat!');
-  // Re-render dashboard if it's already visible (e.g. after background cloud sync)
-  if (curRole === 'owner' && typeof refreshODash === 'function') refreshODash();
-  else if (curRole === 'staff' && typeof refreshSDash === 'function') refreshSDash();
+  // Re-render dashboard and notifications if already logged in (data arrived late)
+  if (curRole === 'owner' && typeof refreshODash === 'function') {
+    refreshODash();
+    if (typeof _generateNotifications === 'function') _generateNotifications();
+    if (typeof _updateNotifBadge === 'function') _updateNotifBadge();
+  } else if (curRole === 'staff' && typeof refreshSDash === 'function') {
+    refreshSDash();
+  }
   supaSubscribeOrders();
   supaSubscribeSettings();
   supaSubscribeEmployees();
