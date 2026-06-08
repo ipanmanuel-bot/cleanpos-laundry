@@ -366,7 +366,7 @@ async function doOwnerLogin(){
     match=input===ownerPwd;
     if(match){ownerPwd=await hashSecret(input);syncSettings();}  // auto-upgrade plain text → hash
   }
-  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');initOwner();}
+  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');initOwner();setTimeout(refreshODash,0);}
   else g('opwd-err').style.display='block';
 }
 function goOutletSelect(){
@@ -518,13 +518,13 @@ function initOwner(){
   setTimeout(_generateNotifications,5000);
   g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
   const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
-  prevTpl();renderPricing();renderPromo();renderSettings();
-  renderPlanBadge();renderSubCard();checkPlanExpiry();
+  try{prevTpl();renderPricing();renderPromo();renderSettings();}catch(e){console.error('[initOwner]',e);}
+  try{renderPlanBadge();renderSubCard();checkPlanExpiry();}catch(e){console.error('[initOwner plan]',e);}
   if(isPlanExpired()){
     // Land directly on settings so user can pay
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
-    buildOrderForm('no');calcO();
+    try{buildOrderForm('no');calcO();}catch(e){console.error('[initOwner form]',e);}
     refreshODash();
   }
   _resetIdleTimer();
