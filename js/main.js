@@ -366,7 +366,7 @@ async function doOwnerLogin(){
     match=input===ownerPwd;
     if(match){ownerPwd=await hashSecret(input);syncSettings();}  // auto-upgrade plain text → hash
   }
-  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');initOwner();setTimeout(refreshODash,0);}
+  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');await(_supaReadyPromise||Promise.resolve());initOwner();}
   else g('opwd-err').style.display='block';
 }
 function goOutletSelect(){
@@ -5423,7 +5423,8 @@ function _showNewPasswordModal() {
           _showNewPasswordModal();
         } else if (event === 'SIGNED_IN') {
           if (curRole) return; // token refresh while already in a session — ignore
-          supaLoadAll().then(() => {
+          _supaReadyPromise = supaLoadAll();
+          _supaReadyPromise.then(() => {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
@@ -5433,7 +5434,8 @@ function _showNewPasswordModal() {
           });
         } else if (event === 'INITIAL_SESSION') {
           showReturningUser(user.email);
-          supaLoadAll().then(() => {
+          _supaReadyPromise = supaLoadAll();
+          _supaReadyPromise.then(() => {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();

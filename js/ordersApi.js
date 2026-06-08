@@ -2,6 +2,9 @@
 // Depends on: supabaseClient.js (sbUpsert, sbDelete, sbFetch, currentUserId)
 // All functions reference global state (orders, customers, outlets, etc.) at call-time.
 
+// Tracks the in-flight supaLoadAll() Promise so doOwnerLogin can await data readiness
+let _supaReadyPromise = null;
+
 // --- Data mapping: JS object ↔ DB row ---
 function orderToRow(o) {
   return {
