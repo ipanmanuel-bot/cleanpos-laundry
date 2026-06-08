@@ -78,7 +78,7 @@ let printers = [];
 let printerCtr = 1; let btDevice = null; let _editPrinterId = null;
 const _PRINTERS_KEY = 'cleanpos_printers';
 let rptFilter = 'today'; let empFilter = 'all';
-let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null;
+let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null; let dashOutlet = 'all';
 let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutlet = 'all'; let rptOutlet = 'all';
 let ordDateFilter = 'all'; let ordDateFrom = ''; let ordDateTo = '';
 let ordFst = ''; let ordFpy = '';
@@ -1122,6 +1122,7 @@ function _fmtPct(pct){
 function _pct(cur,prev){ return prev===0?null:((cur-prev)/prev*100); }
 
 function setDashPeriod(p){ dashPeriod=p; dashOffset=0; refreshODash(); }
+function setDashOutlet(id){ dashOutlet=id; refreshODash(); }
 function navDash(dir){ const n=dashOffset+dir; if(n>0)return; dashOffset=n; refreshODash(); }
 
 function getDashRange(){
@@ -1178,7 +1179,12 @@ function getDashRange(){
 }
 
 function _ordersInRange(curISO, curEndISO){
-  return orders.filter(o=>{const d=_orderDateISO(o);return d>=curISO&&d<=curEndISO;});
+  return orders.filter(o=>{
+    const d=_orderDateISO(o);
+    const inRange=d>=curISO&&d<=curEndISO;
+    const inOutlet=dashOutlet==='all'||o.outletId===dashOutlet;
+    return inRange&&inOutlet;
+  });
 }
 
 function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
@@ -1194,8 +1200,9 @@ function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
   const selesai=cur.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
   const prevSelesai=prev.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
   // Pengeluaran
-  const pengeluaran=expenses.filter(e=>e.date>=curISO&&e.date<=curEndISO).reduce((s,e)=>s+e.nominal,0);
-  const prevPengeluaran=expenses.filter(e=>e.date>=prevISO&&e.date<=prevEndISO).reduce((s,e)=>s+e.nominal,0);
+  const _expFilter=e=>dashOutlet==='all'||!e.outletId||e.outletId===dashOutlet;
+  const pengeluaran=expenses.filter(e=>e.date>=curISO&&e.date<=curEndISO&&_expFilter(e)).reduce((s,e)=>s+e.nominal,0);
+  const prevPengeluaran=expenses.filter(e=>e.date>=prevISO&&e.date<=prevEndISO&&_expFilter(e)).reduce((s,e)=>s+e.nominal,0);
   return { total, prevTotal, belum, bayar,
     trx, prevTrx, diterima, prevDiterima, selesai, prevSelesai,
     pengeluaran, prevPengeluaran,
@@ -1209,7 +1216,7 @@ function _renderDashStats(s, range){
   const el=g('dash-stats'); if(!el)return;
   // Month-to-date accumulation (always for the month of curStart)
   const mISO=range.curISO.slice(0,7);
-  const mOrders=orders.filter(o=>o.payStatus==='Lunas'&&_orderDateISO(o).startsWith(mISO));
+  const mOrders=orders.filter(o=>o.payStatus==='Lunas'&&_orderDateISO(o).startsWith(mISO)&&(dashOutlet==='all'||o.outletId===dashOutlet));
   const mTotal=mOrders.reduce((sum,o)=>sum+o.total,0);
   // Days elapsed in that month (up to today or end of period)
   const dayOfMonth=parseInt(range.curEndISO.slice(8),10)||1;
@@ -1353,9 +1360,23 @@ function refreshODash(){
   // Update period tab buttons
   ['harian','mingguan','bulanan'].forEach(p=>{
     const btn=g('dtab-'+p); if(!btn)return;
-    const on=p===dashPeriod;
-    btn.classList.toggle('on',on);
+    btn.classList.toggle('on',p===dashPeriod);
   });
+
+  // Outlet filter chips
+  const ochips=g('dash-outlet-chips');
+  if(ochips&&outlets.length>1){
+    ochips.style.display='flex';
+    const tabs=[{id:'all',label:'Semua Outlet',color:null},...outlets.map(o=>({id:o.id,label:o.name,color:o.color}))];
+    ochips.innerHTML=tabs.map(t=>{
+      const on=t.id===dashOutlet;
+      const sc=t.color?safeColor(t.color):'';
+      const style=on&&sc?`background:${sc}18;border-color:${sc};color:${sc}`:'';
+      return `<span class="chip${on?' on':''}" style="${style}" onclick="setDashOutlet('${t.id}')">${sc?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc};margin-right:5px;vertical-align:middle"></span>`:''}${esc(t.label)}</span>`;
+    }).join('');
+  } else if(ochips){
+    ochips.style.display='none';
+  }
 
   // Date range label
   const rngEl=g('dash-range'); if(rngEl)rngEl.textContent=range.rangeLabel;
@@ -2363,16 +2384,15 @@ function _renderCustTable(list) {
     }
     const acts = membershipEnabled
       ? `<div style="display:flex;gap:5px;align-items:center">
-           <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
            <button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button>
            <button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Membership Card" style="padding:5px 8px">${_C_IC_CARD}</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
-           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`
       : `<div style="display:flex;gap:5px;align-items:center">
            <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
-           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+           <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`;
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:10px">
@@ -2414,10 +2434,9 @@ function _renderCustCards(list) {
         <span>${esc(c.lastDate||'—')}</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
         ${membershipEnabled?`<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" style="gap:4px;padding:5px 9px">${IC_CARD14}</button>`:''}
         <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" style="gap:4px;padding:5px 9px">${IC_WA14}</button>
-        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}',this.parentElement)" style="padding:5px 8px">${IC_MORE14}</button></div>
+        <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
       </div>
     </div>`;
   }).join(''); } catch(e) { console.error('[renderCusts cards]', e); wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--re,#c62828);font-size:13px">Error rendering. Coba refresh halaman.</div>`; }
@@ -2440,9 +2459,9 @@ function _renderCustPager(total, totalPages) {
   </div>`;
 }
 
-function _custMoreMenu(phone, anchorEl) {
+function _custMoreMenu(phone) {
   document.querySelectorAll('.cust-dd').forEach(d => d.remove());
-  const anchor = anchorEl || g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
+  const anchor = g('cmw-'+phone) || g('cmm-'+phone); if (!anchor) return;
   const c = customers[phone];
   const items = [
     {label:'Edit', fn:`openEditCust('${phone}')`},
@@ -5374,6 +5393,7 @@ function _showNewPasswordModal() {
             _cleanExpiredTokens();
             _backfillTrackingOrders();
             if (ownerPwd === 'owner123') showScr('scr-setup');
+            else showScr('scr-login'); // advance to login now that data is ready
           });
         }
       } else {

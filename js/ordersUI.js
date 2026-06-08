@@ -1321,7 +1321,9 @@ function showDetail(id) {
   <div style="display:flex;gap:6px;flex-wrap:wrap">${['Belum Bayar', 'DP', 'Lunas'].map(ps => `<button class="btn bsm${ps === o.payStatus ? ' bp' : ''}" onclick="setPayModal('${id}','${ps}',this)">${ps}</button>`).join('')}</div></div>
   <div><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Ganti Metode Bayar</div>
   ${_custBalExpired && o.payMethod !== 'Dompet Member' ? `<div style="font-size:12px;color:var(--re,#c62828);margin-bottom:6px">⚠️ Saldo member kadaluarsa</div>` : ''}
-  <div style="display:flex;gap:6px;flex-wrap:wrap">${_payMethods.map(pm => `<button class="btn bsm${pm === o.payMethod ? ' bp' : ''}" onclick="changePayMethod('${id}','${pm}')">${pm === 'Dompet Member' ? _walletLabel : pm}</button>`).join('')}</div></div>`;
+  <div style="display:flex;gap:6px;flex-wrap:wrap">${_payMethods.map(pm => `<button class="btn bsm${pm === o.payMethod ? ' bp' : ''}" onclick="changePayMethod('${id}','${pm}')">${pm === 'Dompet Member' ? _walletLabel : pm}</button>`).join('')}</div></div>
+  ${curRole === 'owner' && outlets.length > 1 ? `<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Pindah Outlet</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">${outlets.map(ol => `<button class="btn bsm${ol.id === o.outletId ? ' bp' : ''}" onclick="changeOrderOutlet('${id}','${ol.id}',this)">${esc(ol.name)}</button>`).join('')}</div></div>` : ''}`;
   g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button><button class="btn bp" onclick="cm('m-detail');showRcpt('${id}')">Struk</button>`;
   openModal('m-detail');
 }
@@ -1362,6 +1364,20 @@ function setPayModal(id, ps, btn) {
   } else {
     _applyPayModal();
   }
+}
+
+function changeOrderOutlet(id, newOutletId, btn) {
+  const o = orders.find(x => x.id === id); if (!o) return;
+  if (o.outletId === newOutletId) return;
+  const oldName = go(o.outletId)?.name || o.outletId;
+  const newName = go(newOutletId)?.name || newOutletId;
+  o.outletId = newOutletId;
+  if (typeof syncOrder === 'function') syncOrder(o);
+  btn.closest('div').querySelectorAll('.btn').forEach(b => b.classList.remove('bp'));
+  btn.classList.add('bp');
+  renderOrders();
+  if (curRole === 'owner') refreshODash();
+  toast(`✓ Outlet diubah: ${oldName} → ${newName}`);
 }
 
 function setPayStatus(id, ps) {
