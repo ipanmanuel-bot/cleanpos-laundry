@@ -366,7 +366,7 @@ async function doOwnerLogin(){
     match=input===ownerPwd;
     if(match){ownerPwd=await hashSecret(input);syncSettings();}  // auto-upgrade plain text → hash
   }
-  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');await(_supaReadyPromise||Promise.resolve());initOwner();}
+  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');try{await(_supaReadyPromise||Promise.resolve());}catch(e){console.warn('[login] supaLoadAll error:',e);}initOwner();}
   else g('opwd-err').style.display='block';
 }
 function goOutletSelect(){
@@ -525,7 +525,7 @@ function initOwner(){
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     try{buildOrderForm('no');calcO();}catch(e){console.error('[initOwner form]',e);}
-    refreshODash();
+    oGo('dashboard', document.querySelector('#o-nav .ni[onclick*="dashboard"]'));
   }
   _resetIdleTimer();
 }
