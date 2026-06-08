@@ -1350,6 +1350,10 @@ function _renderDashChart(curOrders, prevOrders, range, _retry){
 }
 
 function refreshODash(){
+  // If Supabase data not ready yet, re-schedule once it arrives and render empty state for now
+  if(typeof _supaDataReady!=='undefined'&&!_supaDataReady&&_supaReadyPromise){
+    _supaReadyPromise.then(()=>requestAnimationFrame(refreshODash)).catch(()=>{});
+  }
   // "Diperbarui" timestamp
   const upEl=g('dash-updated');
   if(upEl){const n=new Date();upEl.textContent='Diperbarui '+n.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})+', '+n.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
