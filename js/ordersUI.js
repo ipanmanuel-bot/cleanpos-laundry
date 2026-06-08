@@ -830,6 +830,13 @@ function _renderOrdActiveChips() {
   const btn = g(isO ? 'ord-filter-btn' : 's-ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
 }
 
+function _newCustBadge(o) {
+  if (!o.phone || o.phone === '—') return '';
+  const c = (typeof customers !== 'undefined') ? customers[o.phone] : null;
+  if (!c || c.orders !== 1) return '';
+  return '<span class="badge-new-cust">NEW</span>';
+}
+
 function renderOrders() {
   const isO = curRole === 'owner';
   const q = ((isO ? g('o-srch') : g('s-srch'))?.value || '').toLowerCase();
@@ -890,7 +897,7 @@ function renderOrders() {
   if (isO) {
     tb.innerHTML = list.map(o => { const _oc=go(o.outletId);const _osc=_oc?.color?safeColor(_oc.color):'#ccc';return `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
+      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${_osc}18;color:${_oc?.color?safeColor(_oc.color):'#666'}">${esc(_oc?.name || '—')}</span></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
@@ -904,7 +911,7 @@ function renderOrders() {
   } else {
     tb.innerHTML = list.map(o => `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
+      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
@@ -978,7 +985,7 @@ function _renderOrdCards(list, wrap) {
       <div class="ocard-hd" onclick="toggleOrdCard('${esc(o.id)}')">
         <div class="ocard-av">${initials}</div>
         <div class="ocard-info">
-          <div class="ocard-name">${esc(o.name)}</div>
+          <div class="ocard-name">${esc(o.name)}${_newCustBadge(o)}</div>
           <div class="ocard-id">${esc(o.id)}</div>
           <div class="ocard-tags">
             <span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span>

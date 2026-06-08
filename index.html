@@ -135,6 +135,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .bpill{border-radius:var(--rp)}
 .bfull{width:100%;justify-content:center;padding:16px;font-size:15px;font-weight:700}
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.badge-new-cust{display:inline-flex;align-items:center;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;background:var(--p);color:#fff;margin-left:5px;vertical-align:middle;letter-spacing:.3px;line-height:1.5}
 .gp{background:var(--pl);color:#3d6b10}.gg{background:#E8F5E9;color:#2e7d32}
 .gr_{background:var(--reb);color:var(--re)}.gy{background:#F0F0EC;color:#666}
 .gam{background:var(--amb);color:var(--am)}.gbl{background:var(--blb);color:var(--bl)}
@@ -432,7 +433,16 @@ tr:hover td{background:#F6F7F9}
 @media(max-width:768px){.ord-cards{display:block}.ord-tbl-wrap{display:none}}
 /* ===== CUSTOMER PAGE REDESIGN ===== */
 .cust-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
-.cust-sum-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:14px 16px}
+.cust-sum-card{background:var(--ca);border:1px solid var(--b1);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.cust-sum-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cust-sum-icon.green{background:#e8f5e9;color:#2e7d32}
+.cust-sum-icon.orange{background:#fff3e0;color:#e65100}
+.cust-sum-body{flex:1;min-width:0}
+.cust-sum-title{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:3px;white-space:nowrap}
+.cust-sum-val{font-size:26px;font-weight:800;line-height:1.1;margin-bottom:3px}
+.cust-sum-val.green{color:#2e7d32}
+.cust-sum-val.orange{color:#e65100}
+.cust-sum-sub{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px}
 .cust-filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1.5px solid var(--b1)}
 .cfb{padding:5px 12px;font-size:12px;border-radius:20px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t2);cursor:pointer;font-weight:500;transition:all .15s;line-height:1.4;font-family:inherit}
 .cfb.on{background:var(--p);border-color:var(--p);color:#fff}
@@ -449,7 +459,7 @@ tr:hover td{background:#F6F7F9}
 .cust-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:12px 14px;margin-bottom:8px}
 .cust-card-top{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .cust-card-meta{font-size:12px;color:var(--t2);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
-@media(max-width:768px){.cust-tbl-wrap{display:none}.cust-cards-wrap{display:block}.cust-summary{gap:8px}}
+@media(max-width:768px){.cust-tbl-wrap{display:none}.cust-cards-wrap{display:block}.cust-summary{grid-template-columns:1fr;gap:8px}.cust-sum-card{padding:12px 14px}.cust-sum-val{font-size:22px}}
 /* Send card modal */
 .sc-split{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 @media(max-width:580px){.sc-split{grid-template-columns:1fr}}
@@ -1723,7 +1733,7 @@ tr:hover td{background:#F6F7F9}
       <button class="btn bbl bsm" onclick="exportCustomers()">Export</button>
     </div>
   </div>
-  <div id="cust-summary" class="cust-summary" style="display:none"></div>
+  <div id="cust-summary" class="cust-summary"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="cust-filter-bar">
       <input id="cust-srch" class="ord-search" placeholder="Cari nama / telepon pelanggan..." oninput="_custPage=1;renderCusts()" style="flex:1;min-width:160px">

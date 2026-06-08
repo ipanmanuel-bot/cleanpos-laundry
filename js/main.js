@@ -525,8 +525,7 @@ function initOwner(){
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     buildOrderForm('no');calcO();
-    // Double-RAF: ensures flex layout is fully computed before Chart.js reads canvas dimensions
-    requestAnimationFrame(()=>requestAnimationFrame(refreshODash));
+    refreshODash();
   }
   _resetIdleTimer();
 }
@@ -2342,27 +2341,72 @@ function renderCusts() {
 
 function _renderCustSummary() {
   const wrap = g('cust-summary'); if (!wrap) return;
-  if (!membershipEnabled) { wrap.style.display='none'; return; }
-  wrap.style.display = '';
   const all = Object.values(customers);
-  const totalBal = all.reduce((s,c) => s+(c.balance||0), 0);
-  const withBal = all.filter(c => (c.balance||0)>0).length;
-  const zeroBal = all.length - withBal;
+  const total = all.length;
+
+  // ── Pelanggan Baru: first order this month vs last month ──
+  const _now = new Date();
+  const thisMonth = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+  const _lm = new Date(_now.getFullYear(), _now.getMonth()-1, 1);
+  const lastMonth = `${_lm.getFullYear()}-${String(_lm.getMonth()+1).padStart(2,'0')}`;
+  const _firstByPhone = {};
+  orders.forEach(o => {
+    const d = (o.isoDate||'').slice(0,10); if (!d || !o.phone) return;
+    if (!_firstByPhone[o.phone] || d < _firstByPhone[o.phone]) _firstByPhone[o.phone] = d;
+  });
+  const newThis = Object.values(_firstByPhone).filter(d => d.startsWith(thisMonth)).length;
+  const newLast = Object.values(_firstByPhone).filter(d => d.startsWith(lastMonth)).length;
+  let newSubHtml = '<span>bulan ini</span>';
+  if (newLast > 0) {
+    const pct = Math.round((newThis - newLast) / newLast * 100);
+    const up = pct >= 0;
+    const arrow = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${up?'<polyline points="18 15 12 9 6 15"/>':'<polyline points="6 9 12 15 18 9"/>'}</svg>`;
+    newSubHtml = `<span style="color:${up?'#2e7d32':'#e65100'};display:flex;align-items:center;gap:2px">${arrow}${Math.abs(pct)}% dari bulan lalu</span>`;
+  }
+
+  // ── Tidak Aktif: no transaction in last 30 days ──
+  const _30ago = new Date(_now); _30ago.setDate(_30ago.getDate()-30);
+  const _30agoISO = `${_30ago.getFullYear()}-${String(_30ago.getMonth()+1).padStart(2,'0')}-${String(_30ago.getDate()).padStart(2,'0')}`;
+  const _lastByPhone = {};
+  orders.forEach(o => {
+    const d = (o.isoDate||'').slice(0,10); if (!d || !o.phone) return;
+    if (!_lastByPhone[o.phone] || d > _lastByPhone[o.phone]) _lastByPhone[o.phone] = d;
+  });
+  const inactive = all.filter(c => { const d = _lastByPhone[c.phone]; return !d || d < _30agoISO; }).length;
+
+  // ── Member Aktif: balance > 0 and not expired ──
+  const memberActive = all.filter(c => (c.balance||0) > 0 && !isBalanceExpired(c)).length;
+  const memberPct = total ? Math.round(memberActive / total * 100) : 0;
+
+  const _IC = (path) => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+  const icNew    = _IC('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>');
+  const icInact  = _IC('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>');
+  const icMember = _IC('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 17.5 13 21 9.5"/>');
+
   wrap.innerHTML = `
     <div class="cust-sum-card">
-      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Total Saldo</div>
-      <div style="font-size:20px;font-weight:800;color:var(--p)">${fmt(totalBal)}</div>
-      <div style="font-size:11px;color:var(--t2);margin-top:2px">dari ${all.length} pelanggan</div>
+      <div class="cust-sum-icon green">${icNew}</div>
+      <div class="cust-sum-body">
+        <div class="cust-sum-title">Pelanggan Baru</div>
+        <div class="cust-sum-val green">${newThis}</div>
+        <div class="cust-sum-sub">${newSubHtml}</div>
+      </div>
     </div>
     <div class="cust-sum-card">
-      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Ada Saldo</div>
-      <div style="font-size:20px;font-weight:800;color:var(--p)">${withBal}</div>
-      <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(withBal/all.length*100):0}% dari total</div>
+      <div class="cust-sum-icon orange">${icInact}</div>
+      <div class="cust-sum-body">
+        <div class="cust-sum-title">Tidak Aktif</div>
+        <div class="cust-sum-val orange">${inactive}</div>
+        <div class="cust-sum-sub"><span>&gt; 30 hari</span></div>
+      </div>
     </div>
     <div class="cust-sum-card">
-      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Saldo 0</div>
-      <div style="font-size:20px;font-weight:800;color:var(--t2)">${zeroBal}</div>
-      <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(zeroBal/all.length*100):0}% dari total</div>
+      <div class="cust-sum-icon green">${icMember}</div>
+      <div class="cust-sum-body">
+        <div class="cust-sum-title">Member Aktif</div>
+        <div class="cust-sum-val green">${memberActive}</div>
+        <div class="cust-sum-sub"><span>${memberPct}% dari total pelanggan</span></div>
+      </div>
     </div>`;
 }
 
