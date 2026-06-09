@@ -467,7 +467,7 @@ function sGoB(pg,el){document.querySelectorAll('#staff-app .bnav .bni').forEach(
 
 // ===== SEED DATA =====
 function genId(){const r=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();return `LDRY-${r}`;}
-function addCust(name,phone,total,date){if(!customers[phone])customers[phone]={name,phone,orders:0,total:0,balance:0,lastDate:date};customers[phone].orders++;customers[phone].total+=total;customers[phone].lastDate=date;}
+function addCust(name,phone,total,date,address){if(!customers[phone])customers[phone]={name,phone,address:address||null,orders:0,total:0,balance:0,lastDate:date};else if(address&&!customers[phone].address)customers[phone].address=address;customers[phone].orders++;customers[phone].total+=total;customers[phone].lastDate=date;}
 function seed(){
   const kiloanSeeds=[
     {name:'Budi Santoso',phone:'081234567890',svc:'kiloan',cat:'regular',qty:3,st:'Selesai',pay:'Lunas',waSent:true,oid:'o1'},
@@ -2352,7 +2352,7 @@ function renderCusts() {
     if (!_lastOrder[o.phone] || d > _lastOrder[o.phone]) _lastOrder[o.phone] = d;
   });
   const list = all.filter(c => {
-    const matchQ = !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
+    const matchQ = !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q) || (c.address||'').toLowerCase().includes(q);
     const bal = c.balance||0;
     let matchF = false;
     if (_custFilter==='all') matchF = true;
@@ -2479,7 +2479,7 @@ function _renderCustTable(list) {
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:10px">
         <div class="cust-av">${initials}</div>
-        <div><div class="cust-name">${esc(c.name)}</div><div class="cust-ph">${esc(c.phone||'—')}</div></div>
+        <div><div class="cust-name">${esc(c.name)}</div><div class="cust-ph">${esc(c.phone||'—')}</div>${c.address?`<div style="font-size:10px;color:var(--t2);margin-top:1px">📍 ${esc(c.address)}</div>`:''}</div>
       </div></td>
       <td><div style="font-weight:700;font-size:14px">${fmt(c.total||0)}</div><div style="font-size:11px;color:var(--t2);margin-top:1px">${c.orders||0} transaksi</div></td>
       <td>${balCell}</td>
@@ -2506,6 +2506,7 @@ function _renderCustCards(list) {
         <div style="flex:1;min-width:0">
           <div class="cust-name">${esc(c.name)}</div>
           <div class="cust-ph">${esc(c.phone||'—')}</div>
+          ${c.address?`<div style="font-size:10px;color:var(--t2);margin-top:1px">📍 ${esc(c.address)}</div>`:''}
         </div>
         ${membershipEnabled?`<div style="text-align:right">${balBadge}</div>`:''}
       </div>
@@ -2729,6 +2730,7 @@ function openEditCust(phone){
   _ecOldPhone=phone;
   if(g('ec-name'))g('ec-name').value=c.name;
   if(g('ec-phone'))g('ec-phone').value=(phone==='—'||/^cust-/.test(phone))?'':phone;
+  if(g('ec-addr'))g('ec-addr').value=c.address||'';
   openModal('m-edit-cust');
   setTimeout(()=>g('ec-name')?.focus(),100);
 }
@@ -2736,12 +2738,13 @@ function saveEditCust(){
   const name=(g('ec-name')?.value||'').trim();
   if(!name){toast('⚠️ Nama pelanggan wajib diisi');return;}
   const newPhone=(g('ec-phone')?.value||'').trim()||_ecOldPhone;
+  const newAddr=(g('ec-addr')?.value||'').trim()||null;
   // Check duplicate only if phone actually changed
   if(newPhone!==_ecOldPhone&&customers[newPhone]){toast('⚠️ Nomor WA sudah terdaftar: '+customers[newPhone].name);return;}
   const c=customers[_ecOldPhone];if(!c)return;
   // If phone changed, re-key in customers object
   if(newPhone!==_ecOldPhone){
-    customers[newPhone]={...c,name,phone:newPhone};
+    customers[newPhone]={...c,name,phone:newPhone,address:newAddr};
     delete customers[_ecOldPhone];
     // Update all orders referencing the old phone
     orders.forEach(o=>{if(o.phone===_ecOldPhone)o.phone=newPhone;});
@@ -2750,7 +2753,7 @@ function saveEditCust(){
     syncCustomer(customers[newPhone]);
     sbDelete('customers',_ecOldPhone);
   } else {
-    c.name=name;
+    c.name=name;c.address=newAddr;
     syncCustomer(c);
   }
   cm('m-edit-cust');

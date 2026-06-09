@@ -183,6 +183,7 @@ function pickCust(pre, phone) {
   const c = customers[phone]; if (!c) return;
   const nameEl = g(pre+'-name'); if (nameEl) nameEl.value = c.name;
   const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
+  const addrEl = g(pre+'-addr'); if (addrEl) addrEl.value = c.address || '';
   const srchEl = g(pre+'-cust-srch'); if (srchEl) srchEl.value = '';
   const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
   updWalletOption(pre);
@@ -672,8 +673,10 @@ function buildOrder(pre) {
   const psMap = { paid: 'Lunas', dp: 'DP', unpaid: 'Belum Bayar' };
   const payMethod = (pre === 'no' ? (pmMap[pmRaw] || pmRaw) : pmRaw);
   const payStatus = (pre === 'no' ? (psMap[psRaw] || psRaw) : psRaw);
+  const address = (g(pre + '-addr')?.value || '').trim() || null;
   const o = {
-    id: genId(), name, phone, svcType: res.type, svcCat: res.cat,
+    id: genId(), name, phone, address,
+    svcType: res.type, svcCat: res.cat,
     qty: res.bq, rawQty: res.rawQty, itemCount: parseInt(g(pre+'-item-count')?.value)||null,
     satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
     base: res.base, discType: res.discType, discAmt: res.discAmt,
@@ -707,7 +710,7 @@ function buildOrder(pre) {
   _renderVoucherApplied(pre, null);
   const vi = g(pre + '-voucher-input'); if (vi) vi.value = '';
   _dismissedPromo[pre] = null;
-  if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
+  if (phone !== '—') addCust(name, phone, o.total, TODAY_STR, address);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
     kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
   if (membershipEnabled && o.payMethod === 'Dompet Member' && phone !== '—') {
@@ -718,7 +721,7 @@ function buildOrder(pre) {
       memberTxns.push({ id: txnId, phone, type: 'deduct', amount: o.total, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() });
     }
   }
-  [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  [pre + '-name', pre + '-phone', pre + '-addr', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
   addons.forEach(a => {
     const card = g(pre + '-addon-card-' + a.id); if (card) card.classList.remove('on');
     const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false;
@@ -862,7 +865,7 @@ function renderOrders() {
   }
 
   const fullList = orders.filter(o => {
-    const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q));
+    const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q)) || (o.address && o.address.toLowerCase().includes(q));
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
     const matchO = isO ? (ordOutlet === 'all' || o.outletId === ordOutlet) : (curStaff ? o.outletId === curStaff.oid : true);
@@ -897,7 +900,7 @@ function renderOrders() {
   if (isO) {
     tb.innerHTML = list.map(o => { const _oc=go(o.outletId);const _osc=_oc?.color?safeColor(_oc.color):'#ccc';return `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
+      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}${o.address?`<div style="font-size:10px;color:var(--t2);margin-top:1px">📍 ${esc(o.address)}</div>`:''}</div></td>
       <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${_osc}18;color:${_oc?.color?safeColor(_oc.color):'#666'}">${esc(_oc?.name || '—')}</span></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
@@ -911,7 +914,7 @@ function renderOrders() {
   } else {
     tb.innerHTML = list.map(o => `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
+      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}${o.address?`<div style="font-size:10px;color:var(--t2);margin-top:1px">📍 ${esc(o.address)}</div>`:''}</div></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
@@ -1009,6 +1012,7 @@ function _renderOrdCards(list, wrap) {
           <div><div class="ocard-dl">Total</div><div class="ocard-dv">${fmt(o.total)}</div></div>
           <div><div class="ocard-dl">Tgl Masuk</div><div class="ocard-dv">${esc(o.date||'—')}</div></div>
           ${o.pickupDate?`<div><div class="ocard-dl">Tgl Ambil</div><div class="ocard-dv">${esc(o.pickupDate)}</div></div>`:''}
+          ${o.address?`<div style="grid-column:1/-1"><div class="ocard-dl">Alamat</div><div class="ocard-dv">${esc(o.address)}</div></div>`:''}
           ${o.notes?`<div style="grid-column:1/-1"><div class="ocard-dl">Catatan</div><div class="ocard-dv">${esc(o.notes)}</div></div>`:''}
         </div>
         <div class="ocard-acts">
@@ -1258,6 +1262,7 @@ function showRcpt(id) {
       + '<hr class="rdash">'
       + '<div class="rrow"><span>No Nota</span><span>' + esc(o.id || '') + '</span></div>'
       + '<div class="rrow"><span>Pelanggan</span><span>' + esc(o.name || '') + '</span></div>'
+      + (o.address ? '<div class="rrow"><span>Alamat</span><span>' + esc(o.address) + '</span></div>' : '')
       + '<div class="rrow"><span>Kasir</span><span>' + esc(o.handledBy || '\u2014') + '</span></div>'
       + '<div class="rrow"><span>Tgl Masuk</span><span>' + esc(o.date || '') + '</span></div>'
       + '<hr class="rdash">'
@@ -1314,6 +1319,7 @@ function showDetail(id) {
   <div class="rcpt" style="margin-bottom:12px">
     <div class="rrow"><span style="color:var(--t2)">Pelanggan</span><span>${esc(o.name)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">WA</span><span>${esc(o.phone)}</span></div>
+    ${o.address?`<div class="rrow"><span style="color:var(--t2)">Alamat</span><span>${esc(o.address)}</span></div>`:''}
     <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${esc(go(o.outletId)?.name || '—')}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>

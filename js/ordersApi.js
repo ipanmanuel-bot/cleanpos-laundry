@@ -11,7 +11,7 @@ var _supaDataReady = false;
 function orderToRow(o) {
   return {
     user_id: currentUserId,
-    id: o.id, name: o.name, phone: o.phone,
+    id: o.id, name: o.name, phone: o.phone, address: o.address || null,
     svc_type: o.svcType, svc_cat: o.svcCat,
     qty: o.qty, raw_qty: o.rawQty, item_count: o.itemCount || null,
     satuan_lines: JSON.stringify(o.satuanLines || []),
@@ -34,7 +34,7 @@ function rowToOrder(r) {
   try { satuanLines = JSON.parse(r.satuan_lines || '[]'); } catch(e) { console.error('[parse] satuan_lines:', e); }
   try { addOns = JSON.parse(r.add_ons || '[]'); } catch(e) { console.error('[parse] add_ons:', e); }
   return {
-    id: r.id, name: r.name, phone: r.phone,
+    id: r.id, name: r.name, phone: r.phone, address: r.address || null,
     svcType: r.svc_type, svcCat: r.svc_cat,
     qty: r.qty, rawQty: r.raw_qty, itemCount: r.item_count || null,
     satuanLines, addOns, addOnAmt: r.add_on_amt,
@@ -59,7 +59,7 @@ function syncOrder(o) { sbUpsert('orders', orderToRow(o)); }
 function syncCustomer(c) {
   sbUpsert('customers', {
     user_id: currentUserId,
-    id: c.phone, name: c.name, phone: c.phone,
+    id: c.phone, name: c.name, phone: c.phone, address: c.address || null,
     orders: c.orders, total: c.total, balance: c.balance||0, last_date: c.lastDate,
     balance_expiry: c.balanceExpiry || null
   });
@@ -224,7 +224,7 @@ async function supaLoadAll() {
   ]);
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
-  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null }; }); }
+  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, address: c.address || null, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null }; }); }
   if (outletsData)  {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });

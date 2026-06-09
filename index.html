@@ -1273,6 +1273,7 @@ tr:hover td{background:#F6F7F9}
           <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan" oninput="calcO()"></div>
           <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="calcO()"></div>
         </div>
+        <div class="fg" style="margin-bottom:12px"><label>Alamat</label><input id="no-addr" placeholder="Alamat pelanggan (opsional)"></div>
         <div class="fg"><label>Catatan</label><input id="no-note" placeholder="Catatan pesanan (opsional)" oninput="calcO()"></div>
       </div>
 
@@ -2360,6 +2361,7 @@ tr:hover td{background:#F6F7F9}
             <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan" oninput="calcS()"></div>
             <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xxxxxxxxxx" oninput="updWalletOption('sno');calcS()"></div>
           </div>
+          <div class="fg" style="margin-bottom:12px"><label>Alamat</label><input id="sno-addr" placeholder="Alamat pelanggan (opsional)"></div>
           <div class="fg"><label>Catatan</label><input id="sno-note" placeholder="Catatan pesanan (opsional)"></div>
         </div>
 
@@ -2956,7 +2958,8 @@ tr:hover td{background:#F6F7F9}
     <div class="mhd"><span class="mht">Edit Pelanggan</span><button class="xb" onclick="cm('m-edit-cust')">×</button></div>
     <div class="mbd">
       <div class="fg"><label>Nama Pelanggan</label><input id="ec-name" placeholder="Nama lengkap"></div>
-      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+      <div class="fg"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+      <div class="fg" style="margin-bottom:0"><label>Alamat <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-addr" placeholder="Alamat pelanggan"></div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-edit-cust')">Batal</button><button class="btn bp" onclick="saveEditCust()">Simpan</button></div>
   </div>
