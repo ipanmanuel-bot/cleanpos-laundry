@@ -366,7 +366,18 @@ async function doOwnerLogin(){
     match=input===ownerPwd;
     if(match){ownerPwd=await hashSecret(input);syncSettings();}  // auto-upgrade plain text → hash
   }
-  if(match){g('opwd-err').style.display='none';g('opwd-in').value='';curRole='owner';showApp('owner-app');try{await(_supaReadyPromise||Promise.resolve());}catch(e){console.warn('[login] supaLoadAll error:',e);}initOwner();}
+  if(match){
+    g('opwd-err').style.display='none';g('opwd-in').value='';
+    curRole='owner';
+    // If supaLoadAll hasn't been triggered yet (edge case), start it now
+    if(!_supaReadyPromise&&typeof supaLoadAll==='function')_supaReadyPromise=supaLoadAll();
+    // Show loading feedback on password screen while waiting for cloud data
+    const _loginBtn=document.querySelector('#scr-opwd .btn.bp');
+    if(_loginBtn){_loginBtn.textContent='Memuat data...';_loginBtn.disabled=true;}
+    try{await(_supaReadyPromise||Promise.resolve());}catch(e){console.warn('[login]',e);}
+    if(_loginBtn){_loginBtn.textContent='Masuk sebagai Owner';_loginBtn.disabled=false;}
+    showApp('owner-app');initOwner();
+  }
   else g('opwd-err').style.display='block';
 }
 function goOutletSelect(){
@@ -2328,10 +2339,26 @@ function renderCusts() {
   const q = (g('cust-srch')?.value||'').toLowerCase();
   _renderCustSummary();
   const all = Object.values(customers);
+  // Pre-compute first/last order date per phone for card filters
+  const _now = new Date();
+  const _thisMonth = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+  const _30ago = new Date(_now); _30ago.setDate(_30ago.getDate()-30);
+  const _30agoISO = `${_30ago.getFullYear()}-${String(_30ago.getMonth()+1).padStart(2,'0')}-${String(_30ago.getDate()).padStart(2,'0')}`;
+  const _firstOrder = {}, _lastOrder = {};
+  orders.forEach(o => {
+    const d = (o.isoDate||'').slice(0,10); if (!d || !o.phone) return;
+    if (!_firstOrder[o.phone] || d < _firstOrder[o.phone]) _firstOrder[o.phone] = d;
+    if (!_lastOrder[o.phone] || d > _lastOrder[o.phone]) _lastOrder[o.phone] = d;
+  });
   const list = all.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
     const bal = c.balance||0;
-    const matchF = _custFilter==='all' || (_custFilter==='ada'&&bal>0) || (_custFilter==='nol'&&bal<=0);
+    let matchF = false;
+    if (_custFilter==='all') matchF = true;
+    else if (_custFilter==='ada') matchF = bal > 0;
+    else if (_custFilter==='nol') matchF = bal <= 0;
+    else if (_custFilter==='new') matchF = (_firstOrder[c.phone]||'').startsWith(_thisMonth);
+    else if (_custFilter==='inactive') matchF = !_lastOrder[c.phone] || _lastOrder[c.phone] < _30agoISO;
     return matchQ && matchF;
   }).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||'') || (a.name||'').localeCompare(b.name||''));
   const _PER = 10;
@@ -2387,21 +2414,25 @@ function _renderCustSummary() {
   const icInact  = _IC('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>');
   const icMember = _IC('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 17.5 13 21 9.5"/>');
 
+  const _newAct = _custFilter === 'new';
+  const _inactAct = _custFilter === 'inactive';
+  const _newOnclick = _newAct ? "setCustFilter('all')" : "setCustFilter('new')";
+  const _inactOnclick = _inactAct ? "setCustFilter('all')" : "setCustFilter('inactive')";
   wrap.innerHTML = `
-    <div class="cust-sum-card">
+    <div class="cust-sum-card cust-sum-clickable${_newAct?' cust-sum-active-green':''}" onclick="${_newOnclick}" title="${_newAct?'Klik untuk hapus filter':'Lihat daftar pelanggan baru'}">
       <div class="cust-sum-icon green">${icNew}</div>
       <div class="cust-sum-body">
         <div class="cust-sum-title">Pelanggan Baru</div>
         <div class="cust-sum-val green">${newThis}</div>
-        <div class="cust-sum-sub">${newSubHtml}</div>
+        <div class="cust-sum-sub">${_newAct?`<span style="color:#2e7d32;font-weight:600">✓ Filter aktif &bull; klik hapus</span>`:newSubHtml}</div>
       </div>
     </div>
-    <div class="cust-sum-card">
+    <div class="cust-sum-card cust-sum-clickable${_inactAct?' cust-sum-active-orange':''}" onclick="${_inactOnclick}" title="${_inactAct?'Klik untuk hapus filter':'Lihat daftar pelanggan tidak aktif'}">
       <div class="cust-sum-icon orange">${icInact}</div>
       <div class="cust-sum-body">
         <div class="cust-sum-title">Tidak Aktif</div>
         <div class="cust-sum-val orange">${inactive}</div>
-        <div class="cust-sum-sub"><span>&gt; 30 hari</span></div>
+        <div class="cust-sum-sub">${_inactAct?`<span style="color:#e65100;font-weight:600">✓ Filter aktif &bull; klik hapus</span>`:'<span>&gt; 30 hari tidak transaksi</span>'}</div>
       </div>
     </div>
     <div class="cust-sum-card">
@@ -2970,8 +3001,7 @@ function _renderPricingHeaderActions(tab){
     el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('kiloan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Kiloan</button>
     <button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan Kiloan</button>`;
   }else if(tab==='satuan'){
-    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('satuan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Satuan</button>
-    <button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>`;
+    el.innerHTML=`<button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Layanan</button>`;
   }else{
     el.innerHTML=`<button class="btn bp bsm" onclick="openAddAddon()">+ Tambah Layanan Tambahan</button>`;
   }
@@ -3165,62 +3195,60 @@ function _renderKiloanRight_unused(){
 function _renderSatuanTab(){
   const pane=g('ptab-satuan');if(!pane)return;
   const activePo=_activePoOptions('satuan');
-
-  let html=`<div class="pricing-split">`;
-
-  // ── Left: satuan item list ──
-  html+=`<div>
-    <div style="margin-bottom:10px">
-      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Daftar Layanan Satuan</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input id="prc-sat-srch" class="ord-search" placeholder="Cari layanan satuan..." oninput="_filterSatuanList()" style="flex:1;min-width:0">
-        <button class="btn bsm" title="Filter" style="padding:8px 10px;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
-      </div>
+  const SRCH_SVG=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+  const FILT_SVG=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`;
+  let html=`
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <div style="position:relative;flex:1;min-width:0">
+      <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);pointer-events:none;display:flex">${SRCH_SVG}</span>
+      <input id="prc-sat-srch" class="ord-search" placeholder="Cari layanan satuan..." oninput="_filterSatuanList()" style="padding-left:34px;width:100%;box-sizing:border-box">
     </div>
-    <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px" id="prc-sat-tbl-wrap">`;
-  html+=_renderSatuanTable(satuanItems,activePo);
-  html+=`</div>
-    <button class="btn bp bfull" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>
-  </div>`;
-
-  // ── Right: price options panel ──
-  html+=_renderPriceOptsPanel('Satuan');
+    <button class="btn bsm" title="Filter" style="width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px">${FILT_SVG}</button>
+  </div>
+  <div class="sat-m-list" id="prc-sat-tbl-wrap">`;
+  html+=_renderSatuanCards(satuanItems,activePo);
   html+=`</div>`;
   pane.innerHTML=html;
 }
 
-function _renderSatuanTable(items, activePo){
-  let html=`<table class="prc-tbl"><thead><tr>
-    <th>NAMA LAYANAN</th><th>SATUAN</th><th>HARGA DASAR</th><th>OPSI HARGA</th><th>STATUS</th><th>AKSI</th>
-  </tr></thead><tbody>`;
+function _renderSatuanCards(items, activePo){
+  const TAG_SVG=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+  const EDIT_SVG=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const DEL_SVG=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
   if(!items.length){
-    html+=`<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:20px">Belum ada item satuan. Klik + Tambah.</td></tr>`;
-  }else{
-    items.forEach(item=>{
-      const active=item.active!==false;
-      const minP=_minPrice(item.prices||{},'satuan');
-      const opsiCount=activePo.length;
-      html+=`<tr>
-        <td><div style="font-weight:600">${esc(item.name)}</div>${item.desc?`<div style="font-size:11px;color:var(--t2)">${esc(item.desc)}</div>`:''}</td>
-        <td style="color:var(--t2)">${esc(item.unit||'pcs')}</td>
-        <td>Mulai dari <strong>${fmt(minP)}</strong></td>
-        <td><span class="badge gy" style="font-size:11px">${opsiCount} opsi</span></td>
-        <td><span class="prc-badge-${active?'on':'off'}">${active?'Aktif':'Nonaktif'}</span></td>
-        <td><div style="display:flex;gap:6px;align-items:center">
-          <button class="btn bsm" title="Pengaturan" onclick="openItemSettings('${item.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button class="btn bre bsm" title="Hapus" onclick="delSatuanItem('${item.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-        </div></td>
-      </tr>`;
-    });
+    return `<div style="text-align:center;padding:40px 20px;color:var(--t2);background:var(--ca);border:1.5px dashed var(--b1);border-radius:16px">
+      <div style="font-size:32px;margin-bottom:8px">📦</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">Belum ada item satuan</div>
+      <div style="font-size:13px">Klik + Tambah Layanan untuk mulai.</div>
+    </div>`;
   }
-  html+=`</tbody></table>`;
-  return html;
+  return items.map(item=>{
+    const active=item.active!==false;
+    const minP=_minPrice(item.prices||{},'satuan');
+    const opsiCount=activePo.length;
+    return `<div class="sat-m-card">
+      <div class="sat-m-icon">${TAG_SVG}</div>
+      <div class="sat-m-body">
+        <div class="sat-m-row1">
+          <span class="sat-m-name">${esc(item.name)}</span>
+          <span class="sat-m-badge ${active?'on':'off'}">${active?'Aktif':'Nonaktif'}</span>
+        </div>
+        <div class="sat-m-meta">${esc(item.unit||'pcs')} &bull; ${opsiCount} opsi</div>
+        <div class="sat-m-price">Mulai dari <strong>${fmt(minP)}</strong></div>
+        ${item.desc?`<div style="font-size:11px;color:var(--t2);margin-top:-6px;margin-bottom:8px">${esc(item.desc)}</div>`:''}
+        <div class="sat-m-actions">
+          <button class="sat-m-btn" onclick="openItemSettings('${item.id}')">${EDIT_SVG} Edit</button>
+          <button class="sat-m-btn del" onclick="delSatuanItem('${item.id}')">${DEL_SVG} Hapus</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function _filterSatuanList(){
   const q=(g('prc-sat-srch')?.value||'').toLowerCase().trim();
   const filtered=q?satuanItems.filter(x=>x.name.toLowerCase().includes(q)):satuanItems;
-  const wrap=g('prc-sat-tbl-wrap');if(wrap)wrap.innerHTML=_renderSatuanTable(filtered,_activePoOptions('satuan'));
+  const wrap=g('prc-sat-tbl-wrap');if(wrap)wrap.innerHTML=_renderSatuanCards(filtered,_activePoOptions('satuan'));
 }
 
 // ─── Tambahan tab ───

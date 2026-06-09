@@ -443,6 +443,10 @@ tr:hover td{background:#F6F7F9}
 .cust-sum-val.green{color:#2e7d32}
 .cust-sum-val.orange{color:#e65100}
 .cust-sum-sub{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px}
+.cust-sum-clickable{cursor:pointer;transition:box-shadow .15s,border-color .15s,background .15s}
+.cust-sum-clickable:hover{box-shadow:0 3px 12px rgba(0,0,0,.1)}
+.cust-sum-active-green{border-color:#2e7d32!important;box-shadow:0 0 0 2.5px #c8e6c9!important;background:#f1f8f1!important}
+.cust-sum-active-orange{border-color:#e65100!important;box-shadow:0 0 0 2.5px #ffe0b2!important;background:#fff8f0!important}
 .cust-filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1.5px solid var(--b1)}
 .cfb{padding:5px 12px;font-size:12px;border-radius:20px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t2);cursor:pointer;font-weight:500;transition:all .15s;line-height:1.4;font-family:inherit}
 .cfb.on{background:var(--p);border-color:var(--p);color:#fff}
@@ -514,6 +518,23 @@ tr:hover td{background:#F6F7F9}
 .prc-tbl tbody tr:hover td{background:var(--bg)}
 .prc-badge-on{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32}
 .prc-badge-off{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--t2)}
+/* ── Satuan mobile card list ──────────────────── */
+.sat-m-list{display:flex;flex-direction:column;gap:10px}
+.sat-m-card{background:var(--ca);border:1px solid var(--b1);border-radius:16px;padding:14px;box-shadow:0 1px 6px rgba(0,0,0,.05);display:flex;align-items:flex-start;gap:12px}
+.sat-m-icon{width:44px;height:44px;border-radius:12px;background:#e8f5e9;color:#2e7d32;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sat-m-body{flex:1;min-width:0}
+.sat-m-row1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:3px}
+.sat-m-name{font-weight:700;font-size:15px;line-height:1.3;color:var(--t1);flex:1;min-width:0;word-break:break-word}
+.sat-m-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.sat-m-badge.on{background:#e8f5e9;color:#2e7d32}
+.sat-m-badge.off{background:#f5f5f5;color:#9e9e9e}
+.sat-m-meta{font-size:12px;color:var(--t2);margin-bottom:3px}
+.sat-m-price{font-size:13px;color:var(--t1);margin-bottom:10px}
+.sat-m-price strong{font-weight:700}
+.sat-m-actions{display:flex;gap:8px}
+.sat-m-btn{height:36px;padding:0 14px;border-radius:8px;border:1.5px solid var(--b1);background:var(--ca);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;color:var(--t1);transition:background .15s,opacity .15s;font-family:inherit}
+.sat-m-btn:active{opacity:.7}
+.sat-m-btn.del{border-color:#ffcdd2;color:#e53935;background:#fff8f8}
 .prc-banner{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:14px}
 .prc-banner.warn{background:#fffde7;border:1px solid #f9a825;color:#795504}
 .prc-banner.info{background:#e3f2fd;border:1px solid #90caf9;color:#1565c0}

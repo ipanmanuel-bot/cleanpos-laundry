@@ -3,7 +3,9 @@
 // All functions reference global state (orders, customers, outlets, etc.) at call-time.
 
 // Tracks the in-flight supaLoadAll() Promise so doOwnerLogin can await data readiness
-let _supaReadyPromise = null;
+var _supaReadyPromise = null;
+// Set to true once supaLoadAll has finished populating all data arrays
+var _supaDataReady = false;
 
 // --- Data mapping: JS object ↔ DB row ---
 function orderToRow(o) {
@@ -311,14 +313,16 @@ async function supaLoadAll() {
   checkExpiredBalances();
   if (typeof renderPlanBadge === 'function') renderPlanBadge();
   if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
+  _supaDataReady = true;
   toast('✅ Data cloud berhasil dimuat!');
-  // Re-render dashboard and notifications if already logged in (data arrived late)
+  // Re-render dashboard and notifications — covers both cases:
+  // (a) owner already logged in when data arrived, (b) refreshODash polled and rescheduled itself
   if (curRole === 'owner' && typeof refreshODash === 'function') {
-    refreshODash();
+    requestAnimationFrame(refreshODash);
     if (typeof _generateNotifications === 'function') _generateNotifications();
     if (typeof _updateNotifBadge === 'function') _updateNotifBadge();
   } else if (curRole === 'staff' && typeof refreshSDash === 'function') {
-    refreshSDash();
+    requestAnimationFrame(refreshSDash);
   }
   supaSubscribeOrders();
   supaSubscribeSettings();
