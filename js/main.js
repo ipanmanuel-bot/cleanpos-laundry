@@ -2327,6 +2327,7 @@ function checkExpiredBalances(){
 const _C_IC_WA = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 const _C_IC_CARD = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
 const _C_IC_MORE = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
+const _C_IC_HIST = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`;
 
 function setCustFilter(f) {
   _custFilter = f; _custPage = 1;
@@ -2464,12 +2465,14 @@ function _renderCustTable(list) {
     const acts = membershipEnabled
       ? `<div style="display:flex;gap:5px;align-items:center">
            <button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button>
+           <button class="btn bsm" onclick="openCustOrderHistory('${esc(c.phone)}')" title="Riwayat Pesanan" style="padding:5px 8px">${_C_IC_HIST}</button>
            <button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Membership Card" style="padding:5px 8px">${_C_IC_CARD}</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
            <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`
       : `<div style="display:flex;gap:5px;align-items:center">
            <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
+           <button class="btn bsm" onclick="openCustOrderHistory('${esc(c.phone)}')" title="Riwayat Pesanan" style="padding:5px 8px">${_C_IC_HIST}</button>
            <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
            <div style="position:relative" id="cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
          </div>`;
@@ -2490,6 +2493,7 @@ function _renderCustCards(list) {
   const wrap = g('cust-cards'); if (!wrap) return;
   const IC_WA14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
   const IC_CARD14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+  const IC_HIST14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`;
   const IC_MORE14 = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
   if (!list.length) { wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">Tidak ada pelanggan ditemukan</div>`; return; }
   try { wrap.innerHTML = list.map(c => {
@@ -2514,6 +2518,7 @@ function _renderCustCards(list) {
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
         ${membershipEnabled?`<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" style="gap:4px;padding:5px 9px">${IC_CARD14}</button>`:''}
+        <button class="btn bsm" onclick="openCustOrderHistory('${esc(c.phone)}')" title="Riwayat Pesanan" style="gap:4px;padding:5px 9px">${IC_HIST14}</button>
         <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" style="gap:4px;padding:5px 9px">${IC_WA14}</button>
         <div style="position:relative" id="cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_custMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
       </div>
@@ -2555,6 +2560,50 @@ function _custMoreMenu(phone) {
   setTimeout(()=>document.addEventListener('click',function _cl(e){if(!anchor.contains(e.target)){dd.remove();document.removeEventListener('click',_cl);}},true),0);
 }
 function _custSaveContact(phone) { const c=customers[phone]; if(c) saveToContacts(c.phone,c.name); }
+
+// ===== CUSTOMER ORDER HISTORY MODAL =====
+function openCustOrderHistory(phone) {
+  const c = customers[phone]; if (!c) return;
+  const custOrders = orders.filter(o => o.phone === phone).slice().sort((a,b)=>(b.isoDate||b.date||'').localeCompare(a.isoDate||a.date||''));
+  const totalSpent = custOrders.reduce((s,o)=>s+(o.total||0),0);
+  const lastDate = custOrders.length ? (custOrders[0].date||'—') : '—';
+  const initials = (c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+
+  const statsHtml = `<div class="coh-stats">
+    <div class="coh-stat"><div class="coh-stat-val">${custOrders.length}</div><div class="coh-stat-lbl">Total Order</div></div>
+    <div class="coh-stat"><div class="coh-stat-val">${fmt(totalSpent)}</div><div class="coh-stat-lbl">Total Pengeluaran</div></div>
+    <div class="coh-stat"><div class="coh-stat-val">${lastDate}</div><div class="coh-stat-lbl">Transaksi Terakhir</div></div>
+  </div>`;
+
+  const rowsHtml = custOrders.length === 0
+    ? `<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">Belum ada transaksi</div>`
+    : custOrders.map(o => {
+        const svcLabel = o.svcType==='satuan'
+          ? (o.satuanLines&&o.satuanLines.length ? o.satuanLines.map(l=>`${esc(l.name||'')} x${l.qty||1}`).join(', ') : 'Satuan')
+          : `${esc(o.svcType||'')}${o.qty?' – '+o.qty+' kg':''}`;
+        return `<div class="coh-row">
+          <div class="coh-row-top">
+            <span class="coh-id">${esc(o.id||'')}</span>
+            <span class="coh-total">${fmt(o.total||0)}</span>
+          </div>
+          <div class="coh-row-mid">${svcLabel}</div>
+          <div class="coh-row-bot">
+            <span class="badge ${SL_STATUS[o.status]||'gy'}">${esc(o.status||'')}</span>
+            <span class="badge ${SL_PAY[o.payStatus]||'gy'}">${esc(o.payStatus||'')}</span>
+            <span class="coh-date">${esc(o.date||'')}</span>
+            ${o.handledBy?`<span class="coh-handler">${esc(o.handledBy)}</span>`:''}
+          </div>
+        </div>`;
+      }).join('');
+
+  const el = g('m-cust-ord-hist'); if (!el) return;
+  el.querySelector('.coh-avatar').textContent = initials;
+  el.querySelector('.coh-cust-name').textContent = c.name||'';
+  el.querySelector('.coh-cust-phone').textContent = c.phone||'';
+  el.querySelector('.coh-stats-wrap').innerHTML = statsHtml;
+  el.querySelector('.coh-list').innerHTML = rowsHtml;
+  openModal('m-cust-ord-hist');
+}
 
 // ===== MEMBERSHIP CARD SEND MODAL HELPERS =====
 function _setMsgPreset(type) {
