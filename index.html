@@ -2932,7 +2932,11 @@ tr:hover td{background:#F6F7F9}
 <div class="mbg" id="m-pickup"><div class="mbox" style="max-width:480px">
   <div class="mhd"><span class="mht" id="m-pickup-title">Request Jemput</span><button class="xb" onclick="cm('m-pickup')">×</button></div>
   <div class="mbd">
-    <div class="fg"><label>Nama Customer *</label><input id="mpk-name" placeholder="Nama lengkap customer"></div>
+    <div class="fg" style="position:relative">
+      <label>Nama Customer *</label>
+      <input id="mpk-name" placeholder="Ketik nama atau nomor untuk cari customer" autocomplete="off" oninput="onPickupNameInput(this.value)">
+      <div id="mpk-cust-results"></div>
+    </div>
     <div class="fg"><label>No. WhatsApp *</label><input id="mpk-phone" type="tel" placeholder="0812-xxxx-xxxx" oninput="onPickupPhoneInput(this.value)"></div>
     <div class="fg"><label>Lokasi Jemput <span style="font-weight:400;color:var(--t2)">(Google Maps link atau koordinat)</span></label>
       <input id="mpk-loc" placeholder="Paste link Google Maps atau -6.xxx, 106.xxx" oninput="onPickupLocInput(this.value)">

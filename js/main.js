@@ -332,11 +332,25 @@ function haversineKm(lat1,lng1,lat2,lng2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 // Extract lat,lng from a Google Maps URL or plain "lat, lng" string. Returns [lat,lng] or null.
+// Handles common Google Maps formats:
+//   https://maps.app.goo.gl/...  (short link — can't resolve without HTTP, skip)
+//   https://www.google.com/maps/@-6.123,106.456,15z
+//   https://www.google.com/maps/place/.../@-6.123,106.456,15z
+//   https://www.google.com/maps?q=-6.123,106.456
+//   https://www.google.com/maps/search/?api=1&query=-6.123,106.456
+//   https://maps.google.com/?ll=-6.123,106.456
+//   Plain: -6.123, 106.456
 function extractLatLng(val){
   if(!val||!val.trim())return null;
-  const mUrl=val.match(/[-@?&q=](-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-  const mCoord=!mUrl&&val.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
-  const m=mUrl||mCoord;
+  const s=val.trim();
+  // 1. @lat,lng,zoom — used in /maps/@... and /place/.../@...
+  let m=s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  // 2. query= or q= or ll= param
+  if(!m)m=s.match(/[?&](?:query|q|ll)=(-?\d+\.\d+)[,+](-?\d+\.\d+)/);
+  // 3. !3d<lat>!4d<lng> — embedded in place URLs
+  if(!m){const lat3d=s.match(/!3d(-?\d+\.\d+)/),lng4d=s.match(/!4d(-?\d+\.\d+)/);if(lat3d&&lng4d)m=[null,lat3d[1],lng4d[1]];}
+  // 4. Plain "lat, lng" or "lat,lng"
+  if(!m)m=s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
   if(!m)return null;
   const lat=parseFloat(m[1]),lng=parseFloat(m[2]);
   if(lat>=-90&&lat<=90&&lng>=-180&&lng<=180)return[lat,lng];
@@ -705,6 +719,7 @@ function _fillOutletSelect(selId){
 
 function openPickupModal(editId=null){
   _pickupEditId=editId;
+  if(g('mpk-cust-results'))g('mpk-cust-results').innerHTML='';
   const today=new Date().toISOString().split('T')[0];
   if(editId){
     const dq=deliveryQueue.find(d=>d.id===editId);
@@ -735,6 +750,37 @@ function openPickupModal(editId=null){
   _fillOutletSelect('mpk-outlet');
   if(curOutlet&&g('mpk-outlet'))g('mpk-outlet').value=curOutlet;
   openModal('m-pickup');
+}
+
+function onPickupNameInput(val){
+  const q=(val||'').toLowerCase().trim();
+  const res=g('mpk-cust-results');if(!res)return;
+  if(!q){res.innerHTML='';return;}
+  const matches=Object.values(customers).filter(c=>
+    c.name.toLowerCase().includes(q)||c.phone.includes(q)
+  ).slice(0,8);
+  if(!matches.length){res.innerHTML='';return;}
+  res.innerHTML=`<div style="position:absolute;top:100%;left:0;right:0;background:var(--ca);border:1.5px solid var(--p);border-radius:var(--rs);box-shadow:var(--sh2);z-index:200;max-height:220px;overflow-y:auto">${
+    matches.map(c=>`<div onclick="pickPickupCust('${esc(c.phone)}')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--b1)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600;font-size:13px">${esc(c.name)}</div>
+      <div style="font-size:12px;color:var(--t2)">${esc(c.phone)}${c.address?` · ${esc(c.address)}`:''}${c.lat&&c.lng?` <span style="color:var(--p);font-size:11px">Lokasi tersimpan</span>`:''}</div>
+    </div>`).join('')
+  }</div>`;
+}
+
+function pickPickupCust(phone){
+  const c=customers[phone];if(!c)return;
+  if(g('mpk-name'))g('mpk-name').value=c.name||'';
+  if(g('mpk-phone'))g('mpk-phone').value=c.phone||'';
+  if(g('mpk-cust-results'))g('mpk-cust-results').innerHTML='';
+  // Pre-fill address and location
+  if(c.address&&g('mpk-addr'))g('mpk-addr').value=c.address;
+  if(c.lat&&c.lng){
+    if(g('mpk-lat'))g('mpk-lat').value=c.lat;
+    if(g('mpk-lng'))g('mpk-lng').value=c.lng;
+    if(g('mpk-loc'))g('mpk-loc').value=`${c.lat}, ${c.lng}`;
+    _updatePickupChargeBadge(c.lat,c.lng);
+  }
 }
 
 function onPickupPhoneInput(phone){
@@ -1049,10 +1095,22 @@ function _nearestNeighbor(items, origin){
 function openRouteMap(){
   if(!_routeItems.length){toast('Buat rute dulu');return;}
   const outlet=outlets.find(o=>o.lat&&o.lng);
-  let url='https://www.google.com/maps/dir/';
-  if(outlet)url+=`${outlet.lat},${outlet.lng}/`;
-  _routeItems.forEach(d=>{url+=`${d.lat},${d.lng}/`;});
-  if(outlet)url+=`${outlet.lat},${outlet.lng}/`;
+  // Build Google Maps Directions URL with waypoints API format
+  // Origin & destination = outlet (round trip). Waypoints = stops in order.
+  const stops=_routeItems.filter(d=>d.lat&&d.lng);
+  if(!stops.length){toast('Tidak ada koordinat pada titik rute ini');return;}
+  let url='https://www.google.com/maps/dir/?api=1';
+  if(outlet){
+    url+=`&origin=${outlet.lat},${outlet.lng}`;
+    url+=`&destination=${outlet.lat},${outlet.lng}`;
+    if(stops.length)url+=`&waypoints=${stops.map(d=>`${d.lat},${d.lng}`).join('|')}`;
+  } else {
+    // No outlet — first stop is origin, last is destination
+    url+=`&origin=${stops[0].lat},${stops[0].lng}`;
+    url+=`&destination=${stops[stops.length-1].lat},${stops[stops.length-1].lng}`;
+    if(stops.length>2)url+=`&waypoints=${stops.slice(1,-1).map(d=>`${d.lat},${d.lng}`).join('|')}`;
+  }
+  url+='&travelmode=driving';
   window.open(url,'_blank','noopener,noreferrer');
 }
 
@@ -1062,7 +1120,7 @@ function sendRouteToCourier(){
   let msg=`🗺️ *Rute Pengantaran/Penjemputan*\n\n`;
   _routeItems.forEach((d,i)=>{
     msg+=`${i+1}. ${d.name} — ${d.type==='pickup'?'JEMPUT':'ANTAR'}\n   ${d.address||`${d.lat},${d.lng}`}\n`;
-    if(d.lat&&d.lng)msg+=`   https://maps.google.com/?q=${d.lat},${d.lng}\n`;
+    if(d.lat&&d.lng)msg+=`   https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lng}\n`;
     msg+='\n';
   });
   if(outlet)msg+=`📍 Kembali ke outlet: ${outlet.name}\n   ${outlet.addr||''}`;
@@ -2660,22 +2718,16 @@ function adjMachine(type,delta){
 function parseOutletLoc(val){
   const badge=g('mo-loc-badge');
   if(!val||!val.trim()){if(badge)badge.textContent='';if(g('mo-lat'))g('mo-lat').value='';if(g('mo-lng'))g('mo-lng').value='';return;}
-  // Extract from Google Maps URL formats: @lat,lng or q=lat,lng or /place/.../@lat,lng
-  const mUrl=val.match(/[@?q=](-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-  // Also match plain "lat, lng" or "lat,lng"
-  const mCoord=!mUrl&&val.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
-  const m=mUrl||mCoord;
-  if(m){
-    const lat=parseFloat(m[1]),lng=parseFloat(m[2]);
-    if(lat>=-90&&lat<=90&&lng>=-180&&lng<=180){
-      if(g('mo-lat'))g('mo-lat').value=lat;
-      if(g('mo-lng'))g('mo-lng').value=lng;
-      if(badge)badge.textContent=`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      return;
-    }
+  const coords=extractLatLng(val);
+  if(coords){
+    const[lat,lng]=coords;
+    if(g('mo-lat'))g('mo-lat').value=lat;
+    if(g('mo-lng'))g('mo-lng').value=lng;
+    if(badge)badge.textContent=`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } else {
+    if(badge)badge.textContent='Format tidak dikenali. Gunakan link Google Maps atau koordinat.';
+    if(g('mo-lat'))g('mo-lat').value='';if(g('mo-lng'))g('mo-lng').value='';
   }
-  if(badge)badge.textContent='Format tidak dikenali. Gunakan link Google Maps atau koordinat.';
-  if(g('mo-lat'))g('mo-lat').value='';if(g('mo-lng'))g('mo-lng').value='';
 }
 function delOutlet(id){confirm_('Hapus Outlet?','Outlet ini akan dihapus permanen.',()=>{outlets=outlets.filter(x=>x.id!==id);renderOutlets();buildEmpChips();toast('Outlet dihapus');});}
 

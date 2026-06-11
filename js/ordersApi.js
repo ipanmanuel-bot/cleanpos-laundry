@@ -124,7 +124,12 @@ function syncPrinter(p) {
 function deletePrinter_sb(id) { sbDelete('printers', id); }
 
 // --- Sync: Delivery Queue ---
+const _LS_DQ_KEY = 'cleanpos_delivery_queue';
+function _saveDqLocal() {
+  try { localStorage.setItem(_LS_DQ_KEY, JSON.stringify(deliveryQueue)); } catch(e) {}
+}
 function syncDeliveryQueue(dq) {
+  _saveDqLocal();
   sbUpsert('delivery_queue', {
     user_id: currentUserId,
     id: dq.id, type: dq.type,
@@ -140,7 +145,10 @@ function syncDeliveryQueue(dq) {
     created_at: dq.createdAt || new Date().toISOString()
   });
 }
-function deleteDeliveryQueue(id) { sbDelete('delivery_queue', id); }
+function deleteDeliveryQueue(id) {
+  _saveDqLocal();
+  sbDelete('delivery_queue', id);
+}
 
 // --- Sync: Settings (one row per user, id='main') ---
 // NOTE: owner_pwd is stored as a SHA-256 hash (prefixed 'sha256:'), never plain text
@@ -298,6 +306,10 @@ async function supaLoadAll() {
     priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
     if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
     try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+    // Pickup/delivery settings
+    try { if (s.pickup_slots) pickupSlots = JSON.parse(s.pickup_slots); } catch(e) {}
+    if (s.pickup_radius_km   != null) pickupRadiusKm   = parseFloat(s.pickup_radius_km)   || 3.0;
+    if (s.pickup_extra_charge != null) pickupExtraCharge = parseFloat(s.pickup_extra_charge) || 5000;
   }
   // If Supabase settings are missing key pricing fields (e.g. migration not run yet), fall back to localStorage
   if (!settingsData?.length || !settingsData[0]?.service_types) {
@@ -350,6 +362,12 @@ async function supaLoadAll() {
     deliveryQueueCtr = deliveryQueue.reduce((mx, d) => {
       const n = parseInt((d.id || '').replace(/\D/g, '')); return isNaN(n) ? mx : Math.max(mx, n);
     }, 0) + 1;
+  } else {
+    // Supabase table missing (migration not run yet) — restore from localStorage
+    try {
+      const _ls = localStorage.getItem(_LS_DQ_KEY);
+      if (_ls) { deliveryQueue = JSON.parse(_ls); console.log('[dq] Restored from localStorage fallback'); }
+    } catch(e) {}
   }
   checkExpiredBalances();
   if (typeof renderPlanBadge === 'function') renderPlanBadge();
