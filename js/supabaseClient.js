@@ -107,7 +107,7 @@ function _refreshSyncUI() {
 // --- Base CRUD helpers ---
 // All tables use composite unique key (user_id, id) — see SQL migration
 // Tables where schema errors must be shown (data loss otherwise)
-const _CRITICAL_TABLES = new Set(['orders', 'customers', 'employees', 'kas_log', 'expenses', 'member_txns', 'outlets', 'settings']);
+const _CRITICAL_TABLES = new Set(['orders', 'customers', 'employees', 'kas_log', 'expenses', 'member_txns', 'outlets', 'settings', 'delivery_queue']);
 
 async function sbUpsert(table, data, onConflict = 'user_id,id') {
   if (!supaEnabled || !supabase) return;

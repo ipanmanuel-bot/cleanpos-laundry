@@ -135,7 +135,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .bpill{border-radius:var(--rp)}
 .bfull{width:100%;justify-content:center;padding:16px;font-size:15px;font-weight:700}
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
-.badge-new-cust{display:inline-flex;align-items:center;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;background:var(--p);color:#fff;margin-left:5px;vertical-align:middle;letter-spacing:.3px;line-height:1.5}
 .gp{background:var(--pl);color:#3d6b10}.gg{background:#E8F5E9;color:#2e7d32}
 .gr_{background:var(--reb);color:var(--re)}.gy{background:#F0F0EC;color:#666}
 .gam{background:var(--amb);color:var(--am)}.gbl{background:var(--blb);color:var(--bl)}
@@ -433,39 +432,7 @@ tr:hover td{background:#F6F7F9}
 @media(max-width:768px){.ord-cards{display:block}.ord-tbl-wrap{display:none}}
 /* ===== CUSTOMER PAGE REDESIGN ===== */
 .cust-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
-.cust-sum-card{background:var(--ca);border:1px solid var(--b1);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-.cust-sum-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.cust-sum-icon.green{background:#e8f5e9;color:#2e7d32}
-.cust-sum-icon.orange{background:#fff3e0;color:#e65100}
-.cust-sum-body{flex:1;min-width:0}
-.cust-sum-title{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:3px;white-space:nowrap}
-.cust-sum-val{font-size:26px;font-weight:800;line-height:1.1;margin-bottom:3px}
-.cust-sum-val.green{color:#2e7d32}
-.cust-sum-val.orange{color:#e65100}
-.cust-sum-sub{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px}
-.cust-sum-clickable{cursor:pointer;transition:box-shadow .15s,border-color .15s,background .15s}
-.cust-sum-clickable:hover{box-shadow:0 3px 12px rgba(0,0,0,.1)}
-.cust-sum-active-green{border-color:#2e7d32!important;box-shadow:0 0 0 2.5px #c8e6c9!important;background:#f1f8f1!important}
-.cust-sum-active-orange{border-color:#e65100!important;box-shadow:0 0 0 2.5px #ffe0b2!important;background:#fff8f0!important}
-/* Customer order history modal */
-.coh-header{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--b1)}
-.coh-avatar{width:46px;height:46px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0}
-.coh-cust-info{flex:1;min-width:0}
-.coh-cust-name{font-weight:700;font-size:15px;color:var(--t1)}
-.coh-cust-phone{font-size:12px;color:var(--t2);margin-top:1px}
-.coh-stats{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--b1)}
-.coh-stat{flex:1;background:var(--bg);border-radius:10px;padding:10px 8px;text-align:center}
-.coh-stat-val{font-weight:700;font-size:14px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.coh-stat-lbl{font-size:10px;color:var(--t2);margin-top:2px}
-.coh-list{padding:8px 12px 4px;max-height:340px;overflow-y:auto}
-.coh-row{border:1px solid var(--b1);border-radius:12px;padding:11px 12px;margin-bottom:8px;background:var(--ca)}
-.coh-row-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
-.coh-id{font-family:monospace;font-size:11px;color:var(--t2)}
-.coh-total{font-weight:700;font-size:14px;color:var(--t1)}
-.coh-row-mid{font-size:12px;color:var(--t2);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.coh-row-bot{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.coh-date{font-size:11px;color:var(--t2);margin-left:2px}
-.coh-handler{font-size:11px;color:var(--t2);margin-left:auto}
+.cust-sum-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:14px 16px}
 .cust-filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1.5px solid var(--b1)}
 .cfb{padding:5px 12px;font-size:12px;border-radius:20px;border:1.5px solid var(--b1);background:var(--ca);color:var(--t2);cursor:pointer;font-weight:500;transition:all .15s;line-height:1.4;font-family:inherit}
 .cfb.on{background:var(--p);border-color:var(--p);color:#fff}
@@ -482,7 +449,7 @@ tr:hover td{background:#F6F7F9}
 .cust-card{background:var(--ca);border:1.5px solid var(--b1);border-radius:14px;padding:12px 14px;margin-bottom:8px}
 .cust-card-top{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .cust-card-meta{font-size:12px;color:var(--t2);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
-@media(max-width:768px){.cust-tbl-wrap{display:none}.cust-cards-wrap{display:block}.cust-summary{grid-template-columns:1fr;gap:8px}.cust-sum-card{padding:12px 14px}.cust-sum-val{font-size:22px}}
+@media(max-width:768px){.cust-tbl-wrap{display:none}.cust-cards-wrap{display:block}.cust-summary{gap:8px}}
 /* Send card modal */
 .sc-split{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 @media(max-width:580px){.sc-split{grid-template-columns:1fr}}
@@ -537,23 +504,6 @@ tr:hover td{background:#F6F7F9}
 .prc-tbl tbody tr:hover td{background:var(--bg)}
 .prc-badge-on{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32}
 .prc-badge-off{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--t2)}
-/* ── Satuan mobile card list ──────────────────── */
-.sat-m-list{display:flex;flex-direction:column;gap:10px}
-.sat-m-card{background:var(--ca);border:1px solid var(--b1);border-radius:16px;padding:14px;box-shadow:0 1px 6px rgba(0,0,0,.05);display:flex;align-items:flex-start;gap:12px}
-.sat-m-icon{width:44px;height:44px;border-radius:12px;background:#e8f5e9;color:#2e7d32;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sat-m-body{flex:1;min-width:0}
-.sat-m-row1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:3px}
-.sat-m-name{font-weight:700;font-size:15px;line-height:1.3;color:var(--t1);flex:1;min-width:0;word-break:break-word}
-.sat-m-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
-.sat-m-badge.on{background:#e8f5e9;color:#2e7d32}
-.sat-m-badge.off{background:#f5f5f5;color:#9e9e9e}
-.sat-m-meta{font-size:12px;color:var(--t2);margin-bottom:3px}
-.sat-m-price{font-size:13px;color:var(--t1);margin-bottom:10px}
-.sat-m-price strong{font-weight:700}
-.sat-m-actions{display:flex;gap:8px}
-.sat-m-btn{height:36px;padding:0 14px;border-radius:8px;border:1.5px solid var(--b1);background:var(--ca);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;color:var(--t1);transition:background .15s,opacity .15s;font-family:inherit}
-.sat-m-btn:active{opacity:.7}
-.sat-m-btn.del{border-color:#ffcdd2;color:#e53935;background:#fff8f8}
 .prc-banner{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:14px}
 .prc-banner.warn{background:#fffde7;border:1px solid #f9a825;color:#795504}
 .prc-banner.info{background:#e3f2fd;border:1px solid #90caf9;color:#1565c0}
@@ -1152,6 +1102,7 @@ tr:hover td{background:#F6F7F9}
     <button class="ni on" onclick="oGo('dashboard',this)"><span class="nic"><i data-lucide="home"></i></span>Dashboard</button>
     <button class="ni" onclick="oGo('orders',this)"><span class="nic"><i data-lucide="clipboard-list"></i></span>Pesanan</button>
     <button class="ni" onclick="oGo('tracking',this)"><span class="nic"><i data-lucide="refresh-cw"></i></span>Tracking</button>
+    <button class="ni" onclick="oGo('delivery',this)"><span class="nic"><i data-lucide="truck"></i></span>Jemput &amp; Antar</button>
     <button class="ni" onclick="oGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
     <button class="ni" onclick="oGo('notifications',this)"><span class="nic" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="o-notif-badge"></span></span>Notifikasi</button>
     <div class="sb-sec">Keuangan</div>
@@ -1273,7 +1224,6 @@ tr:hover td{background:#F6F7F9}
           <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan" oninput="calcO()"></div>
           <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="calcO()"></div>
         </div>
-        <div class="fg" style="margin-bottom:12px"><label>Alamat</label><input id="no-addr" placeholder="Alamat pelanggan (opsional)"></div>
         <div class="fg"><label>Catatan</label><input id="no-note" placeholder="Catatan pesanan (opsional)" oninput="calcO()"></div>
       </div>
 
@@ -1299,6 +1249,7 @@ tr:hover td{background:#F6F7F9}
           <div class="no-step-title" id="no-detail-step-title">Detail Layanan</div>
         </div>
 
+        <!-- Pickup request toggle -->
         <!-- Kiloan section -->
         <div id="no-kg-sect">
           <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
@@ -1774,7 +1725,7 @@ tr:hover td{background:#F6F7F9}
       <button class="btn bbl bsm" onclick="exportCustomers()">Export</button>
     </div>
   </div>
-  <div id="cust-summary" class="cust-summary"></div>
+  <div id="cust-summary" class="cust-summary" style="display:none"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="cust-filter-bar">
       <input id="cust-srch" class="ord-search" placeholder="Cari nama / telepon pelanggan..." oninput="_custPage=1;renderCusts()" style="flex:1;min-width:160px">
@@ -1879,6 +1830,9 @@ tr:hover td{background:#F6F7F9}
     </div>
     <div class="set-tab" id="set-tab-mbr" onclick="switchSettingsTab('mbr',this)">
       <i data-lucide="credit-card"></i>Membership
+    </div>
+    <div class="set-tab" id="set-tab-pickup" onclick="switchSettingsTab('pickup',this)">
+      <i data-lucide="truck"></i>Antar Jemput
     </div>
   </div>
 
@@ -2140,6 +2094,46 @@ tr:hover td{background:#F6F7F9}
       <button class="btn bp bsm" onclick="oGo('card-design',null)" style="white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px"><i data-lucide="edit-2" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:2px"></i>Buka Editor</button>
     </div>
   </div>
+
+  <!-- TAB: ANTAR JEMPUT -->
+  <div class="set-tc" id="set-tc-pickup">
+    <div style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:2px">Antar Jemput</div>
+      <div style="font-size:12px;color:var(--t2)">Konfigurasi radius layanan, biaya tambahan, dan slot jadwal penjemputan.</div>
+    </div>
+    <div class="set-g2">
+      <!-- Radius & Biaya -->
+      <div class="card">
+        <div class="set-card-hd">
+          <div class="set-card-icon"><i data-lucide="map-pin"></i></div>
+          <div class="ct" style="margin-bottom:0">Radius & Biaya</div>
+        </div>
+        <div class="fg">
+          <label>Radius Maksimal (km)</label>
+          <input type="number" id="s-pickup-radius" placeholder="3" min="0.5" max="50" step="0.5">
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Jarak maksimal dari outlet. Toleransi otomatis +300 meter.</div>
+        </div>
+        <div class="fg">
+          <label>Biaya Tambahan di Luar Radius (Rp)</label>
+          <input type="number" id="s-pickup-charge" placeholder="5000" min="0" step="500">
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Dikenakan sekali per siklus jemput+antar jika melebihi radius.</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp bsm bpill" onclick="savePickupSettings()">Simpan</button></div>
+      </div>
+      <!-- Slot Jadwal -->
+      <div class="card">
+        <div class="set-card-hd">
+          <div class="set-card-icon"><i data-lucide="clock"></i></div>
+          <div class="ct" style="margin-bottom:0">Slot Jadwal Penjemputan</div>
+        </div>
+        <div id="pickup-slots-list" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin-bottom:0"><label>Nama Slot</label><input id="s-slot-name" placeholder="Pagi (08.00 – 10.00)"></div>
+          <button class="btn bp bsm bpill" style="flex-shrink:0;margin-bottom:0" onclick="addPickupSlot()">+ Tambah</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- NOTIFICATIONS PAGE -->
@@ -2158,6 +2152,41 @@ tr:hover td{background:#F6F7F9}
     <div id="notif-list"></div>
   </div>
 </div>
+<!-- JEMPUT & ANTAR PAGE -->
+<div class="page" id="o-p-delivery">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    <div>
+      <div class="pt" style="margin-bottom:2px">Jemput &amp; Antar</div>
+      <div style="font-size:12px;color:var(--t2)">Kelola antrian penjemputan dan pengantaran pesanan.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bp bsm bpill" onclick="openPickupModal(null)"><i data-lucide="plus" style="width:13px;height:13px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:4px"></i>Request Jemput</button>
+      <button class="btn bg bsm bpill" onclick="renderDeliveryPage()" title="Refresh"><i data-lucide="refresh-cw" style="width:13px;height:13px;stroke-width:2.5;display:inline;vertical-align:-2px"></i></button>
+    </div>
+  </div>
+  <!-- Filter chips -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="dq-filter-chips">
+    <button class="btn bsm bpill bp" onclick="setDqFilter('all',this)">Semua</button>
+    <button class="btn bsm bpill" onclick="setDqFilter('pickup',this)">Jemput</button>
+    <button class="btn bsm bpill" onclick="setDqFilter('delivery',this)">Antar</button>
+    <button class="btn bsm bpill" onclick="setDqFilter('pending',this)">Menunggu</button>
+    <button class="btn bsm bpill" onclick="setDqFilter('done',this)">Selesai</button>
+  </div>
+  <!-- Slot groups -->
+  <div id="dq-list"></div>
+  <!-- Route panel -->
+  <div id="dq-route-panel" style="display:none;margin-top:20px" class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:14px;font-weight:700;color:var(--t1)">Rute Perjalanan</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bp bsm bpill" id="dq-route-maps-btn" onclick="openRouteMap()"><i data-lucide="map-pin" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Buka di Maps</button>
+        <button class="btn bg bsm bpill" id="dq-route-wa-btn" onclick="sendRouteToCourier()"><i data-lucide="message-circle" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Kirim WA Kurir</button>
+      </div>
+    </div>
+    <div id="dq-route-list"></div>
+  </div>
+</div>
+
 <!-- CARD DESIGN PAGE -->
 <div class="page" id="o-p-card-design">
   <div class="mcd-header">
@@ -2361,7 +2390,6 @@ tr:hover td{background:#F6F7F9}
             <div class="fg"><label>Nama *</label><input id="sno-name" placeholder="Nama pelanggan" oninput="calcS()"></div>
             <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xxxxxxxxxx" oninput="updWalletOption('sno');calcS()"></div>
           </div>
-          <div class="fg" style="margin-bottom:12px"><label>Alamat</label><input id="sno-addr" placeholder="Alamat pelanggan (opsional)"></div>
           <div class="fg"><label>Catatan</label><input id="sno-note" placeholder="Catatan pesanan (opsional)"></div>
         </div>
 
@@ -2623,6 +2651,7 @@ tr:hover td{background:#F6F7F9}
 <div class="mbg" id="m-outlet"><div class="mbox" style="max-width:480px"><div class="mhd"><span class="mht" id="mo-title">Tambah Outlet</span><button class="xb" onclick="cm('m-outlet')">×</button></div><div class="mbd">
   <div class="fg"><label>Nama Outlet *</label><input id="mo-n" placeholder="Contoh: Cabang Kemang"></div>
   <div class="fg"><label>Alamat</label><input id="mo-a" placeholder="Jl. Contoh No.12, Kota"></div>
+  <div class="fg"><label>Lokasi Outlet <span style="font-weight:400;color:var(--t2)">(opsional — untuk hitung jarak antar jemput)</span></label><input id="mo-loc" placeholder="Paste link Google Maps atau koordinat, contoh: -6.2, 106.8" oninput="parseOutletLoc(this.value)"><div id="mo-loc-badge" style="font-size:11px;color:var(--t2);margin-top:4px"></div><input type="hidden" id="mo-lat"><input type="hidden" id="mo-lng"></div>
   <div class="fg"><label>Jam Operasional</label><input id="mo-h" placeholder="08.00 – 22.00"></div>
   <div style="margin-bottom:16px">
     <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Kapasitas Mesin</div>
@@ -2899,6 +2928,52 @@ tr:hover td{background:#F6F7F9}
     <div class="mft"><button class="btn" onclick="cm('m-pin-reset')">Batal</button><button class="btn bp" onclick="savePinReset()">Simpan PIN</button></div>
   </div>
 </div>
+<!-- MODAL: REQUEST JEMPUT -->
+<div class="mbg" id="m-pickup"><div class="mbox" style="max-width:480px">
+  <div class="mhd"><span class="mht" id="m-pickup-title">Request Jemput</span><button class="xb" onclick="cm('m-pickup')">×</button></div>
+  <div class="mbd">
+    <div class="fg"><label>Nama Customer *</label><input id="mpk-name" placeholder="Nama lengkap customer"></div>
+    <div class="fg"><label>No. WhatsApp *</label><input id="mpk-phone" type="tel" placeholder="0812-xxxx-xxxx" oninput="onPickupPhoneInput(this.value)"></div>
+    <div class="fg"><label>Lokasi Jemput <span style="font-weight:400;color:var(--t2)">(Google Maps link atau koordinat)</span></label>
+      <input id="mpk-loc" placeholder="Paste link Google Maps atau -6.xxx, 106.xxx" oninput="onPickupLocInput(this.value)">
+      <div id="mpk-loc-badge" style="font-size:11px;margin-top:4px"></div>
+      <input type="hidden" id="mpk-lat"><input type="hidden" id="mpk-lng">
+    </div>
+    <div class="fg"><label>Alamat (teks)</label><input id="mpk-addr" placeholder="Opsional — deskripsi alamat"></div>
+    <div class="fg" id="mpk-slot-wrap"><label>Slot Jadwal</label>
+      <select id="mpk-slot"><option value="">-- Pilih Slot --</option></select>
+    </div>
+    <div class="fg"><label>Tanggal Jemput *</label><input type="date" id="mpk-date"></div>
+    <div class="fg" id="mpk-outlet-wrap" style="display:none"><label>Outlet</label>
+      <select id="mpk-outlet"></select>
+    </div>
+    <div class="fg"><label>Catatan</label><input id="mpk-notes" placeholder="Opsional"></div>
+    <div id="mpk-charge-info" style="font-size:12px;color:var(--t2);margin-top:-6px;margin-bottom:8px"></div>
+  </div>
+  <div class="mft"><button class="btn" onclick="cm('m-pickup')">Batal</button><button class="btn bp" onclick="savePickupRequest()">Simpan Request</button></div>
+</div></div>
+
+<!-- MODAL: REQUEST ANTAR -->
+<div class="mbg" id="m-delivery"><div class="mbox" style="max-width:480px">
+  <div class="mhd"><span class="mht">Request Antar</span><button class="xb" onclick="cm('m-delivery')">×</button></div>
+  <div class="mbd">
+    <div id="mdl-order-info" style="background:var(--bg);border:1.5px solid var(--b1);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px;font-size:13px"></div>
+    <div class="fg"><label>Lokasi Antar <span style="font-weight:400;color:var(--t2)">(Google Maps link atau koordinat)</span></label>
+      <input id="mdl-loc" placeholder="Paste link Google Maps atau -6.xxx, 106.xxx" oninput="onDeliveryLocInput(this.value)">
+      <div id="mdl-loc-badge" style="font-size:11px;margin-top:4px"></div>
+      <input type="hidden" id="mdl-lat"><input type="hidden" id="mdl-lng">
+    </div>
+    <div class="fg"><label>Alamat (teks)</label><input id="mdl-addr" placeholder="Opsional — deskripsi alamat"></div>
+    <div class="fg" id="mdl-slot-wrap"><label>Slot Jadwal</label>
+      <select id="mdl-slot"><option value="">-- Pilih Slot --</option></select>
+    </div>
+    <div class="fg"><label>Tanggal Antar *</label><input type="date" id="mdl-date"></div>
+    <div class="fg"><label>Catatan</label><input id="mdl-notes" placeholder="Opsional"></div>
+    <div id="mdl-charge-info" style="font-size:12px;color:var(--t2);margin-top:-6px;margin-bottom:8px"></div>
+  </div>
+  <div class="mft"><button class="btn" onclick="cm('m-delivery')">Batal</button><button class="btn bp" onclick="saveDeliveryRequest()">Simpan Request</button></div>
+</div></div>
+
 <div class="mbg" id="m-confirm"><div class="mbox" style="max-width:340px"><div class="mhd"><span class="mht" id="mc-title">Konfirmasi</span><button class="xb" onclick="cm('m-confirm')">×</button></div><div class="mbd"><p id="mc-msg" style="font-size:14px;line-height:1.6;color:var(--t2)"></p></div><div class="mft"><button class="btn" onclick="cm('m-confirm')">Batal</button><button class="btn bre" id="mc-ok">Ya, Lanjutkan</button></div></div></div>
 
 <!-- UPGRADE PLAN MODAL -->
@@ -2958,8 +3033,7 @@ tr:hover td{background:#F6F7F9}
     <div class="mhd"><span class="mht">Edit Pelanggan</span><button class="xb" onclick="cm('m-edit-cust')">×</button></div>
     <div class="mbd">
       <div class="fg"><label>Nama Pelanggan</label><input id="ec-name" placeholder="Nama lengkap"></div>
-      <div class="fg"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
-      <div class="fg" style="margin-bottom:0"><label>Alamat <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-addr" placeholder="Alamat pelanggan"></div>
+      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-edit-cust')">Batal</button><button class="btn bp" onclick="saveEditCust()">Simpan</button></div>
   </div>
@@ -3045,24 +3119,6 @@ tr:hover td{background:#F6F7F9}
       <div id="mt-list"></div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-member-txn')">Tutup</button></div>
-  </div>
-</div>
-<!-- CUSTOMER: Order History Modal -->
-<div class="mbg" id="m-cust-ord-hist">
-  <div class="mbox" style="max-width:480px">
-    <div class="mhd"><span class="mht">Riwayat Pesanan</span><button class="xb" onclick="cm('m-cust-ord-hist')">×</button></div>
-    <div class="mbd" style="padding:0">
-      <div class="coh-header">
-        <div class="coh-avatar"></div>
-        <div class="coh-cust-info">
-          <div class="coh-cust-name"></div>
-          <div class="coh-cust-phone"></div>
-        </div>
-      </div>
-      <div class="coh-stats-wrap"></div>
-      <div class="coh-list"></div>
-    </div>
-    <div class="mft"><button class="btn" onclick="cm('m-cust-ord-hist')">Tutup</button></div>
   </div>
 </div>
 <!-- MEMBER CARD: Send Modal -->
