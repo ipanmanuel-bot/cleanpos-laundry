@@ -2178,12 +2178,22 @@ tr:hover td{background:#F6F7F9}
   <div id="dq-route-panel" style="display:none;margin-top:20px" class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div style="font-size:14px;font-weight:700;color:var(--t1)">Rute Perjalanan</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn bp bsm bpill" id="dq-route-maps-btn" onclick="openRouteMap()"><i data-lucide="map-pin" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Buka di Maps</button>
-        <button class="btn bg bsm bpill" id="dq-route-wa-btn" onclick="sendRouteToCourier()"><i data-lucide="message-circle" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Kirim WA Kurir</button>
-      </div>
+      <button class="btn bp bsm bpill" onclick="openRouteMap()"><i data-lucide="map-pin" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Buka di Maps</button>
     </div>
     <div id="dq-route-list"></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--b1)">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Kirim ke Kurir via WA</div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div class="fg" style="flex:1;margin-bottom:0">
+          <label style="font-size:12px">Pilih Kurir</label>
+          <select id="dq-kurir-sel"></select>
+          <div id="dq-kurir-phone-wrap" style="display:none;margin-top:6px">
+            <input id="dq-courier-phone" type="tel" placeholder="Nomor WA kurir (tidak ada kurir terdaftar)" style="font-size:12px">
+          </div>
+        </div>
+        <button class="btn bg bsm bpill" style="flex-shrink:0" onclick="sendRouteToCourier()"><i data-lucide="message-circle" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Kirim WA</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2641,7 +2651,21 @@ tr:hover td{background:#F6F7F9}
       <div class="fg" style="margin-bottom:0"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:7px">Role</label><select id="me-r"><option>Kasir</option><option>Staff</option><option>Admin</option></select></div>
       <div class="fg" id="me-pin-wrap" style="margin-bottom:0"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:7px">PIN (4 digit) <span style="color:#e53935">*</span></label><input type="password" id="me-p" maxlength="4" placeholder="••••" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"></div>
     </div>
-    <div class="fg" style="margin-top:12px;margin-bottom:0"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:7px">Outlet</label><select id="me-o"></select></div>
+    <div class="fg" style="margin-top:12px;margin-bottom:0"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:7px">Outlet Utama</label><select id="me-o"></select></div>
+    <!-- Kurir toggle -->
+    <div style="margin-top:14px;padding:12px;border:1.5px solid var(--b1);border-radius:var(--rs);background:var(--bg)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0" id="me-kurir-header">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">Kurir Antar Jemput</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px">Karyawan ini bisa ditugaskan sebagai kurir</div>
+        </div>
+        <button type="button" id="me-kurir-toggle" class="toggle off" onclick="toggleEmpKurir()"></button>
+      </div>
+      <div id="me-kurir-outlets" style="display:none;margin-top:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Outlet yang dilayani</div>
+        <div id="me-kurir-outlet-checks"></div>
+      </div>
+    </div>
   </div>
   <div class="mft">
     <button class="btn" onclick="cm('m-emp')">Batal</button>

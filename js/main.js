@@ -74,6 +74,7 @@ let pickupSlots = []; // [{ id, label, timeStart, timeEnd, active }]
 let pickupRadiusKm = 3.0;
 let pickupExtraCharge = 5000;
 let deliveryQueue = []; let deliveryQueueCtr = 1;
+let courierPhone = localStorage.getItem('cleanpos_courier_phone') || '';
 let curWaTplTab = 'selesai';
 let kasLog = []; let kasCtr = 1; let kasType = 'setor';
 let kasTypeFilter = 'all'; let kasDateFilter = 'today'; let _kasPage = 1;
@@ -1009,24 +1010,29 @@ function _dqRow(d){
   const typeCol=isPickup?'#1565c0':'#6a1b9a';
   const statusColor={Menunggu:'var(--am)',Dijemput:'var(--p)',Diantar:'var(--p)',Selesai:'var(--g)'};
   const col=statusColor[d.status]||'var(--t2)';
-  const orderLink=d.orderId?`<span style="font-size:11px;color:var(--t2);margin-left:6px">${esc(d.orderId)}</span>`:'';
   const distBadge=d.distanceKm!=null?radiusBadge(d.distanceKm):'';
-  const area=d.area?`<span style="font-size:11px;color:var(--t2);background:var(--bg);padding:1px 7px;border-radius:20px;border:1px solid var(--b1)">${esc(d.area)}</span>`:'';
-  return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:10px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);margin-bottom:6px;gap:10px;background:var(--bg)">
+  const done=d.status==='Selesai';
+  const progressLabel=isPickup?'Dijemput':'Diantar';
+  const progressStatus=isPickup?'Dijemput':'Diantar';
+  const btnProgress=done?'':`<button class="btn bsm bp bpill" onclick="updateDqStatus('${esc(d.id)}','${progressStatus}')" style="font-size:11px;padding:4px 8px">${progressLabel}</button>`;
+  const btnSelesai=done?'':`<button class="btn bsm bpill" onclick="updateDqStatus('${esc(d.id)}','Selesai')" style="font-size:11px;padding:4px 8px;color:#2e7d32;border-color:#a5d6a7">Selesai</button>`;
+  const btnEdit=`<button class="btn bsm bg bpill" onclick="openPickupModal('${esc(d.id)}')" style="font-size:11px;padding:4px 8px">Edit</button>`;
+  const btnHapus=`<button class="btn bsm bre bpill" onclick="deleteDqEntry('${esc(d.id)}')" style="font-size:11px;padding:4px 8px">Hapus</button>`;
+  const grid=done
+    ?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${btnEdit}${btnHapus}</div>`
+    :`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${btnProgress}${btnSelesai}${btnEdit}${btnHapus}</div>`;
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);margin-bottom:6px;gap:10px;background:var(--bg);min-height:72px">
     <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
-        <span style="font-size:12px;font-weight:700;background:${typeBg};color:${typeCol};padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px">${typeIcon}${typeText}</span>
-        <span style="font-size:12px;font-weight:700;color:var(--t1)">${esc(d.name)}</span>${orderLink}${area}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;background:${typeBg};color:${typeCol};padding:1px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px;flex-shrink:0">${typeIcon}${typeText}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${esc(d.name)}</span>
+        <span style="font-size:11px;font-weight:600;color:${col};flex-shrink:0">${esc(d.status)}</span>
+        ${d.hasCharge?`<span style="font-size:11px;color:var(--re,#c62828);flex-shrink:0">+${fmt(pickupExtraCharge)}</span>`:''}
       </div>
-      <div style="font-size:12px;color:var(--t2);margin-bottom:4px">${esc(d.address||'Alamat belum diisi')}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${distBadge}<span style="font-size:11px;font-weight:700;color:${col}">${esc(d.status)}</span>${d.hasCharge?`<span style="font-size:11px;color:var(--re,#c62828)">+${fmt(pickupExtraCharge)}</span>`:''}</div>
+      <div style="font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">${esc(d.address||'Alamat belum diisi')}</div>
+      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">${distBadge}${d.orderId?`<span style="font-size:10px;color:var(--t2)">${esc(d.orderId)}</span>`:''}</div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-      ${d.status!=='Selesai'?`<button class="btn bsm bp bpill" onclick="updateDqStatus('${esc(d.id)}','${isPickup?'Dijemput':'Diantar'}')" style="font-size:11px">${isPickup?'Dijemput':'Diantar'}</button>
-      <button class="btn bsm bpill" style="font-size:11px;color:#2e7d32;border-color:#c8e6c9" onclick="updateDqStatus('${esc(d.id)}','Selesai')">Selesai</button>`:''}
-      <button class="btn bsm bpill" style="font-size:11px" onclick="openPickupModal('${esc(d.id)}')">Edit</button>
-      <button class="btn bsm bpill bre" style="font-size:11px" onclick="deleteDqEntry('${esc(d.id)}')">Hapus</button>
-    </div>
+    <div style="flex-shrink:0;width:138px">${grid}</div>
   </div>`;
 }
 
@@ -1072,6 +1078,24 @@ function buildRoute(dateKey){
     </div>`;
   }).join('');
   rl.innerHTML=rows||(outlet?`<div style="padding:8px 0 0;font-size:12px;color:var(--t2)">Dimulai dari ${esc(outlet.name)}</div>`:'')+rows;
+  // Populate kurir dropdown — filter by outlets involved in this route
+  const routeOutletIds=new Set(_routeItems.map(d=>d.outletId).filter(Boolean));
+  const kurirList=employees.filter(e=>e.isKurir&&e.phone&&(
+    !e.kurirOutlets?.length || e.kurirOutlets.some(oid=>routeOutletIds.has(oid))
+  ));
+  const sel=g('dq-kurir-sel');
+  const manualWrap=g('dq-kurir-phone-wrap');
+  if(sel){
+    if(kurirList.length){
+      sel.style.display='';
+      sel.innerHTML=kurirList.map(e=>`<option value="${esc(e.phone)}">${esc(e.name)} — ${esc(e.phone)}</option>`).join('');
+      if(manualWrap)manualWrap.style.display='none';
+    } else {
+      sel.style.display='none';
+      if(manualWrap)manualWrap.style.display='';
+      if(g('dq-courier-phone'))g('dq-courier-phone').value=courierPhone;
+    }
+  }
   lucide.createIcons({nodes:[g('dq-route-panel')]});
 }
 
@@ -1114,17 +1138,29 @@ function openRouteMap(){
   window.open(url,'_blank','noopener,noreferrer');
 }
 
+function saveCourierPhone(val){
+  courierPhone=val.trim();
+  localStorage.setItem('cleanpos_courier_phone', courierPhone);
+}
+
 function sendRouteToCourier(){
   if(!_routeItems.length){toast('Buat rute dulu');return;}
+  // Get phone from kurir dropdown (if visible) or manual input
+  const sel=g('dq-kurir-sel');
+  const phone=(sel&&sel.style.display!=='none'?sel.value:g('dq-courier-phone')?.value||'').trim();
+  if(!phone){toast('Pilih atau isi nomor WA kurir');return;}
+  // Get kurir name for greeting
+  const kurirEmp=employees.find(e=>e.phone===phone&&e.isKurir);
+  const kurirName=kurirEmp?kurirEmp.name:'Kurir';
   const outlet=outlets.find(o=>o.lat&&o.lng);
-  let msg=`🗺️ *Rute Pengantaran/Penjemputan*\n\n`;
+  let msg=`Halo ${kurirName}, berikut rute antar jemput hari ini:\n\n`;
   _routeItems.forEach((d,i)=>{
-    msg+=`${i+1}. ${d.name} — ${d.type==='pickup'?'JEMPUT':'ANTAR'}\n   ${d.address||`${d.lat},${d.lng}`}\n`;
+    msg+=`${i+1}. *${d.name}* — ${d.type==='pickup'?'JEMPUT':'ANTAR'}\n   ${d.address||`${d.lat},${d.lng}`}\n`;
     if(d.lat&&d.lng)msg+=`   https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lng}\n`;
     msg+='\n';
   });
-  if(outlet)msg+=`📍 Kembali ke outlet: ${outlet.name}\n   ${outlet.addr||''}`;
-  openWa(storeWa||'',msg);
+  if(outlet)msg+=`Kembali ke outlet: *${outlet.name}*\n${outlet.addr?outlet.addr:''}`;
+  openWa(phone,msg);
 }
 
 function _togglePwVis(id,btn){
@@ -2050,7 +2086,7 @@ function _empRow(e){
         </div>
       </div>
     </td>
-    <td data-label="Role" style="font-size:13px;color:var(--t1)">${esc(e.role||'—')}</td>
+    <td data-label="Role" style="font-size:13px;color:var(--t1)">${esc(e.role||'—')}${e.isKurir?`<span style="margin-left:5px;font-size:10px;font-weight:700;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:20px;vertical-align:middle">Kurir</span>`:''}</td>
     <td data-label="PIN"><span class="emp-pin">${e.pin?'••••':'<span style="color:var(--re);font-size:11px">Belum diset</span>'}</span></td>
     <td data-label="Akses">${_empAksesHtml(e)}</td>
     <td data-label="Sisa Cuti"><span class="emp-cuti-val">${sisaCuti}x</span></td>
@@ -2240,6 +2276,29 @@ function delEmp(id){
   });
 }
 
+function _empSetKurir(isOn){
+  const btn=g('me-kurir-toggle');
+  if(btn){btn.className='toggle'+(isOn?' on':' off');}
+  const panel=g('me-kurir-outlets');
+  if(panel)panel.style.display=isOn?'':'none';
+}
+function toggleEmpKurir(){
+  const btn=g('me-kurir-toggle');if(!btn)return;
+  const isOn=btn.classList.contains('on');
+  _empSetKurir(!isOn);
+}
+function _buildKurirOutletChecks(selected=[]){
+  const wrap=g('me-kurir-outlet-checks');if(!wrap)return;
+  wrap.innerHTML=outlets.map(o=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:13px">
+      <input type="checkbox" id="me-ko-${esc(o.id)}" value="${esc(o.id)}" ${selected.includes(o.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--p);flex-shrink:0">
+      <span>${esc(o.name)}</span>
+    </label>`).join('');
+}
+function _getKurirOutlets(){
+  return outlets.filter(o=>g('me-ko-'+o.id)?.checked).map(o=>o.id);
+}
+
 function openAddEmp(){
   _editEmpId=null;
   ['me-n','me-ph','me-p'].forEach(id=>{const el=g(id);if(el)el.value='';});
@@ -2247,6 +2306,8 @@ function openAddEmp(){
   g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
   if(empFilter!=='all'&&g('me-o'))g('me-o').value=empFilter;
   const pw=g('me-pin-wrap');if(pw)pw.style.display='';
+  _empSetKurir(false);
+  _buildKurirOutletChecks([]);
   g('m-emp-title').textContent='Tambah Karyawan';
   openModal('m-emp');
 }
@@ -2265,6 +2326,8 @@ function openEditEmp(id){
   g('me-o').innerHTML=outlets.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
   if(g('me-o'))g('me-o').value=e.oid;
   const pw=g('me-pin-wrap');if(pw)pw.style.display='none';
+  _empSetKurir(!!e.isKurir);
+  _buildKurirOutletChecks(e.kurirOutlets||[]);
   g('m-emp-title').textContent='Edit Karyawan';
   openModal('m-emp');
 }
@@ -2276,9 +2339,11 @@ async function saveEmp(){
   if(!oid){toast('Pilih outlet terlebih dahulu');return;}
   const role=g('me-r')?.value||'Kasir';
   const phone=(g('me-ph')?.value||'').trim();
+  const isKurir=g('me-kurir-toggle')?.classList.contains('on')||false;
+  const kurirOutlets=isKurir?_getKurirOutlets():[];
   if(_editEmpId){
     const e=employees.find(x=>x.id===_editEmpId);if(!e)return;
-    e.name=name;e.oid=oid;e.role=role;e.phone=phone;
+    e.name=name;e.oid=oid;e.role=role;e.phone=phone;e.isKurir=isKurir;e.kurirOutlets=kurirOutlets;
     _editEmpId=null;cm('m-emp');renderEmployees();buildStaffBtns();syncEmployee(e);
     toast('Data '+name+' diperbarui');return;
   }
@@ -2287,7 +2352,7 @@ async function saveEmp(){
   if(!/^\d{4}$/.test(pin)){toast('PIN harus 4 digit angka');return;}
   const newId=Date.now();
   const hashedPin=await hashSecret(pin);
-  employees.push({id:newId,name,role,oid,phone,pin:hashedPin,status:'off',cutiUsed:0,clockIn:null,clockOut:null,lastLoginDate:null});
+  employees.push({id:newId,name,role,oid,phone,pin:hashedPin,status:'off',cutiUsed:0,clockIn:null,clockOut:null,lastLoginDate:null,isKurir,kurirOutlets});
   cm('m-emp');renderEmployees();buildStaffBtns();
   syncEmployee(employees.find(x=>x.id===newId));
   toast('Karyawan '+name+' ditambahkan');

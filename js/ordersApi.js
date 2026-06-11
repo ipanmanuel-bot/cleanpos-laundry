@@ -89,7 +89,9 @@ function syncEmployee(e) {
     id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid,
     pin: e.pin, status: e.status, cuti_used: e.cutiUsed,
     clock_in: e.clockIn, clock_out: e.clockOut,
-    phone: e.phone||'', last_login_date: e.lastLoginDate||null
+    phone: e.phone||'', last_login_date: e.lastLoginDate||null,
+    is_kurir: e.isKurir ? true : false,
+    kurir_outlets: JSON.stringify(e.kurirOutlets || [])
   });
 }
 function deleteEmployee(id) { sbDelete('employees', String(id)); }
@@ -269,7 +271,11 @@ async function supaLoadAll() {
     if (_hadDupes) { console.warn('[supa] Ditemukan outlet dengan ID duplikat — data dibersihkan otomatis'); outlets.forEach(o => syncOutlet(o)); }
   }
   if (empsData)     {
-    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null }));
+    employees = empsData.map(r => {
+      let kurirOutlets = [];
+      try { kurirOutlets = JSON.parse(r.kurir_outlets || '[]'); } catch(e) {}
+      return { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null, isKurir: !!r.is_kurir, kurirOutlets };
+    });
     // Use max id to avoid collisions (length-based counter fails if ids aren't sequential)
     empCtr = employees.reduce((mx, e) => Math.max(mx, e.id || 0), 0) + 1;
   }
@@ -450,7 +456,8 @@ function supaSubscribeEmployees() {
       if ((payload.new?.user_id || payload.old?.user_id) !== currentUserId) return;
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const r = payload.new;
-        const emp = { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out };
+        let _kOuts=[]; try{_kOuts=JSON.parse(r.kurir_outlets||'[]');}catch(e){}
+        const emp = { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null, isKurir: !!r.is_kurir, kurirOutlets: _kOuts };
         const idx = employees.findIndex(e => String(e.id) === String(r.id));
         if (idx >= 0) employees[idx] = emp; else employees.push(emp);
       } else if (payload.eventType === 'DELETE') {
@@ -470,7 +477,7 @@ async function supaPushAll() {
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
     ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null, address: c.address || null, lat: c.lat || null, lng: c.lng || null })),
     ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1, lat: o.lat || null, lng: o.lng || null })),
-    ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
+    ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut, phone: e.phone||'', is_kurir: e.isKurir ? true : false, kurir_outlets: JSON.stringify(e.kurirOutlets||[]) })),
     ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId })),
     ...expenses.map(e => sbUpsert('expenses', { user_id: currentUserId, id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),
     ...printers.map(p => sbUpsert('printers', { user_id: currentUserId, id: p.id, name: p.name, conn: p.conn, ip: p.ip, width: p.width, role: p.role, status: p.status })),
