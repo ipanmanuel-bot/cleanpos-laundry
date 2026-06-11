@@ -955,7 +955,18 @@ async function saveDeliveryRequest(){
 }
 
 // ===== HALAMAN JEMPUT & ANTAR =====
-let _dqFilter = 'all';
+let _dqFilter = 'active';
+let _dqOpenDates = new Set();
+
+function _fmtDqDate(dk){
+  if(dk==='—')return'—';
+  try{const d=new Date(dk+'T00:00:00');return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return dk;}
+}
+
+function toggleDqDate(dk){
+  if(_dqOpenDates.has(dk))_dqOpenDates.delete(dk);else _dqOpenDates.add(dk);
+  renderDeliveryPage();
+}
 
 function setDqFilter(f, btn){
   _dqFilter=f;
@@ -966,39 +977,80 @@ function setDqFilter(f, btn){
 
 function renderDeliveryPage(){
   const list=g('dq-list');if(!list)return;
+  const today=new Date().toISOString().slice(0,10);
+  if(_dqOpenDates.size===0)_dqOpenDates.add(today);
+
+  // Active items based on filter
   let items=[...deliveryQueue];
   if(_dqFilter==='pickup')items=items.filter(d=>d.type==='pickup');
   else if(_dqFilter==='delivery')items=items.filter(d=>d.type==='delivery');
-  else if(_dqFilter==='pending')items=items.filter(d=>d.status!=='Selesai');
+  else if(_dqFilter==='pending')items=items.filter(d=>d.status==='Menunggu');
   else if(_dqFilter==='done')items=items.filter(d=>d.status==='Selesai');
+  else if(_dqFilter==='active')items=items.filter(d=>d.status!=='Selesai');
 
-  if(!items.length){
+  // Selesai items per date for collapsed section (Opsi C) — only when showing active
+  const showDoneSection=(_dqFilter==='active');
+  const selesaiByDate={};
+  if(showDoneSection){
+    deliveryQueue.filter(d=>d.status==='Selesai').forEach(d=>{
+      const dk=d.date||'—';if(!selesaiByDate[dk])selesaiByDate[dk]=[];selesaiByDate[dk].push(d);
+    });
+  }
+
+  // Build set of all date keys to render
+  const byDate={};
+  items.forEach(d=>{const dk=d.date||'—';if(!byDate[dk])byDate[dk]=[];byDate[dk].push(d);});
+  const allDates=new Set([...Object.keys(byDate),...Object.keys(selesaiByDate)]);
+  const sortedDates=[...allDates].sort().reverse();
+
+  if(!sortedDates.length){
     list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--t2)">Belum ada request antar jemput.</div>';
     g('dq-route-panel').style.display='none';
     return;
   }
 
-  // Group by date then slot
-  const byDate={};
-  items.forEach(d=>{
-    const dk=d.date||'—';
-    if(!byDate[dk])byDate[dk]=[];
-    byDate[dk].push(d);
-  });
-
-  const sortedDates=Object.keys(byDate).sort();
   list.innerHTML=sortedDates.map(dk=>{
-    const rows=byDate[dk];
-    // group by slot within date
+    const activeRows=byDate[dk]||[];
+    const doneRows=selesaiByDate[dk]||[];
+    if(!activeRows.length&&!doneRows.length)return'';
+
+    const isOpen=_dqOpenDates.has(dk);
+    const isToday=dk===today;
+    const label=isToday?`${_fmtDqDate(dk)} — Hari ini`:_fmtDqDate(dk);
+    const chevron=isOpen?'▼':'▶';
+    const countBadge=activeRows.length
+      ?`<span style="font-size:11px;color:var(--p);font-weight:600">${activeRows.length} aktif${doneRows.length?' · '+doneRows.length+' selesai':''}</span>`
+      :`<span style="font-size:11px;color:var(--t2)">${doneRows.length} selesai</span>`;
+
+    // Slot groups for active rows
     const bySlot={};
-    rows.forEach(d=>{const sk=d.slotId||'__noSlot__';if(!bySlot[sk])bySlot[sk]=[];bySlot[sk].push(d);});
+    activeRows.forEach(d=>{const sk=d.slotId||'__noSlot__';if(!bySlot[sk])bySlot[sk]=[];bySlot[sk].push(d);});
     const slotHtml=Object.entries(bySlot).map(([sk,sRows])=>{
       const slotName=sk==='__noSlot__'?'Tanpa Slot':(pickupSlots.find(s=>s.id===sk)?.name||sk);
-      const rowHtml=sRows.map(d=>_dqRow(d)).join('');
-      return `<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${esc(slotName)}</div>${rowHtml}</div>`;
+      return `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${esc(slotName)}</div>${sRows.map(d=>_dqRow(d)).join('')}</div>`;
     }).join('');
-    return `<div class="card" style="margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--b1)">${esc(dk)}</div>${slotHtml}<div style="margin-top:12px;display:flex;justify-content:flex-end"><button class="btn bsm bp bpill" onclick="buildRoute('${esc(dk)}')"><i data-lucide="map" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:4px"></i>Buat Rute</button></div></div>`;
+
+    // Collapsed Selesai section (Opsi C)
+    const doneSection=doneRows.length&&showDoneSection
+      ?`<details style="margin-top:4px"><summary style="cursor:pointer;font-size:11px;color:var(--t2);padding:5px 0;list-style:none;display:flex;align-items:center;gap:5px;user-select:none">&#9654; ${doneRows.length} selesai</summary><div style="margin-top:6px">${doneRows.map(d=>_dqRow(d)).join('')}</div></details>`
+      :'';
+
+    const body=isOpen
+      ?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)">${slotHtml}${doneSection}<div style="margin-top:8px;display:flex;justify-content:flex-end"><button class="btn bsm bp bpill" onclick="buildRoute('${esc(dk)}')"><i data-lucide="map" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:4px"></i>Buat Rute</button></div></div>`
+      :'';
+
+    return `<div class="card" style="margin-bottom:8px;padding:10px 12px">
+      <div onclick="toggleDqDate('${esc(dk)}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--t2);width:12px;display:inline-block">${chevron}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--t1)">${esc(label)}</span>
+        </div>
+        ${countBadge}
+      </div>
+      ${body}
+    </div>`;
   }).join('');
+
   lucide.createIcons({nodes:[list]});
 }
 

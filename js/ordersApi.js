@@ -21,6 +21,7 @@ function orderToRow(o) {
     pickup_date: o.pickupDate || null,
     tracking_token: o.tracking_token || null,
     picked_up_at: o.pickedUpAt || null,
+    want_delivery: o.wantDelivery || false,
     store_name: (typeof storeName !== 'undefined' ? storeName : null)
   };
 }
@@ -43,6 +44,7 @@ function rowToOrder(r) {
     pickupDate: r.pickup_date || null,
     tracking_token: r.tracking_token || null,
     pickedUpAt: r.picked_up_at || null,
+    wantDelivery: r.want_delivery || false,
     storeName: r.store_name || null
   };
 }

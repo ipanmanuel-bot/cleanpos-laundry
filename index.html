@@ -1225,6 +1225,10 @@ tr:hover td{background:#F6F7F9}
           <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="calcO()"></div>
         </div>
         <div class="fg"><label>Catatan</label><input id="no-note" placeholder="Catatan pesanan (opsional)" oninput="calcO()"></div>
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;margin-top:6px;user-select:none">
+          <input type="checkbox" id="no-want-delivery" style="width:16px;height:16px;accent-color:var(--p);flex-shrink:0">
+          <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Antar ke Alamat</div><div style="font-size:11px;color:var(--t2)">Request pengiriman ke customer (detail bisa dilengkapi nanti)</div></div>
+        </label>
       </div>
 
       <!-- Step 2: Jenis Pesanan -->
@@ -2166,7 +2170,8 @@ tr:hover td{background:#F6F7F9}
   </div>
   <!-- Filter chips -->
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="dq-filter-chips">
-    <button class="btn bsm bpill bp" onclick="setDqFilter('all',this)">Semua</button>
+    <button class="btn bsm bpill bp" onclick="setDqFilter('active',this)">Aktif</button>
+    <button class="btn bsm bpill" onclick="setDqFilter('all',this)">Semua</button>
     <button class="btn bsm bpill" onclick="setDqFilter('pickup',this)">Jemput</button>
     <button class="btn bsm bpill" onclick="setDqFilter('delivery',this)">Antar</button>
     <button class="btn bsm bpill" onclick="setDqFilter('pending',this)">Menunggu</button>
@@ -2401,6 +2406,10 @@ tr:hover td{background:#F6F7F9}
             <div class="fg"><label>No. WhatsApp</label><input id="sno-phone" placeholder="08xxxxxxxxxx" oninput="updWalletOption('sno');calcS()"></div>
           </div>
           <div class="fg"><label>Catatan</label><input id="sno-note" placeholder="Catatan pesanan (opsional)"></div>
+          <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;margin-top:6px;user-select:none">
+            <input type="checkbox" id="sno-want-delivery" style="width:16px;height:16px;accent-color:var(--p);flex-shrink:0">
+            <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Antar ke Alamat</div><div style="font-size:11px;color:var(--t2)">Request pengiriman ke customer (detail bisa dilengkapi nanti)</div></div>
+          </label>
         </div>
 
         <!-- Step 2: Jenis Pesanan -->

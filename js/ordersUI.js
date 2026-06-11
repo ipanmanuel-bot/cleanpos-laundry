@@ -686,7 +686,8 @@ function buildOrder(pre) {
     notes: g(pre + '-note')?.value || '',
     date: TODAY_STR, isoDate: new Date().toISOString(), pickupDate: null, waSent: false,
     handledBy: curStaff ? curStaff.name : 'Owner',
-    outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1'))
+    outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1')),
+    wantDelivery: !!(g(pre + '-want-delivery')?.checked)
   };
   // Wallet payment: validate before pushing order
   if (membershipEnabled && o.payMethod === 'Dompet Member') {
@@ -705,6 +706,12 @@ function buildOrder(pre) {
     o.payStatus = 'Lunas';
   }
   orders.push(o); orderCtr++;
+  // Auto-create delivery queue entry if customer requested delivery
+  if(o.wantDelivery && typeof deliveryQueue !== 'undefined'){
+    const dqEntry={id:'dq'+deliveryQueueCtr++,type:'delivery',orderId:o.id,name:o.name,phone:o.phone,address:'',lat:null,lng:null,area:null,distanceKm:null,hasCharge:false,slotId:null,date:o.date,notes:'',status:'Menunggu',outletId:o.outletId,createdAt:new Date().toISOString()};
+    deliveryQueue.push(dqEntry);
+    if(typeof syncDeliveryQueue==='function')syncDeliveryQueue(dqEntry);
+  }
   // Mark voucher code as used (for bulk unique codes)
   _markVoucherUsed(pre, o.id);
   // Reset voucher + dismissed promo state
@@ -723,6 +730,7 @@ function buildOrder(pre) {
     }
   }
   [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  const wdEl = g(pre + '-want-delivery'); if(wdEl) wdEl.checked = false;
   addons.forEach(a => {
     const card = g(pre + '-addon-card-' + a.id); if (card) card.classList.remove('on');
     const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false;
@@ -1055,13 +1063,18 @@ function _trkCardHtml(o, st, role) {
   if (next) {
     ctaHtml = `<button class="trk-card-btn" onclick="updSt('${o.id}','${next}','${role}')">${ctaLbl[st]}</button>`;
   } else if (st === 'Selesai') {
-    if (!o.waSent) {
-      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">
-        <button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>
-        <button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>
-      </div>`;
+    const _hasDq = typeof deliveryQueue !== 'undefined' && deliveryQueue.some(d=>d.orderId===o.id&&d.type==='delivery'&&d.status!=='Selesai');
+    const _wantDlv = o.wantDelivery || _hasDq;
+    const waBtnHtml = !o.waSent ? `<button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>` : '';
+    if (_wantDlv) {
+      // Order with delivery request — replace "Sudah Diambil"
+      const dlvLbl = _hasDq ? 'Antar ke Customer' : 'Setup Antar';
+      const dlvAct = _hasDq ? `updSt('${o.id}','Diambil','${role}')` : `openDeliveryModal('${o.id}')`;
+      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">${waBtnHtml}<button class="trk-card-btn trk-card-btn-done" onclick="${dlvAct}">${dlvLbl}</button></div>`;
     } else {
-      ctaHtml = `<button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>`;
+      // Normal order — Sudah Diambil + optional "+ Antar" shortcut
+      const antarBtn = `<button class="trk-card-btn" style="background:var(--bg);border:1.5px solid var(--b1);color:var(--t1);font-size:11px" onclick="openDeliveryModal('${o.id}')">+ Antar</button>`;
+      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">${waBtnHtml}<button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>${antarBtn}</div>`;
     }
   }
   return `<div class="trk-card">
