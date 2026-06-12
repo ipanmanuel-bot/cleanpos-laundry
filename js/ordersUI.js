@@ -183,7 +183,6 @@ function pickCust(pre, phone) {
   const c = customers[phone]; if (!c) return;
   const nameEl = g(pre+'-name'); if (nameEl) nameEl.value = c.name;
   const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
-  const addrEl = g(pre+'-addr'); if (addrEl) addrEl.value = c.address || '';
   const srchEl = g(pre+'-cust-srch'); if (srchEl) srchEl.value = '';
   const drop = g(pre+'-cust-drop'); if (drop) drop.style.display = 'none';
   updWalletOption(pre);
@@ -396,6 +395,7 @@ function calcBase(pre) {
   const catEl = g(pre + '-cat');
   if (!typeEl || !catEl) return { type: 'kiloan', cat: 'regular', rawQty: 1, bq: 1, base: 0, addTotal: 0, addonLines: [], subtotal: 0, actPromo: null, satuanLines: [] };
   const type = typeEl.value, cat = catEl.value;
+
   // Use priceOptions for est if available
   const poEst = (typeof priceOptions !== 'undefined' ? priceOptions.find(po => po.key === cat)?.est : null);
   const EST = { regular: '2-3 hari', sameday: '± 8 jam', express: '1 hari' };
@@ -642,6 +642,7 @@ function saveDraft() {
   toast('✓ Draft disimpan: ' + name);
 }
 
+
 function calcO() { const res = doCalc('no', true); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res, 'no'); else calcChg('no'); }
 function calcS() { const res = doCalc('sno', false); if (typeof _noUpdateSummary === 'function') _noUpdateSummary(res, 'sno'); else calcChg('sno'); }
 function calcChg(pre) {
@@ -673,19 +674,20 @@ function buildOrder(pre) {
   const psMap = { paid: 'Lunas', dp: 'DP', unpaid: 'Belum Bayar' };
   const payMethod = (pre === 'no' ? (pmMap[pmRaw] || pmRaw) : pmRaw);
   const payStatus = (pre === 'no' ? (psMap[psRaw] || psRaw) : psRaw);
-  const address = (g(pre + '-addr')?.value || '').trim() || null;
   const o = {
-    id: genId(), name, phone, address,
-    svcType: res.type, svcCat: res.cat,
-    qty: res.bq, rawQty: res.rawQty, itemCount: parseInt(g(pre+'-item-count')?.value)||null,
+    id: genId(), name, phone, svcType: res.type, svcCat: res.cat,
+    qty: res.bq, rawQty: res.rawQty,
+    itemCount: parseInt(g(pre+'-item-count')?.value)||null,
     satuanLines: res.satuanLines || [], addOns, addOnAmt: res.addTotal,
     base: res.base, discType: res.discType, discAmt: res.discAmt,
     promoAmt: res.promoAmt, total: res.total,
     payMethod, payStatus,
-    status: 'Diterima', notes: g(pre + '-note')?.value || '',
+    status: 'Diterima',
+    notes: g(pre + '-note')?.value || '',
     date: TODAY_STR, isoDate: new Date().toISOString(), pickupDate: null, waSent: false,
     handledBy: curStaff ? curStaff.name : 'Owner',
-    outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1'))
+    outletId: g(pre + '-outlet')?.value || (curStaff ? curStaff.oid : (curOutlet?.id || outlets[0]?.id || 'o1')),
+    wantDelivery: !!(g(pre + '-want-delivery')?.checked)
   };
   // Wallet payment: validate before pushing order
   if (membershipEnabled && o.payMethod === 'Dompet Member') {
@@ -704,13 +706,19 @@ function buildOrder(pre) {
     o.payStatus = 'Lunas';
   }
   orders.push(o); orderCtr++;
+  // Auto-create delivery queue entry if customer requested delivery
+  if(o.wantDelivery && typeof deliveryQueue !== 'undefined'){
+    const dqEntry={id:'dq'+deliveryQueueCtr++,type:'delivery',orderId:o.id,name:o.name,phone:o.phone,address:'',lat:null,lng:null,area:null,distanceKm:null,hasCharge:false,slotId:null,date:o.date,notes:'',status:'Menunggu',outletId:o.outletId,createdAt:new Date().toISOString()};
+    deliveryQueue.push(dqEntry);
+    if(typeof syncDeliveryQueue==='function')syncDeliveryQueue(dqEntry);
+  }
   // Mark voucher code as used (for bulk unique codes)
   _markVoucherUsed(pre, o.id);
   // Reset voucher + dismissed promo state
   _renderVoucherApplied(pre, null);
   const vi = g(pre + '-voucher-input'); if (vi) vi.value = '';
   _dismissedPromo[pre] = null;
-  if (phone !== '—') addCust(name, phone, o.total, TODAY_STR, address);
+  if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
   if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
     kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
   if (membershipEnabled && o.payMethod === 'Dompet Member' && phone !== '—') {
@@ -721,7 +729,8 @@ function buildOrder(pre) {
       memberTxns.push({ id: txnId, phone, type: 'deduct', amount: o.total, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() });
     }
   }
-  [pre + '-name', pre + '-phone', pre + '-addr', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  const wdEl = g(pre + '-want-delivery'); if(wdEl) wdEl.checked = false;
   addons.forEach(a => {
     const card = g(pre + '-addon-card-' + a.id); if (card) card.classList.remove('on');
     const ck = g(pre + '-ck-' + a.id); if (ck) ck.checked = false;
@@ -833,13 +842,6 @@ function _renderOrdActiveChips() {
   const btn = g(isO ? 'ord-filter-btn' : 's-ord-filter-btn'); if (btn) btn.className = 'btn bsm'+(cnt?' bp':'');
 }
 
-function _newCustBadge(o) {
-  if (!o.phone || o.phone === '—') return '';
-  const c = (typeof customers !== 'undefined') ? customers[o.phone] : null;
-  if (!c || c.orders !== 1) return '';
-  return '<span class="badge-new-cust">NEW</span>';
-}
-
 function renderOrders() {
   const isO = curRole === 'owner';
   const q = ((isO ? g('o-srch') : g('s-srch'))?.value || '').toLowerCase();
@@ -865,7 +867,7 @@ function renderOrders() {
   }
 
   const fullList = orders.filter(o => {
-    const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q)) || (o.address && o.address.toLowerCase().includes(q));
+    const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q));
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
     const matchO = isO ? (ordOutlet === 'all' || o.outletId === ordOutlet) : (curStaff ? o.outletId === curStaff.oid : true);
@@ -900,7 +902,7 @@ function renderOrders() {
   if (isO) {
     tb.innerHTML = list.map(o => { const _oc=go(o.outletId);const _osc=_oc?.color?safeColor(_oc.color):'#ccc';return `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}${o.address?`<div style="font-size:10px;color:var(--t2);margin-top:1px">📍 ${esc(o.address)}</div>`:''}</div></td>
+      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${_osc}18;color:${_oc?.color?safeColor(_oc.color):'#666'}">${esc(_oc?.name || '—')}</span></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
@@ -909,12 +911,12 @@ function renderOrders() {
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button><button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button>${!deliveryQueue.some(d=>d.orderId===o.id&&d.type==='delivery'&&d.status!=='Selesai')?`<button class="btn bsm bg" onclick="openDeliveryModal('${o.id}')" title="Request antar"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></button>`:''}<button class="btn bsm bre" onclick="deleteOrder('${o.id}')">Hapus</button></div></td>
     </tr>`; }).join('');
   } else {
     tb.innerHTML = list.map(o => `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
-      <td><div style="font-weight:600">${esc(o.name)}${_newCustBadge(o)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}${o.address?`<div style="font-size:10px;color:var(--t2);margin-top:1px">📍 ${esc(o.address)}</div>`:''}</div></td>
+      <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
@@ -922,7 +924,7 @@ function renderOrders() {
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.date||'—')}</td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${esc(o.pickupDate||'—')}</td>
       <td>${waBtn(o)}</td>
-      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button></div></td>
+      <td><div style="display:flex;gap:4px"><button class="btn bsm" onclick="showDetail('${o.id}')">Detail</button><button class="btn bsm" onclick="showRcpt('${o.id}')">Struk</button><button class="btn bsm" onclick="copyTrackingLink('${o.id}')" title="Salin link tracking pelanggan">🔗</button>${!deliveryQueue.some(d=>d.orderId===o.id&&d.type==='delivery'&&d.status!=='Selesai')?`<button class="btn bsm bg" onclick="openDeliveryModal('${o.id}')" title="Request antar"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></button>`:''}</div></td>
     </tr>`).join('');
   }
   _renderOrdPager(fullList.length, _totalPages);
@@ -988,7 +990,7 @@ function _renderOrdCards(list, wrap) {
       <div class="ocard-hd" onclick="toggleOrdCard('${esc(o.id)}')">
         <div class="ocard-av">${initials}</div>
         <div class="ocard-info">
-          <div class="ocard-name">${esc(o.name)}${_newCustBadge(o)}</div>
+          <div class="ocard-name">${esc(o.name)}</div>
           <div class="ocard-id">${esc(o.id)}</div>
           <div class="ocard-tags">
             <span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span>
@@ -1012,7 +1014,6 @@ function _renderOrdCards(list, wrap) {
           <div><div class="ocard-dl">Total</div><div class="ocard-dv">${fmt(o.total)}</div></div>
           <div><div class="ocard-dl">Tgl Masuk</div><div class="ocard-dv">${esc(o.date||'—')}</div></div>
           ${o.pickupDate?`<div><div class="ocard-dl">Tgl Ambil</div><div class="ocard-dv">${esc(o.pickupDate)}</div></div>`:''}
-          ${o.address?`<div style="grid-column:1/-1"><div class="ocard-dl">Alamat</div><div class="ocard-dv">${esc(o.address)}</div></div>`:''}
           ${o.notes?`<div style="grid-column:1/-1"><div class="ocard-dl">Catatan</div><div class="ocard-dv">${esc(o.notes)}</div></div>`:''}
         </div>
         <div class="ocard-acts">
@@ -1062,13 +1063,18 @@ function _trkCardHtml(o, st, role) {
   if (next) {
     ctaHtml = `<button class="trk-card-btn" onclick="updSt('${o.id}','${next}','${role}')">${ctaLbl[st]}</button>`;
   } else if (st === 'Selesai') {
-    if (!o.waSent) {
-      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">
-        <button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>
-        <button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>
-      </div>`;
+    const _hasDq = typeof deliveryQueue !== 'undefined' && deliveryQueue.some(d=>d.orderId===o.id&&d.type==='delivery'&&d.status!=='Selesai');
+    const _wantDlv = o.wantDelivery || _hasDq;
+    const waBtnHtml = !o.waSent ? `<button class="trk-card-btn trk-card-btn-wa" onclick="openWaMod('${o.id}')">Kirim WA</button>` : '';
+    if (_wantDlv) {
+      // Order with delivery request — replace "Sudah Diambil"
+      const dlvLbl = _hasDq ? 'Antar ke Customer' : 'Setup Antar';
+      const dlvAct = _hasDq ? `updSt('${o.id}','Diambil','${role}')` : `openDeliveryModal('${o.id}')`;
+      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">${waBtnHtml}<button class="trk-card-btn trk-card-btn-done" onclick="${dlvAct}">${dlvLbl}</button></div>`;
     } else {
-      ctaHtml = `<button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>`;
+      // Normal order — Sudah Diambil + optional "+ Antar" shortcut
+      const antarBtn = `<button class="trk-card-btn" style="background:var(--bg);border:1.5px solid var(--b1);color:var(--t1);font-size:11px" onclick="openDeliveryModal('${o.id}')">+ Antar</button>`;
+      ctaHtml = `<div style="display:flex;flex-direction:column;gap:4px">${waBtnHtml}<button class="trk-card-btn trk-card-btn-done" onclick="updSt('${o.id}','Diambil','${role}')">Sudah Diambil</button>${antarBtn}</div>`;
     }
   }
   return `<div class="trk-card">
@@ -1262,7 +1268,6 @@ function showRcpt(id) {
       + '<hr class="rdash">'
       + '<div class="rrow"><span>No Nota</span><span>' + esc(o.id || '') + '</span></div>'
       + '<div class="rrow"><span>Pelanggan</span><span>' + esc(o.name || '') + '</span></div>'
-      + (o.address ? '<div class="rrow"><span>Alamat</span><span>' + esc(o.address) + '</span></div>' : '')
       + '<div class="rrow"><span>Kasir</span><span>' + esc(o.handledBy || '\u2014') + '</span></div>'
       + '<div class="rrow"><span>Tgl Masuk</span><span>' + esc(o.date || '') + '</span></div>'
       + '<hr class="rdash">'
@@ -1319,7 +1324,6 @@ function showDetail(id) {
   <div class="rcpt" style="margin-bottom:12px">
     <div class="rrow"><span style="color:var(--t2)">Pelanggan</span><span>${esc(o.name)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">WA</span><span>${esc(o.phone)}</span></div>
-    ${o.address?`<div class="rrow"><span style="color:var(--t2)">Alamat</span><span>${esc(o.address)}</span></div>`:''}
     <div class="rrow"><span style="color:var(--t2)">Outlet</span><span>${esc(go(o.outletId)?.name || '—')}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Layanan</span><span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span></div>
     <div class="rrow"><span style="color:var(--t2)">Jumlah</span><span>${o.qty}${getSvcUnit(o.svcType)}${o.rawQty && o.rawQty !== o.qty ? ` <span style="font-size:10px;color:var(--am)">(input:${o.rawQty}→min${getSvcById(o.svcType)?.minKg||0}kg)</span>` : ''}</span></div>
@@ -1337,7 +1341,9 @@ function showDetail(id) {
   <div style="display:flex;gap:6px;flex-wrap:wrap">${_payMethods.map(pm => `<button class="btn bsm${pm === o.payMethod ? ' bp' : ''}" onclick="changePayMethod('${id}','${pm}')">${pm === 'Dompet Member' ? _walletLabel : pm}</button>`).join('')}</div></div>
   ${curRole === 'owner' && outlets.length > 1 ? `<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Pindah Outlet</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">${outlets.map(ol => `<button class="btn bsm${ol.id === o.outletId ? ' bp' : ''}" onclick="changeOrderOutlet('${id}','${ol.id}',this)">${esc(ol.name)}</button>`).join('')}</div></div>` : ''}`;
-  g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button><button class="btn bp" onclick="cm('m-detail');showRcpt('${id}')">Struk</button>`;
+  const _hasDeliveryDq = deliveryQueue.some(d=>d.orderId===o.id&&d.type==='delivery'&&d.status!=='Selesai');
+  const _truckSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-1px;margin-right:4px"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
+  g('m-detail-ft').innerHTML = `<button class="btn" onclick="cm('m-detail')">Tutup</button>${!_hasDeliveryDq?`<button class="btn bg bsm" onclick="cm('m-detail');openDeliveryModal('${id}')">${_truckSvg}Antar</button>`:''}<button class="btn bp" onclick="cm('m-detail');showRcpt('${id}')">Struk</button>`;
   openModal('m-detail');
 }
 

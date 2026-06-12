@@ -2,16 +2,11 @@
 // Depends on: supabaseClient.js (sbUpsert, sbDelete, sbFetch, currentUserId)
 // All functions reference global state (orders, customers, outlets, etc.) at call-time.
 
-// Tracks the in-flight supaLoadAll() Promise so doOwnerLogin can await data readiness
-var _supaReadyPromise = null;
-// Set to true once supaLoadAll has finished populating all data arrays
-var _supaDataReady = false;
-
 // --- Data mapping: JS object ↔ DB row ---
 function orderToRow(o) {
   return {
     user_id: currentUserId,
-    id: o.id, name: o.name, phone: o.phone, address: o.address || null,
+    id: o.id, name: o.name, phone: o.phone,
     svc_type: o.svcType, svc_cat: o.svcCat,
     qty: o.qty, raw_qty: o.rawQty, item_count: o.itemCount || null,
     satuan_lines: JSON.stringify(o.satuanLines || []),
@@ -26,6 +21,7 @@ function orderToRow(o) {
     pickup_date: o.pickupDate || null,
     tracking_token: o.tracking_token || null,
     picked_up_at: o.pickedUpAt || null,
+    want_delivery: o.wantDelivery || false,
     store_name: (typeof storeName !== 'undefined' ? storeName : null)
   };
 }
@@ -34,7 +30,7 @@ function rowToOrder(r) {
   try { satuanLines = JSON.parse(r.satuan_lines || '[]'); } catch(e) { console.error('[parse] satuan_lines:', e); }
   try { addOns = JSON.parse(r.add_ons || '[]'); } catch(e) { console.error('[parse] add_ons:', e); }
   return {
-    id: r.id, name: r.name, phone: r.phone, address: r.address || null,
+    id: r.id, name: r.name, phone: r.phone,
     svcType: r.svc_type, svcCat: r.svc_cat,
     qty: r.qty, rawQty: r.raw_qty, itemCount: r.item_count || null,
     satuanLines, addOns, addOnAmt: r.add_on_amt,
@@ -48,6 +44,7 @@ function rowToOrder(r) {
     pickupDate: r.pickup_date || null,
     tracking_token: r.tracking_token || null,
     pickedUpAt: r.picked_up_at || null,
+    wantDelivery: r.want_delivery || false,
     storeName: r.store_name || null
   };
 }
@@ -59,9 +56,10 @@ function syncOrder(o) { sbUpsert('orders', orderToRow(o)); }
 function syncCustomer(c) {
   sbUpsert('customers', {
     user_id: currentUserId,
-    id: c.phone, name: c.name, phone: c.phone, address: c.address || null,
+    id: c.phone, name: c.name, phone: c.phone,
     orders: c.orders, total: c.total, balance: c.balance||0, last_date: c.lastDate,
-    balance_expiry: c.balanceExpiry || null
+    balance_expiry: c.balanceExpiry || null,
+    address: c.address || null, lat: c.lat || null, lng: c.lng || null
   });
 }
 
@@ -82,7 +80,7 @@ function deleteMemberTxn(id) { sbDelete('member_txns', id); }
 
 // --- Sync: Outlets ---
 function syncOutlet(o) {
-  sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1 });
+  sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1, lat: o.lat || null, lng: o.lng || null });
 }
 function deleteOutlet(id) { sbDelete('outlets', id); }
 
@@ -93,7 +91,9 @@ function syncEmployee(e) {
     id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid,
     pin: e.pin, status: e.status, cuti_used: e.cutiUsed,
     clock_in: e.clockIn, clock_out: e.clockOut,
-    phone: e.phone||'', last_login_date: e.lastLoginDate||null
+    phone: e.phone||'', last_login_date: e.lastLoginDate||null,
+    is_kurir: e.isKurir ? true : false,
+    kurir_outlets: JSON.stringify(e.kurirOutlets || [])
   });
 }
 function deleteEmployee(id) { sbDelete('employees', String(id)); }
@@ -127,6 +127,33 @@ function syncPrinter(p) {
 }
 function deletePrinter_sb(id) { sbDelete('printers', id); }
 
+// --- Sync: Delivery Queue ---
+const _LS_DQ_KEY = 'cleanpos_delivery_queue';
+function _saveDqLocal() {
+  try { localStorage.setItem(_LS_DQ_KEY, JSON.stringify(deliveryQueue)); } catch(e) {}
+}
+function syncDeliveryQueue(dq) {
+  _saveDqLocal();
+  sbUpsert('delivery_queue', {
+    user_id: currentUserId,
+    id: dq.id, type: dq.type,
+    name: dq.name, phone: dq.phone,
+    address: dq.address || null, lat: dq.lat || null, lng: dq.lng || null,
+    area: dq.area || null,
+    slot_id: dq.slotId || null, date: dq.date || null,
+    status: dq.status,
+    distance_km: dq.distanceKm || null,
+    has_charge: dq.hasCharge ? true : false,
+    order_id: dq.orderId || null, outlet_id: dq.outletId || null,
+    notes: dq.notes || null,
+    created_at: dq.createdAt || new Date().toISOString()
+  });
+}
+function deleteDeliveryQueue(id) {
+  _saveDqLocal();
+  sbDelete('delivery_queue', id);
+}
+
 // --- Sync: Settings (one row per user, id='main') ---
 // NOTE: owner_pwd is stored as a SHA-256 hash (prefixed 'sha256:'), never plain text
 const _LS_SETTINGS_KEY = 'cleanpos_settings_local';
@@ -150,7 +177,10 @@ function _saveSettingsLocal() {
       membership_expiry_days: membershipExpiryDays,
       price_options: JSON.stringify(priceOptions),
       kg_step: kgStep,
-      notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan})
+      notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan}),
+      pickup_slots: JSON.stringify(pickupSlots),
+      pickup_radius_km: pickupRadiusKm,
+      pickup_extra_charge: pickupExtraCharge
     }));
   } catch(e) { console.warn('[ls] gagal simpan settings lokal:', e); }
 }
@@ -181,6 +211,9 @@ function _applySettingsObj(s) {
   priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
   if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
   try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+  try { if (s.pickup_slots) pickupSlots = JSON.parse(s.pickup_slots); } catch(e) {}
+  if (s.pickup_radius_km   != null) pickupRadiusKm   = parseFloat(s.pickup_radius_km)   || 3.0;
+  if (s.pickup_extra_charge != null) pickupExtraCharge = parseFloat(s.pickup_extra_charge) || 5000;
 }
 function syncSettings() {
   _saveSettingsLocal(); // always persist locally first
@@ -206,7 +239,10 @@ function syncSettings() {
     membership_expiry_days: membershipExpiryDays,
     price_options: JSON.stringify(priceOptions),
     kg_step: kgStep,
-    notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan})
+    notif_settings: JSON.stringify({waPending:notifWaPending,prosesKosong:notifProsesKosong,belumLunas:notifBelumLunas,durasiLama:notifDurasiLama,prosesKosongDelay:notifProsesKosongDelay,durasiMencuci:notifDurasiMencuci,durasiMengeringkan:notifDurasiMengeringkan}),
+    pickup_slots: JSON.stringify(pickupSlots),
+    pickup_radius_km: pickupRadiusKm,
+    pickup_extra_charge: pickupExtraCharge
   });
 }
 
@@ -215,21 +251,21 @@ async function supaLoadAll() {
   toast('☁️ Memuat data dari cloud...');
   const [
     ordersData, custsData, outletsData, empsData,
-    kasData, expData, settingsData, subData, memberTxnData
+    kasData, expData, settingsData, subData, memberTxnData, dqData
   ] = await Promise.all([
     sbFetch('orders'), sbFetch('customers'), sbFetch('outlets'),
     sbFetch('employees'), sbFetch('kas_log'), sbFetch('expenses'),
     sbFetch('settings'), sbFetch('subscriptions'),
-    sbFetch('member_txns')
+    sbFetch('member_txns'), sbFetch('delivery_queue')
   ]);
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
-  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, address: c.address || null, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null }; }); }
+  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null, address: c.address || null, lat: c.lat ? parseFloat(c.lat) : null, lng: c.lng ? parseFloat(c.lng) : null }; }); }
   if (outletsData)  {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
     const _hadDupes = _oMap.size < outletsData.length;
-    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, hours: r.hours||'', color: r.color, washingCount: r.washing_machine_count||1, dryingCount: r.drying_machine_count||1 }));
+    outlets = Array.from(_oMap.values()).map(r => ({ id: r.id, name: r.name, addr: r.addr, hours: r.hours||'', color: r.color, washingCount: r.washing_machine_count||1, dryingCount: r.drying_machine_count||1, lat: r.lat ? parseFloat(r.lat) : null, lng: r.lng ? parseFloat(r.lng) : null }));
     // Update outletCtr so new outlets never collide with existing numeric IDs
     const _oNums = outlets.map(o => parseInt((o.id||'').replace(/\D/g,''))).filter(n => !isNaN(n) && n > 0);
     if (_oNums.length) outletCtr = Math.max(..._oNums) + 1;
@@ -237,7 +273,11 @@ async function supaLoadAll() {
     if (_hadDupes) { console.warn('[supa] Ditemukan outlet dengan ID duplikat — data dibersihkan otomatis'); outlets.forEach(o => syncOutlet(o)); }
   }
   if (empsData)     {
-    employees = empsData.map(r => ({ id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null }));
+    employees = empsData.map(r => {
+      let kurirOutlets = [];
+      try { kurirOutlets = JSON.parse(r.kurir_outlets || '[]'); } catch(e) {}
+      return { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null, isKurir: !!r.is_kurir, kurirOutlets };
+    });
     // Use max id to avoid collisions (length-based counter fails if ids aren't sequential)
     empCtr = employees.reduce((mx, e) => Math.max(mx, e.id || 0), 0) + 1;
   }
@@ -274,6 +314,10 @@ async function supaLoadAll() {
     priceOptions.forEach(po=>{ const was=po.active!==false; if(po.activeKiloan===undefined)po.activeKiloan=was; if(po.activeSatuan===undefined)po.activeSatuan=was; });
     if (s.kg_step != null) { kgStep = parseFloat(s.kg_step) || 0.5; if (typeof _applyKgStep === 'function') _applyKgStep(); }
     try { if (s.notif_settings) { const ns=JSON.parse(s.notif_settings); if(ns.waPending!==undefined)notifWaPending=ns.waPending; if(ns.prosesKosong!==undefined)notifProsesKosong=ns.prosesKosong; if(ns.belumLunas!==undefined)notifBelumLunas=ns.belumLunas; if(ns.durasiLama!==undefined)notifDurasiLama=ns.durasiLama; if(ns.prosesKosongDelay!==undefined)notifProsesKosongDelay=ns.prosesKosongDelay; if(ns.durasiMencuci!==undefined)notifDurasiMencuci=ns.durasiMencuci; if(ns.durasiMengeringkan!==undefined)notifDurasiMengeringkan=ns.durasiMengeringkan; } } catch(e) {}
+    // Pickup/delivery settings
+    try { if (s.pickup_slots) pickupSlots = JSON.parse(s.pickup_slots); } catch(e) {}
+    if (s.pickup_radius_km   != null) pickupRadiusKm   = parseFloat(s.pickup_radius_km)   || 3.0;
+    if (s.pickup_extra_charge != null) pickupExtraCharge = parseFloat(s.pickup_extra_charge) || 5000;
   }
   // If Supabase settings are missing key pricing fields (e.g. migration not run yet), fall back to localStorage
   if (!settingsData?.length || !settingsData[0]?.service_types) {
@@ -310,20 +354,36 @@ async function supaLoadAll() {
     currentPlanExpiry = _trialExp.toISOString();
     sbUpsert('subscriptions', { user_id: currentUserId, plan: 'basic', status: 'trial', expires_at: currentPlanExpiry }, 'user_id');
   }
+  if (dqData) {
+    deliveryQueue = dqData.map(r => ({
+      id: r.id, type: r.type,
+      name: r.name, phone: r.phone,
+      address: r.address, lat: r.lat ? parseFloat(r.lat) : null, lng: r.lng ? parseFloat(r.lng) : null,
+      area: r.area,
+      slotId: r.slot_id, date: r.date,
+      status: r.status,
+      distanceKm: r.distance_km ? parseFloat(r.distance_km) : null,
+      hasCharge: !!r.has_charge,
+      orderId: r.order_id, outletId: r.outlet_id, notes: r.notes,
+      createdAt: r.created_at
+    }));
+    deliveryQueueCtr = deliveryQueue.reduce((mx, d) => {
+      const n = parseInt((d.id || '').replace(/\D/g, '')); return isNaN(n) ? mx : Math.max(mx, n);
+    }, 0) + 1;
+  } else {
+    // Supabase table missing (migration not run yet) — restore from localStorage
+    try {
+      const _ls = localStorage.getItem(_LS_DQ_KEY);
+      if (_ls) { deliveryQueue = JSON.parse(_ls); console.log('[dq] Restored from localStorage fallback'); }
+    } catch(e) {}
+  }
   checkExpiredBalances();
   if (typeof renderPlanBadge === 'function') renderPlanBadge();
   if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
-  _supaDataReady = true;
   toast('✅ Data cloud berhasil dimuat!');
-  // Re-render dashboard and notifications — covers both cases:
-  // (a) owner already logged in when data arrived, (b) refreshODash polled and rescheduled itself
-  if (curRole === 'owner' && typeof refreshODash === 'function') {
-    requestAnimationFrame(refreshODash);
-    if (typeof _generateNotifications === 'function') _generateNotifications();
-    if (typeof _updateNotifBadge === 'function') _updateNotifBadge();
-  } else if (curRole === 'staff' && typeof refreshSDash === 'function') {
-    requestAnimationFrame(refreshSDash);
-  }
+  // Re-render dashboard if it's already visible (e.g. after background cloud sync)
+  if (curRole === 'owner' && typeof refreshODash === 'function') refreshODash();
+  else if (curRole === 'staff' && typeof refreshSDash === 'function') refreshSDash();
   supaSubscribeOrders();
   supaSubscribeSettings();
   supaSubscribeEmployees();
@@ -398,7 +458,8 @@ function supaSubscribeEmployees() {
       if ((payload.new?.user_id || payload.old?.user_id) !== currentUserId) return;
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const r = payload.new;
-        const emp = { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out };
+        let _kOuts=[]; try{_kOuts=JSON.parse(r.kurir_outlets||'[]');}catch(e){}
+        const emp = { id: Number(r.id), name: r.name, role: r.role, oid: r.outlet_id, pin: r.pin, status: r.status, cutiUsed: r.cuti_used, clockIn: r.clock_in, clockOut: r.clock_out, phone: r.phone||'', lastLoginDate: r.last_login_date||null, isKurir: !!r.is_kurir, kurirOutlets: _kOuts };
         const idx = employees.findIndex(e => String(e.id) === String(r.id));
         if (idx >= 0) employees[idx] = emp; else employees.push(emp);
       } else if (payload.eventType === 'DELETE') {
@@ -416,9 +477,9 @@ async function supaPushAll() {
   toast('⬆️ Mendorong semua data...');
   await Promise.all([
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
-    ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null })),
-    ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1 })),
-    ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut })),
+    ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null, address: c.address || null, lat: c.lat || null, lng: c.lng || null })),
+    ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1, lat: o.lat || null, lng: o.lng || null })),
+    ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut, phone: e.phone||'', is_kurir: e.isKurir ? true : false, kurir_outlets: JSON.stringify(e.kurirOutlets||[]) })),
     ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId })),
     ...expenses.map(e => sbUpsert('expenses', { user_id: currentUserId, id: String(e.id), cat: e.cat, label: e.label, nominal: e.nominal, date: e.date, note: e.note, src: e.src, outlet_id: e.outletId })),
     ...printers.map(p => sbUpsert('printers', { user_id: currentUserId, id: p.id, name: p.name, conn: p.conn, ip: p.ip, width: p.width, role: p.role, status: p.status })),
