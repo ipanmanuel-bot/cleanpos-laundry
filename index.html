@@ -3070,7 +3070,9 @@ tr:hover td{background:#F6F7F9}
     <div class="mhd"><span class="mht">Edit Pelanggan</span><button class="xb" onclick="cm('m-edit-cust')">×</button></div>
     <div class="mbd">
       <div class="fg"><label>Nama Pelanggan</label><input id="ec-name" placeholder="Nama lengkap"></div>
-      <div class="fg" style="margin-bottom:0"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+      <div class="fg"><label>No. WhatsApp <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><input id="ec-phone" placeholder="08xx-xxxx-xxxx" type="tel"></div>
+      <div class="fg"><label>Alamat <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><textarea id="ec-address" placeholder="Alamat lengkap pelanggan" rows="2" style="width:100%;box-sizing:border-box;resize:vertical;padding:8px 10px;border:1.5px solid var(--b1);border-radius:var(--rs);background:var(--ca);color:var(--t1);font-size:14px;font-family:inherit"></textarea></div>
+      <div class="fg" style="margin-bottom:0"><label>Link GMaps / Koordinat <span style="color:var(--t2);font-weight:400">(Opsional)</span></label><div style="display:flex;gap:6px;align-items:center"><input id="ec-gmaps" placeholder="Paste link Google Maps atau lat,lng" style="flex:1"><a id="ec-gmaps-link" href="#" target="_blank" style="display:none;font-size:12px;white-space:nowrap;color:var(--p);text-decoration:none">Buka ↗</a></div></div>
     </div>
     <div class="mft"><button class="btn" onclick="cm('m-edit-cust')">Batal</button><button class="btn bp" onclick="saveEditCust()">Simpan</button></div>
   </div>

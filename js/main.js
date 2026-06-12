@@ -3269,6 +3269,14 @@ function openEditCust(phone){
   _ecOldPhone=phone;
   if(g('ec-name'))g('ec-name').value=c.name;
   if(g('ec-phone'))g('ec-phone').value=(phone==='—'||/^cust-/.test(phone))?'':phone;
+  if(g('ec-address'))g('ec-address').value=c.address||'';
+  const hasCoords=c.lat&&c.lng;
+  if(g('ec-gmaps'))g('ec-gmaps').value=hasCoords?`${c.lat}, ${c.lng}`:'';
+  const link=g('ec-gmaps-link');
+  if(link){
+    if(hasCoords){link.href=`https://www.google.com/maps?q=${c.lat},${c.lng}`;link.style.display='';}
+    else{link.href='#';link.style.display='none';}
+  }
   openModal('m-edit-cust');
   setTimeout(()=>g('ec-name')?.focus(),100);
 }
@@ -3279,9 +3287,15 @@ function saveEditCust(){
   // Check duplicate only if phone actually changed
   if(newPhone!==_ecOldPhone&&customers[newPhone]){toast('⚠️ Nomor WA sudah terdaftar: '+customers[newPhone].name);return;}
   const c=customers[_ecOldPhone];if(!c)return;
+  // Parse address & coordinates
+  const address=(g('ec-address')?.value||'').trim()||null;
+  const gmapsVal=(g('ec-gmaps')?.value||'').trim();
+  const coords=gmapsVal?extractLatLng(gmapsVal):null;
+  const lat=coords?coords[0]:null;
+  const lng=coords?coords[1]:null;
   // If phone changed, re-key in customers object
   if(newPhone!==_ecOldPhone){
-    customers[newPhone]={...c,name,phone:newPhone};
+    customers[newPhone]={...c,name,phone:newPhone,address,lat,lng};
     delete customers[_ecOldPhone];
     // Update all orders referencing the old phone
     orders.forEach(o=>{if(o.phone===_ecOldPhone)o.phone=newPhone;});
@@ -3290,7 +3304,7 @@ function saveEditCust(){
     syncCustomer(customers[newPhone]);
     sbDelete('customers',_ecOldPhone);
   } else {
-    c.name=name;
+    c.name=name;c.address=address;c.lat=lat;c.lng=lng;
     syncCustomer(c);
   }
   cm('m-edit-cust');

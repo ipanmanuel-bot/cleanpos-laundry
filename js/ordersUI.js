@@ -169,10 +169,12 @@ function custSearch(pre) {
     const balBadge = membershipEnabled && bal > 0
       ? `<span style="font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:1px 8px;border-radius:10px;margin-left:6px">💳 ${fmt(bal)}</span>`
       : '';
+    const addrInfo = c.address ? ` · ${esc(c.address)}` : '';
+    const locBadge = c.lat&&c.lng ? ` <span style="color:var(--p);font-size:11px">Lokasi tersimpan</span>` : '';
     return `<div onclick="pickCust('${pre}','${esc(c.phone)}')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
       <div style="flex:1">
         <div style="font-weight:600;font-size:13px">${esc(c.name)}${balBadge}</div>
-        <div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.phone)}${addrInfo}${locBadge}</div>
       </div>
     </div>`;
   }).join('');
