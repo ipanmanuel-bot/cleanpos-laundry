@@ -361,23 +361,57 @@ function extractLatLng(val){
 function _isShortMapsUrl(val){
   return !!(val&&(val.includes('maps.app.goo.gl')||val.includes('goo.gl/maps')));
 }
-// Resolve short Maps URL via proxy, then extract lat/lng. Returns [lat,lng] or null.
+// Extract lat/lng from any HTML/URL string using all known patterns
+function _extractCoordsFromText(text){
+  if(!text)return null;
+  // Pattern: @lat,lng
+  let c=extractLatLng(text);if(c)return c;
+  // Pattern: !3d<lat>!4d<lng> (embedded in place URLs & HTML)
+  const lat3d=text.match(/!3d(-?\d+\.\d+)/),lng4d=text.match(/!4d(-?\d+\.\d+)/);
+  if(lat3d&&lng4d){const lt=parseFloat(lat3d[1]),ln=parseFloat(lng4d[1]);if(lt>=-90&&lt<=90&&ln>=-180&&ln<=180)return[lt,ln];}
+  // Pattern: center=lat%2Clng or center=lat,lng (URL-encoded)
+  const ctr=text.match(/center=(-?\d+\.\d+)[%2C,]+(-?\d+\.\d+)/i);
+  if(ctr)return[parseFloat(ctr[1]),parseFloat(ctr[2])];
+  // Pattern: "lat":-6.xxx,"lng":106.xxx in JSON
+  const jlat=text.match(/"lat(?:itude)?"\s*:\s*(-?\d+\.\d+)/),jlng=text.match(/"ln?g(?:itude)?"\s*:\s*(-?\d+\.\d+)/);
+  if(jlat&&jlng)return[parseFloat(jlat[1]),parseFloat(jlng[1])];
+  // Pattern: ll=lat,lng
+  const ll=text.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if(ll)return[parseFloat(ll[1]),parseFloat(ll[2])];
+  return null;
+}
+// Resolve short Maps URL via proxy (tries multiple), then extract lat/lng. Returns [lat,lng] or null.
 async function resolveLatLng(val){
   const direct=extractLatLng(val);
   if(direct)return direct;
   if(!_isShortMapsUrl(val))return null;
+  const url=val.trim();
+  // Try allorigins first (returns JSON with final URL + HTML)
   try{
-    const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(val.trim()));
-    if(!r.ok)return null;
-    const data=await r.json();
-    // Try final URL after redirects first
-    const finalUrl=data.status?.url||'';
-    if(finalUrl){const c=extractLatLng(finalUrl);if(c)return c;}
-    // Fallback: scan HTML content for a Google Maps URL with coords
-    const html=data.contents||'';
-    const m=html.match(/https:\/\/www\.google\.com\/maps[^"'<>\s\\]+/);
-    if(m)return extractLatLng(m[0]);
-  }catch(e){console.warn('[resolveLatLng]',e.message);}
+    const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url));
+    if(r.ok){
+      const data=await r.json();
+      const finalUrl=data.status?.url||'';
+      // Try final redirect URL
+      if(finalUrl&&finalUrl!==url){const c=_extractCoordsFromText(finalUrl);if(c)return c;}
+      // Scan full HTML content for any coords pattern
+      const html=data.contents||'';
+      const c=_extractCoordsFromText(html);if(c)return c;
+      // Find all Google Maps URLs in HTML and try each
+      const matches=html.match(/https:\/\/(?:www\.)?google\.com\/maps[^"'<>\s\\]*/g)||[];
+      for(const u of matches){const c2=_extractCoordsFromText(u);if(c2)return c2;}
+    }
+  }catch(e){console.warn('[resolveLatLng] allorigins:',e.message);}
+  // Fallback: corsproxy.io
+  try{
+    const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url));
+    if(r.ok){
+      const html=await r.text();
+      const c=_extractCoordsFromText(html);if(c)return c;
+      const matches=html.match(/https:\/\/(?:www\.)?google\.com\/maps[^"'<>\s\\]*/g)||[];
+      for(const u of matches){const c2=_extractCoordsFromText(u);if(c2)return c2;}
+    }
+  }catch(e){console.warn('[resolveLatLng] corsproxy:',e.message);}
   return null;
 }
 // Reverse geocode using Nominatim (free, no key). Returns area string or null.
@@ -826,6 +860,10 @@ async function onPickupLocInput(val){
   if(!coords&&_isShortMapsUrl(val)){
     if(badge)badge.innerHTML='<span style="color:var(--t2);font-size:11px">Mengambil koordinat...</span>';
     coords=await resolveLatLng(val);
+    if(!coords){
+      if(badge)badge.innerHTML=`<span style="color:#c62828;font-size:11px">Tidak bisa baca otomatis. <a href="${val.trim()}" target="_blank" rel="noopener" style="color:var(--p)">Buka link ini</a>, lalu salin URL panjang dari address bar browser dan paste kembali di sini.</span>`;
+      return;
+    }
   }
   if(coords){
     const[lat,lng]=coords;
@@ -852,6 +890,11 @@ async function savePickupRequest(){
   if(!name||!phone){toast('Nama dan nomor HP wajib diisi');return;}
   const lat=g('mpk-lat')?.value?parseFloat(g('mpk-lat').value):null;
   const lng=g('mpk-lng')?.value?parseFloat(g('mpk-lng').value):null;
+  if(!lat||!lng){
+    const locEl=g('mpk-loc');
+    if(locEl){locEl.style.borderColor='var(--re)';locEl.focus();setTimeout(()=>locEl.style.borderColor='',2500);}
+    toast('Lokasi jemput wajib diisi dan harus valid (koordinat terdeteksi)');return;
+  }
   const address=(g('mpk-addr')?.value||'').trim();
   const slotId=g('mpk-slot')?.value||null;
   const date=g('mpk-date')?.value||new Date().toISOString().split('T')[0];
@@ -918,6 +961,10 @@ async function onDeliveryLocInput(val){
   if(!coords&&_isShortMapsUrl(val)){
     if(locBadge)locBadge.innerHTML='<span style="color:var(--t2);font-size:11px">Mengambil koordinat...</span>';
     coords=await resolveLatLng(val);
+    if(!coords){
+      if(locBadge)locBadge.innerHTML=`<span style="color:#c62828;font-size:11px">Tidak bisa baca otomatis. <a href="${val.trim()}" target="_blank" rel="noopener" style="color:var(--p)">Buka link ini</a>, lalu salin URL panjang dari address bar browser dan paste kembali di sini.</span>`;
+      return;
+    }
   }
   if(coords){
     const[lat,lng]=coords;
