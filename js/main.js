@@ -380,38 +380,19 @@ function _extractCoordsFromText(text){
   if(ll)return[parseFloat(ll[1]),parseFloat(ll[2])];
   return null;
 }
-// Resolve short Maps URL via proxy (tries multiple), then extract lat/lng. Returns [lat,lng] or null.
+// Resolve short Maps URL via Vercel serverless function, then extract lat/lng. Returns [lat,lng] or null.
 async function resolveLatLng(val){
   const direct=extractLatLng(val);
   if(direct)return direct;
   if(!_isShortMapsUrl(val))return null;
   const url=val.trim();
-  // Try allorigins first (returns JSON with final URL + HTML)
   try{
-    const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url));
-    if(r.ok){
-      const data=await r.json();
-      const finalUrl=data.status?.url||'';
-      // Try final redirect URL
-      if(finalUrl&&finalUrl!==url){const c=_extractCoordsFromText(finalUrl);if(c)return c;}
-      // Scan full HTML content for any coords pattern
-      const html=data.contents||'';
-      const c=_extractCoordsFromText(html);if(c)return c;
-      // Find all Google Maps URLs in HTML and try each
-      const matches=html.match(/https:\/\/(?:www\.)?google\.com\/maps[^"'<>\s\\]*/g)||[];
-      for(const u of matches){const c2=_extractCoordsFromText(u);if(c2)return c2;}
-    }
-  }catch(e){console.warn('[resolveLatLng] allorigins:',e.message);}
-  // Fallback: corsproxy.io
-  try{
-    const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url));
-    if(r.ok){
-      const html=await r.text();
-      const c=_extractCoordsFromText(html);if(c)return c;
-      const matches=html.match(/https:\/\/(?:www\.)?google\.com\/maps[^"'<>\s\\]*/g)||[];
-      for(const u of matches){const c2=_extractCoordsFromText(u);if(c2)return c2;}
-    }
-  }catch(e){console.warn('[resolveLatLng] corsproxy:',e.message);}
+    const r=await fetch('/api/resolve-url?url='+encodeURIComponent(url));
+    if(!r.ok)return null;
+    const data=await r.json();
+    const finalUrl=data.url||'';
+    if(finalUrl){const c=_extractCoordsFromText(finalUrl);if(c)return c;}
+  }catch(e){console.warn('[resolveLatLng]',e.message);}
   return null;
 }
 // Reverse geocode using Nominatim (free, no key). Returns area string or null.
