@@ -636,8 +636,9 @@ function initOwner(){
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     buildOrderForm('no');calcO();
-    // Stats render immediately; chart uses its own internal retry for canvas dimensions
-    refreshODash();
+    // Only render now if cloud data is already loaded; if supaLoadAll() is still
+    // running it will call refreshODash() itself when it finishes (ordersApi.js line 385).
+    if(_supaDataLoaded) refreshODash();
   }
   _resetIdleTimer();
 }

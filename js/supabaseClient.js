@@ -37,6 +37,7 @@ let currentUserId = null;
 let currentPlan = 'basic';
 let currentPlanStatus = 'active';
 let currentPlanExpiry = null;
+let _supaDataLoaded = false; // true once supaLoadAll() has completed at least once
 
 // Initialize Supabase client — createClient is passed in from dynamic import in main.js
 function initSupabase(createClientFn) {

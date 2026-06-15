@@ -381,6 +381,7 @@ async function supaLoadAll() {
   if (typeof renderPlanBadge === 'function') renderPlanBadge();
   if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
   toast('✅ Data cloud berhasil dimuat!');
+  _supaDataLoaded = true; // mark data as ready
   // Re-render dashboard if it's already visible (e.g. after background cloud sync)
   if (curRole === 'owner' && typeof refreshODash === 'function') refreshODash();
   else if (curRole === 'staff' && typeof refreshSDash === 'function') refreshSDash();
