@@ -357,6 +357,29 @@ function extractLatLng(val){
   if(lat>=-90&&lat<=90&&lng>=-180&&lng<=180)return[lat,lng];
   return null;
 }
+// Detect Google Maps short URLs (maps.app.goo.gl / goo.gl/maps)
+function _isShortMapsUrl(val){
+  return !!(val&&(val.includes('maps.app.goo.gl')||val.includes('goo.gl/maps')));
+}
+// Resolve short Maps URL via proxy, then extract lat/lng. Returns [lat,lng] or null.
+async function resolveLatLng(val){
+  const direct=extractLatLng(val);
+  if(direct)return direct;
+  if(!_isShortMapsUrl(val))return null;
+  try{
+    const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(val.trim()));
+    if(!r.ok)return null;
+    const data=await r.json();
+    // Try final URL after redirects first
+    const finalUrl=data.status?.url||'';
+    if(finalUrl){const c=extractLatLng(finalUrl);if(c)return c;}
+    // Fallback: scan HTML content for a Google Maps URL with coords
+    const html=data.contents||'';
+    const m=html.match(/https:\/\/www\.google\.com\/maps[^"'<>\s\\]+/);
+    if(m)return extractLatLng(m[0]);
+  }catch(e){console.warn('[resolveLatLng]',e.message);}
+  return null;
+}
 // Reverse geocode using Nominatim (free, no key). Returns area string or null.
 async function nominatimArea(lat,lng){
   try{
@@ -519,7 +542,7 @@ function sGo(pg,el){
   document.querySelectorAll('#s-nav .ni').forEach(n=>n.classList.remove('on'));
   const p=g('s-p-'+pg);if(p)p.classList.add('on');if(el)el.classList.add('on');
   g('s-mc').scrollTop=0;
-  const pm={dashboard:refreshSDash,orders:renderOrders,tracking:()=>renderKanban('s'),wa:renderSWa,membership:renderMembership,printer:renderPrinters,notifications:renderNotifications};
+  const pm={dashboard:refreshSDash,orders:renderOrders,tracking:()=>renderKanban('s'),wa:renderSWa,membership:renderMembership,delivery:renderDeliveryPage,printer:renderPrinters,notifications:renderNotifications};
   if(pm[pg])pm[pg]();
   if(pg==='new-order'){buildOrderForm('sno');calcS();}
   closeDrawer();
@@ -797,9 +820,13 @@ function onPickupPhoneInput(phone){
   if(c.address&&g('mpk-addr')&&!g('mpk-addr').value)g('mpk-addr').value=c.address;
 }
 
-function onPickupLocInput(val){
+async function onPickupLocInput(val){
   const badge=g('mpk-loc-badge');
-  const coords=extractLatLng(val);
+  let coords=extractLatLng(val);
+  if(!coords&&_isShortMapsUrl(val)){
+    if(badge)badge.innerHTML='<span style="color:var(--t2);font-size:11px">Mengambil koordinat...</span>';
+    coords=await resolveLatLng(val);
+  }
   if(coords){
     const[lat,lng]=coords;
     if(g('mpk-lat'))g('mpk-lat').value=lat;if(g('mpk-lng'))g('mpk-lng').value=lng;
@@ -885,8 +912,13 @@ function openDeliveryModal(orderId){
   openModal('m-delivery');
 }
 
-function onDeliveryLocInput(val){
-  const coords=extractLatLng(val);
+async function onDeliveryLocInput(val){
+  const locBadge=g('mdl-loc-badge');
+  let coords=extractLatLng(val);
+  if(!coords&&_isShortMapsUrl(val)){
+    if(locBadge)locBadge.innerHTML='<span style="color:var(--t2);font-size:11px">Mengambil koordinat...</span>';
+    coords=await resolveLatLng(val);
+  }
   if(coords){
     const[lat,lng]=coords;
     if(g('mdl-lat'))g('mdl-lat').value=lat;if(g('mdl-lng'))g('mdl-lng').value=lng;
@@ -894,7 +926,7 @@ function onDeliveryLocInput(val){
     _updateDeliveryChargeBadge(lat,lng,o?.outletId||null);
   } else {
     if(g('mdl-lat'))g('mdl-lat').value='';if(g('mdl-lng'))g('mdl-lng').value='';
-    if(g('mdl-loc-badge'))g('mdl-loc-badge').innerHTML='';
+    if(locBadge)locBadge.innerHTML='';
     if(g('mdl-charge-info'))g('mdl-charge-info').textContent='';
   }
 }
@@ -963,6 +995,9 @@ function _fmtDqDate(dk){
   try{const d=new Date(dk+'T00:00:00');return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return dk;}
 }
 
+// Returns role-aware element ID for delivery page elements
+function _dqId(id){return curRole==='staff'?'s-'+id:id;}
+
 function toggleDqDate(dk){
   if(_dqOpenDates.has(dk))_dqOpenDates.delete(dk);else _dqOpenDates.add(dk);
   renderDeliveryPage();
@@ -970,13 +1005,13 @@ function toggleDqDate(dk){
 
 function setDqFilter(f, btn){
   _dqFilter=f;
-  document.querySelectorAll('#dq-filter-chips .btn').forEach(b=>b.classList.remove('bp'));
+  document.querySelectorAll('#'+_dqId('dq-filter-chips')+' .btn').forEach(b=>b.classList.remove('bp'));
   if(btn)btn.classList.add('bp');
   renderDeliveryPage();
 }
 
 function renderDeliveryPage(){
-  const list=g('dq-list');if(!list)return;
+  const list=g(_dqId('dq-list'));if(!list)return;
   const today=new Date().toISOString().slice(0,10);
   if(_dqOpenDates.size===0)_dqOpenDates.add(today);
 
@@ -1005,7 +1040,7 @@ function renderDeliveryPage(){
 
   if(!sortedDates.length){
     list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--t2)">Belum ada request antar jemput.</div>';
-    g('dq-route-panel').style.display='none';
+    g(_dqId('dq-route-panel')).style.display='none';
     return;
   }
 
@@ -1053,6 +1088,7 @@ function renderDeliveryPage(){
 
   lucide.createIcons({nodes:[list]});
 }
+
 
 function _dqRow(d){
   const isPickup=d.type==='pickup';
@@ -1120,8 +1156,8 @@ function buildRoute(dateKey){
   const outlet=outlets.find(o=>o.lat&&o.lng)||null;
   const origin=outlet?{lat:outlet.lat,lng:outlet.lng}:null;
   _routeItems=_nearestNeighbor(items,origin);
-  g('dq-route-panel').style.display='';
-  const rl=g('dq-route-list');
+  g(_dqId('dq-route-panel')).style.display='';
+  const rl=g(_dqId('dq-route-list'));
   if(!rl)return;
   const rows=_routeItems.map((d,i)=>{
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--b1)">
@@ -1135,8 +1171,8 @@ function buildRoute(dateKey){
   const kurirList=employees.filter(e=>e.isKurir&&e.phone&&(
     !e.kurirOutlets?.length || e.kurirOutlets.some(oid=>routeOutletIds.has(oid))
   ));
-  const sel=g('dq-kurir-sel');
-  const manualWrap=g('dq-kurir-phone-wrap');
+  const sel=g(_dqId('dq-kurir-sel'));
+  const manualWrap=g(_dqId('dq-kurir-phone-wrap'));
   if(sel){
     if(kurirList.length){
       sel.style.display='';
@@ -1145,10 +1181,10 @@ function buildRoute(dateKey){
     } else {
       sel.style.display='none';
       if(manualWrap)manualWrap.style.display='';
-      if(g('dq-courier-phone'))g('dq-courier-phone').value=courierPhone;
+      if(g(_dqId('dq-courier-phone')))g(_dqId('dq-courier-phone')).value=courierPhone;
     }
   }
-  lucide.createIcons({nodes:[g('dq-route-panel')]});
+  lucide.createIcons({nodes:[g(_dqId('dq-route-panel'))]});
 }
 
 function _nearestNeighbor(items, origin){
@@ -1198,8 +1234,8 @@ function saveCourierPhone(val){
 function sendRouteToCourier(){
   if(!_routeItems.length){toast('Buat rute dulu');return;}
   // Get phone from kurir dropdown (if visible) or manual input
-  const sel=g('dq-kurir-sel');
-  const phone=(sel&&sel.style.display!=='none'?sel.value:g('dq-courier-phone')?.value||'').trim();
+  const sel=g(_dqId('dq-kurir-sel'));
+  const phone=(sel&&sel.style.display!=='none'?sel.value:g(_dqId('dq-courier-phone'))?.value||'').trim();
   if(!phone){toast('Pilih atau isi nomor WA kurir');return;}
   // Get kurir name for greeting
   const kurirEmp=employees.find(e=>e.phone===phone&&e.isKurir);
@@ -3280,19 +3316,28 @@ function openEditCust(phone){
   openModal('m-edit-cust');
   setTimeout(()=>g('ec-name')?.focus(),100);
 }
-function saveEditCust(){
+async function saveEditCust(){
   const name=(g('ec-name')?.value||'').trim();
   if(!name){toast('⚠️ Nama pelanggan wajib diisi');return;}
   const newPhone=(g('ec-phone')?.value||'').trim()||_ecOldPhone;
   // Check duplicate only if phone actually changed
   if(newPhone!==_ecOldPhone&&customers[newPhone]){toast('⚠️ Nomor WA sudah terdaftar: '+customers[newPhone].name);return;}
   const c=customers[_ecOldPhone];if(!c)return;
-  // Parse address & coordinates
+  // Parse address & coordinates (support short Maps URLs)
   const address=(g('ec-address')?.value||'').trim()||null;
   const gmapsVal=(g('ec-gmaps')?.value||'').trim();
-  const coords=gmapsVal?extractLatLng(gmapsVal):null;
-  const lat=coords?coords[0]:null;
-  const lng=coords?coords[1]:null;
+  let lat=null,lng=null;
+  if(gmapsVal){
+    if(_isShortMapsUrl(gmapsVal)){
+      toast('Mengambil koordinat dari link...');
+      const coords=await resolveLatLng(gmapsVal);
+      if(coords){lat=coords[0];lng=coords[1];}
+      else toast('Koordinat tidak ditemukan. Coba salin koordinat langsung (lat,lng).');
+    } else {
+      const coords=extractLatLng(gmapsVal);
+      if(coords){lat=coords[0];lng=coords[1];}
+    }
+  }
   // If phone changed, re-key in customers object
   if(newPhone!==_ecOldPhone){
     customers[newPhone]={...c,name,phone:newPhone,address,lat,lng};
