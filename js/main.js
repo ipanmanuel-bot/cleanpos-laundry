@@ -636,8 +636,8 @@ function initOwner(){
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     buildOrderForm('no');calcO();
-    // Double-RAF: ensures flex layout is fully computed before Chart.js reads canvas dimensions
-    requestAnimationFrame(()=>requestAnimationFrame(refreshODash));
+    // Stats render immediately; chart uses its own internal retry for canvas dimensions
+    refreshODash();
   }
   _resetIdleTimer();
 }
