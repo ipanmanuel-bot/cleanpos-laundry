@@ -84,7 +84,7 @@ let printers = [];
 let printerCtr = 1; let btDevice = null; let _editPrinterId = null;
 const _PRINTERS_KEY = 'cleanpos_printers';
 let rptFilter = 'today'; let empFilter = 'all';
-let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null; let dashOutlet = 'all';
+let dashPeriod = localStorage.getItem('cleanpos_dash_period') || 'bulanan'; let dashOffset = 0; let _dashChart = null; let dashOutlet = 'all';
 let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutlet = 'all'; let rptOutlet = 'all';
 let ordDateFilter = 'all'; let ordDateFrom = ''; let ordDateTo = '';
 let ordFst = ''; let ordFpy = '';
@@ -1800,7 +1800,7 @@ function _fmtPct(pct){
 }
 function _pct(cur,prev){ return prev===0?null:((cur-prev)/prev*100); }
 
-function setDashPeriod(p){ dashPeriod=p; dashOffset=0; refreshODash(); }
+function setDashPeriod(p){ dashPeriod=p; dashOffset=0; try{localStorage.setItem('cleanpos_dash_period',p);}catch(e){} refreshODash(); }
 function setDashOutlet(id){ dashOutlet=id; refreshODash(); }
 function navDash(dir){ const n=dashOffset+dir; if(n>0)return; dashOffset=n; refreshODash(); }
 
