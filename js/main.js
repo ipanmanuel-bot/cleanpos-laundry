@@ -380,18 +380,19 @@ function _extractCoordsFromText(text){
   if(ll)return[parseFloat(ll[1]),parseFloat(ll[2])];
   return null;
 }
-// Resolve short Maps URL via Vercel serverless function, then extract lat/lng. Returns [lat,lng] or null.
+// Resolve short Maps URL via Vercel serverless function. Returns [lat,lng] or null.
 async function resolveLatLng(val){
   const direct=extractLatLng(val);
   if(direct)return direct;
   if(!_isShortMapsUrl(val))return null;
-  const url=val.trim();
   try{
-    const r=await fetch('/api/resolve-url?url='+encodeURIComponent(url));
+    const r=await fetch('/api/resolve-url?url='+encodeURIComponent(val.trim()));
     if(!r.ok)return null;
     const data=await r.json();
-    const finalUrl=data.url||'';
-    if(finalUrl){const c=_extractCoordsFromText(finalUrl);if(c)return c;}
+    // Server already extracted coords from URL + HTML scan
+    if(data.lat&&data.lng)return[data.lat,data.lng];
+    // Fallback: try parsing the final URL client-side
+    if(data.url){const c=_extractCoordsFromText(data.url);if(c)return c;}
   }catch(e){console.warn('[resolveLatLng]',e.message);}
   return null;
 }
