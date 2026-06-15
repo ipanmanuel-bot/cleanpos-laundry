@@ -2343,6 +2343,7 @@ tr:hover td{background:#F6F7F9}
     <button class="ni" onclick="sGo('wa',this)"><span class="nic"><i data-lucide="message-circle"></i></span>WA Notifikasi</button>
     <button class="ni" onclick="sGo('notifications',this)"><span class="nic" style="position:relative"><i data-lucide="bell"></i><span class="notif-badge" id="s-notif-badge"></span></span>Notifikasi</button>
     <button class="ni" id="s-nav-membership" onclick="sGo('membership',this)"><span class="nic"><i data-lucide="credit-card"></i></span>Membership</button>
+    <button class="ni" onclick="sGo('delivery',this)"><span class="nic"><i data-lucide="truck"></i></span>Jemput &amp; Antar</button>
     <button class="ni" onclick="sGo('printer',this)"><span class="nic"><i data-lucide="printer"></i></span>Printer</button>
   </div>
   <div class="sb-bot"><button class="back-sb" onclick="confirmBack()">← Menu Awal</button></div>
@@ -2587,6 +2588,48 @@ tr:hover td{background:#F6F7F9}
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       <div id="s-notif-list"></div>
+    </div>
+  </div>
+
+  <div class="page" id="s-p-delivery">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <div>
+        <div class="pt" style="margin-bottom:2px">Jemput &amp; Antar</div>
+        <div style="font-size:12px;color:var(--t2)">Kelola antrian penjemputan dan pengantaran pesanan.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bp bsm bpill" onclick="openPickupModal(null)"><i data-lucide="plus" style="width:13px;height:13px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:4px"></i>Request Jemput</button>
+        <button class="btn bg bsm bpill" onclick="renderDeliveryPage()" title="Refresh"><i data-lucide="refresh-cw" style="width:13px;height:13px;stroke-width:2.5;display:inline;vertical-align:-2px"></i></button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="s-dq-filter-chips">
+      <button class="btn bsm bpill bp" onclick="setDqFilter('active',this)">Aktif</button>
+      <button class="btn bsm bpill" onclick="setDqFilter('all',this)">Semua</button>
+      <button class="btn bsm bpill" onclick="setDqFilter('pickup',this)">Jemput</button>
+      <button class="btn bsm bpill" onclick="setDqFilter('delivery',this)">Antar</button>
+      <button class="btn bsm bpill" onclick="setDqFilter('pending',this)">Menunggu</button>
+      <button class="btn bsm bpill" onclick="setDqFilter('done',this)">Selesai</button>
+    </div>
+    <div id="s-dq-list"></div>
+    <div id="s-dq-route-panel" style="display:none;margin-top:20px" class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">Rute Perjalanan</div>
+        <button class="btn bp bsm bpill" onclick="openRouteMap()"><i data-lucide="map-pin" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Buka di Maps</button>
+      </div>
+      <div id="s-dq-route-list"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--b1)">
+        <div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Kirim ke Kurir via WA</div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin-bottom:0">
+            <label style="font-size:12px">Pilih Kurir</label>
+            <select id="s-dq-kurir-sel"></select>
+            <div id="s-dq-kurir-phone-wrap" style="display:none;margin-top:6px">
+              <input id="s-dq-courier-phone" type="tel" placeholder="Nomor WA kurir (tidak ada kurir terdaftar)" style="font-size:12px">
+            </div>
+          </div>
+          <button class="btn bg bsm bpill" style="flex-shrink:0" onclick="sendRouteToCourier()"><i data-lucide="message-circle" style="width:12px;height:12px;stroke-width:2.5;display:inline;vertical-align:-1px;margin-right:3px"></i>Kirim WA</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2971,7 +3014,7 @@ tr:hover td{background:#F6F7F9}
       <div id="mpk-cust-results"></div>
     </div>
     <div class="fg"><label>No. WhatsApp *</label><input id="mpk-phone" type="tel" placeholder="0812-xxxx-xxxx" oninput="onPickupPhoneInput(this.value)"></div>
-    <div class="fg"><label>Lokasi Jemput <span style="font-weight:400;color:var(--t2)">(Google Maps link atau koordinat)</span></label>
+    <div class="fg"><label>Lokasi Jemput * <span style="font-weight:400;color:var(--t2)">(Google Maps link atau koordinat)</span></label>
       <input id="mpk-loc" placeholder="Paste link Google Maps atau -6.xxx, 106.xxx" oninput="onPickupLocInput(this.value)">
       <div id="mpk-loc-badge" style="font-size:11px;margin-top:4px"></div>
       <input type="hidden" id="mpk-lat"><input type="hidden" id="mpk-lng">
