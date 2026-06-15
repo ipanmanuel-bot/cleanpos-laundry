@@ -6139,6 +6139,9 @@ function _showNewPasswordModal() {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
+            // If user already logged in before data finished loading, refresh dashboard instead of navigating
+            if (curRole === 'owner') { refreshODash(); return; }
+            if (curRole === 'staff') { refreshSDash(); return; }
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
           });
@@ -6148,6 +6151,9 @@ function _showNewPasswordModal() {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
+            // If user already logged in before data finished loading, refresh dashboard instead of navigating
+            if (curRole === 'owner') { refreshODash(); return; }
+            if (curRole === 'staff') { refreshSDash(); return; }
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login'); // advance to login now that data is ready
           });
