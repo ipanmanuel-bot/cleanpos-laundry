@@ -623,27 +623,20 @@ function seed(){
 
 // ===== INIT =====
 function initOwner(){
-  console.log('[initOwner] start, _supaDataLoaded='+_supaDataLoaded+', orders='+orders.length);
   loadPrintersFromStorage();
   _loadNotifications();_updateNotifBadge();
   setInterval(_generateNotifications,5*60*1000);
   setTimeout(_generateNotifications,5000);
-  g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
+  const _tlbl=g('today-lbl'); if(_tlbl) _tlbl.textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
   const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
-  try{prevTpl();}catch(e){console.error('[initOwner] prevTpl threw:',e);}
-  try{renderPricing();}catch(e){console.error('[initOwner] renderPricing threw:',e);}
-  try{renderPromo();}catch(e){console.error('[initOwner] renderPromo threw:',e);}
-  try{renderSettings();}catch(e){console.error('[initOwner] renderSettings threw:',e);}
-  try{renderPlanBadge();}catch(e){console.error('[initOwner] renderPlanBadge threw:',e);}
-  try{renderSubCard();}catch(e){console.error('[initOwner] renderSubCard threw:',e);}
-  try{checkPlanExpiry();}catch(e){console.error('[initOwner] checkPlanExpiry threw:',e);}
+  prevTpl();renderPricing();renderPromo();renderSettings();
+  renderPlanBadge();renderSubCard();checkPlanExpiry();
   if(isPlanExpired()){
     // Land directly on settings so user can pay
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     buildOrderForm('no');calcO();
-    console.log('[initOwner] calling refreshODash, _supaDataLoaded='+_supaDataLoaded);
-    refreshODash(); // waits internally if cloud data isn't ready yet
+    refreshODash();
   }
   _resetIdleTimer();
 }
