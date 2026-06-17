@@ -37,6 +37,7 @@ let currentUserId = null;
 let currentPlan = 'basic';
 let currentPlanStatus = 'active';
 let currentPlanExpiry = null;
+let _supaDataLoaded = false; // true once supaLoadAll() has completed at least once
 
 // Initialize Supabase client — createClient is passed in from dynamic import in main.js
 function initSupabase(createClientFn) {
@@ -223,7 +224,7 @@ function showReturningUser(email) {
     errEl.innerHTML = '✅ Masuk sebagai <strong>' + email + '</strong><br><a style="color:var(--t2);font-size:12px;cursor:pointer" onclick="confirmLogout()">Bukan kamu? Ganti akun</a>';
     errEl.style.display = 'block';
   }
-  if (btn) { btn.textContent = 'Lanjutkan →'; btn.onclick = () => showScr('scr-login'); }
+  if (btn) { btn.textContent = 'Memuat data...'; btn.disabled = true; btn.dataset.pendingContinue = '1'; }
 }
 function resetAuthForm() {
   const tabs = g('tab-signin')?.parentElement;

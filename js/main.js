@@ -84,7 +84,7 @@ let printers = [];
 let printerCtr = 1; let btDevice = null; let _editPrinterId = null;
 const _PRINTERS_KEY = 'cleanpos_printers';
 let rptFilter = 'today'; let empFilter = 'all';
-let dashPeriod = 'harian'; let dashOffset = 0; let _dashChart = null; let dashOutlet = 'all';
+let dashPeriod = localStorage.getItem('cleanpos_dash_period') || 'bulanan'; let dashOffset = 0; let _dashChart = null; let dashOutlet = 'all';
 let ordOutlet = 'all'; let trkOutlet = 'all'; let kasOutlet = 'all'; let expOutlet = 'all'; let rptOutlet = 'all';
 let ordDateFilter = 'all'; let ordDateFrom = ''; let ordDateTo = '';
 let ordFst = ''; let ordFpy = '';
@@ -627,7 +627,7 @@ function initOwner(){
   _loadNotifications();_updateNotifBadge();
   setInterval(_generateNotifications,5*60*1000);
   setTimeout(_generateNotifications,5000);
-  g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
+  const _tlbl=g('today-lbl'); if(_tlbl) _tlbl.textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
   const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
   prevTpl();renderPricing();renderPromo();renderSettings();
   renderPlanBadge();renderSubCard();checkPlanExpiry();
@@ -636,8 +636,7 @@ function initOwner(){
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     buildOrderForm('no');calcO();
-    // Double-RAF: ensures flex layout is fully computed before Chart.js reads canvas dimensions
-    requestAnimationFrame(()=>requestAnimationFrame(refreshODash));
+    refreshODash();
   }
   _resetIdleTimer();
 }
@@ -1800,7 +1799,7 @@ function _fmtPct(pct){
 }
 function _pct(cur,prev){ return prev===0?null:((cur-prev)/prev*100); }
 
-function setDashPeriod(p){ dashPeriod=p; dashOffset=0; refreshODash(); }
+function setDashPeriod(p){ dashPeriod=p; dashOffset=0; try{localStorage.setItem('cleanpos_dash_period',p);}catch(e){} refreshODash(); }
 function setDashOutlet(id){ dashOutlet=id; refreshODash(); }
 function navDash(dir){ const n=dashOffset+dir; if(n>0)return; dashOffset=n; refreshODash(); }
 
@@ -2029,7 +2028,12 @@ function _renderDashChart(curOrders, prevOrders, range, _retry){
   const lbl=g('dash-chart-lbl'); if(lbl)lbl.textContent=range.chartLabel;
 }
 
-function refreshODash(){
+function refreshODash(_attempt){
+  // If cloud data hasn't loaded yet, retry every 200ms (up to ~6s) rather than render empty stats
+  if(!_supaDataLoaded){
+    if((_attempt||0)<30) setTimeout(()=>refreshODash((_attempt||0)+1),200);
+    return;
+  }
   // "Diperbarui" timestamp
   const upEl=g('dash-updated');
   if(upEl){const n=new Date();upEl.textContent='Diperbarui '+n.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})+', '+n.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
@@ -6139,18 +6143,24 @@ function _showNewPasswordModal() {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
+            // If user already logged in before data finished loading, refresh dashboard instead of navigating
+            if (curRole === 'owner') { refreshODash(); return; }
+            if (curRole === 'staff') { refreshSDash(); return; }
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
-          });
+          }).catch(e => { console.error('[auth SIGNED_IN] supaLoadAll failed:', e); if (!curRole) showScr('scr-login'); });
         } else if (event === 'INITIAL_SESSION') {
           showReturningUser(user.email);
           supaLoadAll().then(() => {
             initMemberCard();
             _cleanExpiredTokens();
             _backfillTrackingOrders();
+            // If user already logged in before data finished loading, refresh dashboard instead of navigating
+            if (curRole === 'owner') { refreshODash(); return; }
+            if (curRole === 'staff') { refreshSDash(); return; }
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login'); // advance to login now that data is ready
-          });
+          }).catch(e => { console.error('[auth INITIAL_SESSION] supaLoadAll failed:', e); if (!curRole) showScr('scr-login'); });
         }
       } else {
         currentUserId = null;
