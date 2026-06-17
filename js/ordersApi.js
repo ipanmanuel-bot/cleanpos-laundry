@@ -378,13 +378,13 @@ async function supaLoadAll() {
     } catch(e) {}
   }
   checkExpiredBalances();
-  if (typeof renderPlanBadge === 'function') renderPlanBadge();
-  if (typeof checkPlanExpiry === 'function') checkPlanExpiry();
+  _supaDataLoaded = true; // mark data as ready (set before UI calls so flag is always set even if they throw)
+  try { if (typeof renderPlanBadge === 'function') renderPlanBadge(); } catch(e) { console.error('[supaLoadAll] renderPlanBadge:', e); }
+  try { if (typeof checkPlanExpiry === 'function') checkPlanExpiry(); } catch(e) { console.error('[supaLoadAll] checkPlanExpiry:', e); }
   toast('✅ Data cloud berhasil dimuat!');
-  _supaDataLoaded = true; // mark data as ready
   // Re-render dashboard if it's already visible (e.g. after background cloud sync)
-  if (curRole === 'owner' && typeof refreshODash === 'function') refreshODash();
-  else if (curRole === 'staff' && typeof refreshSDash === 'function') refreshSDash();
+  if (curRole === 'owner' && typeof refreshODash === 'function') try { refreshODash(); } catch(e) { console.error('[supaLoadAll] refreshODash:', e); }
+  else if (curRole === 'staff' && typeof refreshSDash === 'function') try { refreshSDash(); } catch(e) { console.error('[supaLoadAll] refreshSDash:', e); }
   supaSubscribeOrders();
   supaSubscribeSettings();
   supaSubscribeEmployees();

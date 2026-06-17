@@ -623,22 +623,27 @@ function seed(){
 
 // ===== INIT =====
 function initOwner(){
+  console.log('[initOwner] start, _supaDataLoaded='+_supaDataLoaded+', orders='+orders.length);
   loadPrintersFromStorage();
   _loadNotifications();_updateNotifBadge();
   setInterval(_generateNotifications,5*60*1000);
   setTimeout(_generateNotifications,5000);
   g('today-lbl').textContent=DAYS_ID[TODAY_DAY]+', '+TODAY_STR;
   const ta=g('wa-tpl');if(ta)ta.value=waTplSelesai;
-  prevTpl();renderPricing();renderPromo();renderSettings();
-  renderPlanBadge();renderSubCard();checkPlanExpiry();
+  try{prevTpl();}catch(e){console.error('[initOwner] prevTpl threw:',e);}
+  try{renderPricing();}catch(e){console.error('[initOwner] renderPricing threw:',e);}
+  try{renderPromo();}catch(e){console.error('[initOwner] renderPromo threw:',e);}
+  try{renderSettings();}catch(e){console.error('[initOwner] renderSettings threw:',e);}
+  try{renderPlanBadge();}catch(e){console.error('[initOwner] renderPlanBadge threw:',e);}
+  try{renderSubCard();}catch(e){console.error('[initOwner] renderSubCard threw:',e);}
+  try{checkPlanExpiry();}catch(e){console.error('[initOwner] checkPlanExpiry threw:',e);}
   if(isPlanExpired()){
     // Land directly on settings so user can pay
     oGo('settings', document.querySelector('#o-nav .ni[onclick*="settings"]'));
   } else {
     buildOrderForm('no');calcO();
-    // Only render now if cloud data is already loaded; if supaLoadAll() is still
-    // running it will call refreshODash() itself when it finishes (ordersApi.js line 385).
-    if(_supaDataLoaded) refreshODash();
+    console.log('[initOwner] calling refreshODash, _supaDataLoaded='+_supaDataLoaded);
+    refreshODash(); // waits internally if cloud data isn't ready yet
   }
   _resetIdleTimer();
 }
@@ -2030,7 +2035,12 @@ function _renderDashChart(curOrders, prevOrders, range, _retry){
   const lbl=g('dash-chart-lbl'); if(lbl)lbl.textContent=range.chartLabel;
 }
 
-function refreshODash(){
+function refreshODash(_attempt){
+  // If cloud data hasn't loaded yet, retry every 200ms (up to ~6s) rather than render empty stats
+  if(!_supaDataLoaded){
+    if((_attempt||0)<30) setTimeout(()=>refreshODash((_attempt||0)+1),200);
+    return;
+  }
   // "Diperbarui" timestamp
   const upEl=g('dash-updated');
   if(upEl){const n=new Date();upEl.textContent='Diperbarui '+n.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})+', '+n.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
@@ -6145,7 +6155,7 @@ function _showNewPasswordModal() {
             if (curRole === 'staff') { refreshSDash(); return; }
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login');
-          });
+          }).catch(e => { console.error('[auth SIGNED_IN] supaLoadAll failed:', e); if (!curRole) showScr('scr-login'); });
         } else if (event === 'INITIAL_SESSION') {
           showReturningUser(user.email);
           supaLoadAll().then(() => {
@@ -6157,7 +6167,7 @@ function _showNewPasswordModal() {
             if (curRole === 'staff') { refreshSDash(); return; }
             if (ownerPwd === 'owner123') showScr('scr-setup');
             else showScr('scr-login'); // advance to login now that data is ready
-          });
+          }).catch(e => { console.error('[auth INITIAL_SESSION] supaLoadAll failed:', e); if (!curRole) showScr('scr-login'); });
         }
       } else {
         currentUserId = null;
