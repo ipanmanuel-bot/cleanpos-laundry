@@ -906,7 +906,7 @@ function renderOrders() {
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
       <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
       <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${_osc}18;color:${_oc?.color?safeColor(_oc.color):'#666'}">${esc(_oc?.name || '—')}</span></td>
-      <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
+      <td style="font-size:12px;white-space:nowrap">${esc(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
       <td><button class="badge ${SL_PAY[o.payStatus]}" style="cursor:pointer;border:none;font-family:inherit;font-size:inherit" onclick="openPayPicker('${o.id}',this)">${esc(o.payStatus)}</button></td>
@@ -919,7 +919,7 @@ function renderOrders() {
     tb.innerHTML = list.map(o => `<tr>
       <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
       <td><div style="font-weight:600">${esc(o.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(o.phone)}</div></td>
-      <td style="font-size:12px;white-space:nowrap;text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</td>
+      <td style="font-size:12px;white-space:nowrap">${esc(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)}</td>
       <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
       <td><span class="badge ${SL_STATUS[o.status]}">${esc(o.status)}</span></td>
       <td><button class="badge ${SL_PAY[o.payStatus]}" style="cursor:pointer;border:none;font-family:inherit;font-size:inherit" onclick="openPayPicker('${o.id}',this)">${esc(o.payStatus)}</button></td>
@@ -1005,7 +1005,7 @@ function _renderOrdCards(list, wrap) {
         </div>
       </div>
       <div class="ocard-meta">
-        <span style="text-transform:capitalize">${esc(o.svcType)}·${esc(o.svcCat)}</span>
+        <span>${esc(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)}</span>
         ${_oc ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${_ocColor}"></span><span style="font-weight:600;color:${_ocColor}">${esc(_oc.name)}</span>` : ''}
         <span>${esc(o.date||'—')}</span>
       </div>
@@ -1082,7 +1082,7 @@ function _trkCardHtml(o, st, role) {
   return `<div class="trk-card">
     <div class="trk-card-id">${esc(o.id)}</div>
     <div class="trk-card-name">${esc(o.name)}</div>
-    <div class="trk-card-svc">${esc(o.svcType)} · ${o.qty}${getSvcUnit(o.svcType)}</div>
+    <div class="trk-card-svc">${esc(getSvcById(o.svcType)?.name||o.svcType)} · ${o.qty}${getSvcUnit(o.svcType)}</div>
     <div class="trk-card-time">${t ? `<span class="trk-card-time-txt">${t}</span>` : ''}${badge}</div>
     ${ctaHtml}
   </div>`;
@@ -1288,7 +1288,7 @@ function showRcpt(id) {
       + '<div style="font-weight:700;margin-bottom:8px">Struk</div>'
       + '<div>No: ' + esc(o.id || '') + '</div>'
       + '<div>Pelanggan: ' + esc(o.name || '') + '</div>'
-      + '<div>Layanan: ' + esc(o.svcType || '') + ' ' + esc(o.svcCat || '') + '</div>'
+      + '<div>Layanan: ' + esc(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType||'') + '</div>'
       + '<div>Total: ' + Number(o.total || 0) + '</div>'
       + '<div>Metode: ' + esc(o.payMethod || '') + '</div>'
       + '</div>';
@@ -1536,7 +1536,7 @@ function buildMsg(tpl, o) {
     .replace(/{nama}/g, o.name)
     .replace(/{id}/g, o.id)
     .replace(/{total}/g, fmt(o.total))
-    .replace(/{layanan}/g, o.svcType + ' ' + o.svcCat)
+    .replace(/{layanan}/g, getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)
     .replace(/{est}/g, { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[o.svcCat] || '')
     .replace(/{link}/g, trackingUrl)
     .replace(/{bayar}/g, bayarTxt);

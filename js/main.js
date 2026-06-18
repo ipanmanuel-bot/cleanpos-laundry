@@ -915,7 +915,7 @@ function openDeliveryModal(orderId){
   const o=orders.find(x=>x.id===orderId);
   if(!o){toast('Order tidak ditemukan');return;}
   const infoEl=g('mdl-order-info');
-  if(infoEl)infoEl.innerHTML=`<strong>${esc(o.name)}</strong> &middot; ${esc(o.id)}<br><span style="color:var(--t2)">${esc(o.svcType||'')} &middot; ${fmt(o.total)}</span>`;
+  if(infoEl)infoEl.innerHTML=`<strong>${esc(o.name)}</strong> &middot; ${esc(o.id)}<br><span style="color:var(--t2)">${esc(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType||'')} &middot; ${fmt(o.total)}</span>`;
   ['mdl-addr','mdl-notes','mdl-loc'].forEach(id=>{if(g(id))g(id).value='';});
   if(g('mdl-lat'))g('mdl-lat').value='';if(g('mdl-lng'))g('mdl-lng').value='';
   if(g('mdl-loc-badge'))g('mdl-loc-badge').innerHTML='';
@@ -5678,7 +5678,7 @@ function renderReports(){
   const rs=g('rpt-svc');
   if(rs)rs.innerHTML=Object.entries(sv).map(([k,v])=>`
     <div class="rpt-svc-row">
-      <span style="font-size:12px;text-transform:capitalize;flex:1">${k}</span>
+      <span style="font-size:12px;flex:1">${esc(getSvcById(k)?.name||(k==='satuan'?'Satuan':k))}</span>
       <div style="display:flex;align-items:center;gap:8px">
         <div style="width:60px;height:5px;background:var(--b1);border-radius:4px;overflow:hidden"><div style="width:${Math.round(v/maxSv*100)}%;height:100%;background:var(--p);border-radius:4px"></div></div>
         <span style="font-size:12px;font-weight:700;min-width:20px;text-align:right">${v}</span>
@@ -5694,7 +5694,7 @@ function renderReports(){
   if(rt)rt.innerHTML=paged.length?paged.map(o=>`<tr>
     <td style="font-size:11px;font-family:monospace;white-space:nowrap">${esc(o.id)}</td>
     <td>${esc(o.name||'—')}</td>
-    <td style="text-transform:capitalize;white-space:nowrap">${esc(o.svcType||'')}${o.svcCat?' · '+esc(o.svcCat):''}</td>
+    <td style="white-space:nowrap">${esc(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType||'')}</td>
     <td style="font-weight:700;white-space:nowrap">${fmt(o.total)}</td>
     <td><span class="badge ${SL_STATUS[o.status]||''}">${esc(o.status||'')}</span></td>
     <td><span class="badge ${SL_PAY[o.payStatus]||''}">${esc(o.payStatus||'')}</span></td>
@@ -5864,7 +5864,7 @@ function buildEscLabel(o){
   const W=activePrinter?.width==='58'?32:48;
   const dash=escText('-'.repeat(W)+'\n');
   const outlet=outlets.find(x=>x.id===o.outletId);
-  return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.name+'\n'),FONT_NORM,BOLD_OFF,dash,ALIGN_L,escText('No: '+o.id+'\n'),escText('Outlet: '+(outlet?.name||'')+'\n'),escText('Layanan: '+o.svcType.toUpperCase()+' '+o.svcCat+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),escText('Masuk: '+o.date+'\n'),dash,ALIGN_C,escText(storeName+'\n'),NL,NL,CUT);
+  return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.name+'\n'),FONT_NORM,BOLD_OFF,dash,ALIGN_L,escText('No: '+o.id+'\n'),escText('Outlet: '+(outlet?.name||'')+'\n'),escText('Layanan: '+(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),escText('Masuk: '+o.date+'\n'),dash,ALIGN_C,escText(storeName+'\n'),NL,NL,CUT);
 }
 function _btRegisterDevice(device){
   _btConnectedDevice=device;
