@@ -136,22 +136,42 @@ function updWalletOption(pre) {
   const phone = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
   const cust = phone ? customers[phone] : null;
   const bal = cust?.balance||0;
-  // Remove old wallet option if present
+  // Remove old wallet/quota options
   for (let i = pmSel.options.length-1; i >= 0; i--) {
-    if (pmSel.options[i].value === 'Dompet Member') pmSel.remove(i);
+    if (pmSel.options[i].value === 'Dompet Member' || pmSel.options[i].value === 'Quota Kiloan') pmSel.remove(i);
   }
   const balExpired = isBalanceExpired(cust);
-  if (cust && bal > 0 && !balExpired) {
-    pmSel.add(new Option('💳 Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
-    pmSel.value = 'Dompet Member'; // auto-select when balance exists
-    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`💳 Saldo member: <strong>${fmt(bal)}</strong>`; }
+  // Dompet Member (saldo Rp) — hanya jika bukan package mode atau customer masih punya saldo lama
+  if (membershipStyle !== 'package' && cust && bal > 0 && !balExpired) {
+    pmSel.add(new Option('Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
+    pmSel.value = 'Dompet Member';
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>`; infoEl.style.color=''; }
     const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
-  } else if (cust && bal > 0 && balExpired) {
-    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`⚠️ Saldo <strong>${fmt(bal)}</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
+  } else if (membershipStyle !== 'package' && cust && bal > 0 && balExpired) {
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo <strong>${fmt(bal)}</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
     if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
+  }
+  // Quota Kiloan — hanya jika package mode + customer punya quota + order type kiloan
+  if (membershipStyle === 'package') {
+    const kq = cust?.kiloanQuota||0;
+    const quotaExpired = cust?.kiloanQuotaExpiry && (cust.kiloanQuotaExpiry < (typeof TODAY_ISO!=='undefined'?TODAY_ISO:new Date().toISOString().split('T')[0]));
+    const orderType = g(pre+'-type')?.value;
+    const orderCat = g(pre+'-cat')?.value;
+    const tiers = cust?.kiloanQuotaTiers||[];
+    const tiersOk = !tiers.length || tiers[0]==='all' || tiers.includes(orderCat);
+    if (cust && kq > 0 && !quotaExpired && orderType === 'kiloan' && tiersOk) {
+      pmSel.add(new Option('Quota Kiloan ('+kq+' kg tersisa)', 'Quota Kiloan'));
+      pmSel.value = 'Quota Kiloan';
+      if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota kiloan: <strong>${kq} kg</strong> tersisa`; infoEl.style.color=''; }
+      const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+    } else if (cust && kq > 0 && quotaExpired) {
+      if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota <strong>${kq} kg</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
+    } else {
+      if (pmSel.value === 'Quota Kiloan') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
+      if (!cust || (kq <= 0 && bal <= 0)) { if (infoEl) infoEl.style.display='none'; }
+    }
   } else {
-    if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
-    if (infoEl) infoEl.style.display='none';
+    if (!cust || bal <= 0) { if (infoEl) infoEl.style.display='none'; }
   }
 }
 
@@ -703,13 +723,27 @@ function buildOrder(pre) {
     const walletCust = phone !== '—' ? customers[phone] : null;
     const walletBal = Number(walletCust?.balance || 0);
     const walletTotal = Number(o.total || 0);
-    console.log('[wallet check] phone:', phone, '| found:', !!walletCust, '| balance:', walletBal, '| total:', walletTotal);
     if (walletCust && isBalanceExpired(walletCust)) {
-      toast('⚠️ Saldo member telah kadaluarsa!');
+      toast('Saldo member telah kadaluarsa!');
       return null;
     }
     if (!walletCust || walletBal < walletTotal) {
-      toast('⚠️ Saldo tidak cukup! Saldo: ' + fmt(walletBal) + ' | Total: ' + fmt(walletTotal));
+      toast('Saldo tidak cukup! Saldo: ' + fmt(walletBal) + ' | Total: ' + fmt(walletTotal));
+      return null;
+    }
+    o.payStatus = 'Lunas';
+  }
+  // Quota Kiloan: validate before pushing order
+  if (membershipEnabled && o.payMethod === 'Quota Kiloan') {
+    const qCust = phone !== '—' ? customers[phone] : null;
+    const quota = Number(qCust?.kiloanQuota || 0);
+    const todayStr = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : new Date().toISOString().split('T')[0];
+    if (qCust?.kiloanQuotaExpiry && qCust.kiloanQuotaExpiry < todayStr) {
+      toast('Quota kiloan telah kadaluarsa!');
+      return null;
+    }
+    if (!qCust || quota < o.qty) {
+      toast('Quota kiloan tidak cukup! Sisa: ' + quota + ' kg | Butuh: ' + o.qty + ' kg');
       return null;
     }
     o.payStatus = 'Lunas';
@@ -735,7 +769,21 @@ function buildOrder(pre) {
     if (cust) {
       cust.balance = (cust.balance||0) - o.total;
       const txnId = 'MBR-'+String(memberTxnCtr++).padStart(5,'0');
-      memberTxns.push({ id: txnId, phone, type: 'deduct', amount: o.total, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() });
+      const txn = { id: txnId, phone, type: 'deduct', amount: o.total, kgAmount: null, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() };
+      memberTxns.push(txn);
+      syncMemberTxn(txn);
+      syncCustomer(cust);
+    }
+  }
+  if (membershipEnabled && o.payMethod === 'Quota Kiloan' && phone !== '—') {
+    const cust = customers[phone];
+    if (cust) {
+      cust.kiloanQuota = Math.max(0, (cust.kiloanQuota||0) - o.qty);
+      const txnId = 'MBR-'+String(memberTxnCtr++).padStart(5,'0');
+      const txn = { id: txnId, phone, type: 'deduct', amount: 0, kgAmount: o.qty, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() };
+      memberTxns.push(txn);
+      syncMemberTxn(txn);
+      syncCustomer(cust);
     }
   }
   [pre + '-name', pre + '-phone', pre + '-note', pre + '-cash'].forEach(id => { const el = g(id); if (el) el.value = ''; });
@@ -1490,7 +1538,22 @@ function _doChangePayMethod(id, newMethod) {
     const cust = o.phone && o.phone !== '—' ? customers[o.phone] : null;
     if (cust) {
       cust.balance = (cust.balance || 0) + o.total;
-      const deductIdx = memberTxns.findIndex(t => t.orderId === o.id && t.type === 'deduct');
+      const deductIdx = memberTxns.findIndex(t => t.orderId === o.id && t.type === 'deduct' && !t.kgAmount);
+      if (deductIdx !== -1) {
+        const removed = memberTxns.splice(deductIdx, 1)[0];
+        deleteMemberTxn(removed.id);
+        syncCustomer(cust);
+      }
+    }
+    o.payStatus = 'Belum Bayar';
+  }
+
+  // Reverse Quota Kiloan deduction if switching away from it
+  if (oldMethod === 'Quota Kiloan') {
+    const cust = o.phone && o.phone !== '—' ? customers[o.phone] : null;
+    if (cust) {
+      cust.kiloanQuota = (cust.kiloanQuota || 0) + o.qty;
+      const deductIdx = memberTxns.findIndex(t => t.orderId === o.id && t.type === 'deduct' && t.kgAmount);
       if (deductIdx !== -1) {
         const removed = memberTxns.splice(deductIdx, 1)[0];
         deleteMemberTxn(removed.id);
@@ -1502,16 +1565,35 @@ function _doChangePayMethod(id, newMethod) {
 
   // Setup Dompet Member if switching to it
   if (newMethod === 'Dompet Member') {
-    if (!membershipEnabled) { toast('⚠️ Fitur membership tidak aktif'); return; }
+    if (!membershipEnabled) { toast('Fitur membership tidak aktif'); return; }
     const phone = o.phone;
     const cust = phone && phone !== '—' ? customers[phone] : null;
-    if (!cust) { toast('⚠️ Pelanggan tidak terdaftar sebagai member'); return; }
-    if (isBalanceExpired(cust)) { toast('⚠️ Saldo member telah kadaluarsa!'); return; }
+    if (!cust) { toast('Pelanggan tidak terdaftar sebagai member'); return; }
+    if (isBalanceExpired(cust)) { toast('Saldo member telah kadaluarsa!'); return; }
     const bal = Number(cust.balance || 0);
-    if (bal < o.total) { toast('⚠️ Saldo tidak cukup! Saldo: ' + fmt(bal) + ' | Total: ' + fmt(o.total)); return; }
+    if (bal < o.total) { toast('Saldo tidak cukup! Saldo: ' + fmt(bal) + ' | Total: ' + fmt(o.total)); return; }
     cust.balance = bal - o.total;
     const txnId = 'MBR-' + String(memberTxnCtr++).padStart(5, '0');
-    const txn = { id: txnId, phone, type: 'deduct', amount: o.total, baseAmount: null, bonusAmount: null, note: 'Ganti metode bayar', orderId: o.id, time: NOW() };
+    const txn = { id: txnId, phone, type: 'deduct', amount: o.total, kgAmount: null, baseAmount: null, bonusAmount: null, note: 'Ganti metode bayar', orderId: o.id, time: NOW() };
+    memberTxns.push(txn);
+    syncMemberTxn(txn);
+    syncCustomer(cust);
+    o.payStatus = 'Lunas';
+  }
+
+  // Setup Quota Kiloan if switching to it
+  if (newMethod === 'Quota Kiloan') {
+    if (!membershipEnabled) { toast('Fitur membership tidak aktif'); return; }
+    const phone = o.phone;
+    const cust = phone && phone !== '—' ? customers[phone] : null;
+    if (!cust) { toast('Pelanggan tidak terdaftar sebagai member'); return; }
+    const todayStr = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : new Date().toISOString().split('T')[0];
+    if (cust.kiloanQuotaExpiry && cust.kiloanQuotaExpiry < todayStr) { toast('Quota kiloan telah kadaluarsa!'); return; }
+    const quota = Number(cust.kiloanQuota || 0);
+    if (quota < o.qty) { toast('Quota kiloan tidak cukup! Sisa: ' + quota + ' kg | Butuh: ' + o.qty + ' kg'); return; }
+    cust.kiloanQuota = quota - o.qty;
+    const txnId = 'MBR-' + String(memberTxnCtr++).padStart(5, '0');
+    const txn = { id: txnId, phone, type: 'deduct', amount: 0, kgAmount: o.qty, baseAmount: null, bonusAmount: null, note: 'Ganti metode bayar', orderId: o.id, time: NOW() };
     memberTxns.push(txn);
     syncMemberTxn(txn);
     syncCustomer(cust);

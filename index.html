@@ -3177,10 +3177,13 @@ tr:hover td{background:#F6F7F9}
   <div class="mbox" style="max-width:340px">
     <div class="mhd"><span class="mht" id="mpkg-title">Tambah Paket</span><button class="xb" onclick="cm('m-mbr-pkg')">×</button></div>
     <div class="mbd">
-      <div class="fg"><label>Nama Paket</label><input id="mpkg-name" placeholder="Contoh: Basic, Premium..."></div>
-      <div class="fg"><label>Harga (Rp) — jumlah yang dibayar pelanggan</label><input type="number" id="mpkg-price" min="0" placeholder="0"></div>
-      <div class="fg"><label>Bonus Saldo (Rp flat)</label><input type="number" id="mpkg-bonus" min="0" placeholder="0">
-        <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa bonus</div>
+      <div class="fg"><label>Nama Paket</label><input id="mpkg-name" placeholder="Contoh: Paket 10kg, Premium..."></div>
+      <div class="fg"><label>Harga (Rp)</label><input type="number" id="mpkg-price" min="0" placeholder="0"></div>
+      <div class="fg"><label>Quota Kiloan (kg)</label><input type="number" id="mpkg-kgquota" min="0" step="0.5" placeholder="0">
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Jumlah kg cucian yang didapat customer</div>
+      </div>
+      <div class="fg"><label>Berlaku untuk Tier</label>
+        <div id="mpkg-tiers" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
       </div>
       <div class="fg" style="margin-bottom:0"><label>Masa Berlaku (Hari)</label><input type="number" id="mpkg-expiry" min="0" placeholder="0">
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Isi 0 untuk tanpa masa berlaku</div>

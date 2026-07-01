@@ -59,7 +59,10 @@ function syncCustomer(c) {
     id: c.phone, name: c.name, phone: c.phone,
     orders: c.orders, total: c.total, balance: c.balance||0, last_date: c.lastDate,
     balance_expiry: c.balanceExpiry || null,
-    address: c.address || null, lat: c.lat || null, lng: c.lng || null
+    address: c.address || null, lat: c.lat || null, lng: c.lng || null,
+    kiloan_quota: c.kiloanQuota || 0,
+    kiloan_quota_expiry: c.kiloanQuotaExpiry || null,
+    kiloan_quota_tiers: JSON.stringify(c.kiloanQuotaTiers || [])
   });
 }
 
@@ -71,6 +74,7 @@ function syncMemberTxn(txn) {
     amount: txn.amount,
     base_amount: txn.baseAmount != null ? txn.baseAmount : null,
     bonus_amount: txn.bonusAmount != null ? txn.bonusAmount : null,
+    kg_amount: txn.kgAmount != null ? txn.kgAmount : null,
     note: txn.note||null,
     order_id: txn.orderId||null,
     time: txn.time
@@ -260,7 +264,7 @@ async function supaLoadAll() {
   ]);
 
   if (ordersData)   { orders = ordersData.map(rowToOrder); orderCtr = orders.length + 1; }
-  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null, address: c.address || null, lat: c.lat ? parseFloat(c.lat) : null, lng: c.lng ? parseFloat(c.lng) : null }; }); }
+  if (custsData)    { customers = {}; custsData.forEach(c => { customers[c.phone] = { name: c.name, phone: c.phone, orders: c.orders, total: c.total, balance: c.balance||0, lastDate: c.last_date, balanceExpiry: c.balance_expiry || null, address: c.address || null, lat: c.lat ? parseFloat(c.lat) : null, lng: c.lng ? parseFloat(c.lng) : null, kiloanQuota: c.kiloan_quota||0, kiloanQuotaExpiry: c.kiloan_quota_expiry||null, kiloanQuotaTiers: JSON.parse(c.kiloan_quota_tiers||'[]') }; }); }
   if (outletsData)  {
     // Deduplicate by id (recovers from counter-collision bug where two outlets got same id)
     const _oMap = new Map(); outletsData.forEach(r => { if (!_oMap.has(r.id)) _oMap.set(r.id, r); });
@@ -478,7 +482,7 @@ async function supaPushAll() {
   toast('⬆️ Mendorong semua data...');
   await Promise.all([
     ...orders.map(o => sbUpsert('orders', orderToRow(o))),
-    ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null, address: c.address || null, lat: c.lat || null, lng: c.lng || null })),
+    ...Object.values(customers).map(c => sbUpsert('customers', { user_id: currentUserId, id: c.phone, name: c.name, phone: c.phone, orders: c.orders, total: c.total, last_date: c.lastDate, balance_expiry: c.balanceExpiry || null, address: c.address || null, lat: c.lat || null, lng: c.lng || null, kiloan_quota: c.kiloanQuota||0, kiloan_quota_expiry: c.kiloanQuotaExpiry||null, kiloan_quota_tiers: JSON.stringify(c.kiloanQuotaTiers||[]) })),
     ...outlets.map(o => sbUpsert('outlets', { user_id: currentUserId, id: o.id, name: o.name, addr: o.addr, color: o.color, hours: o.hours||'', washing_machine_count: o.washingCount||1, drying_machine_count: o.dryingCount||1, lat: o.lat || null, lng: o.lng || null })),
     ...employees.map(e => sbUpsert('employees', { user_id: currentUserId, id: String(e.id), name: e.name, role: e.role, outlet_id: e.oid, pin: e.pin, status: e.status, cuti_used: e.cutiUsed, clock_in: e.clockIn, clock_out: e.clockOut, phone: e.phone||'', is_kurir: e.isKurir ? true : false, kurir_outlets: JSON.stringify(e.kurirOutlets||[]) })),
     ...kasLog.map(l => sbUpsert('kas_log', { user_id: currentUserId, id: String(l.id), type: l.type, desc: l.desc, note: l.note, amount: l.amount, time: l.time, date: l.date||null, outlet_id: l.outletId })),
