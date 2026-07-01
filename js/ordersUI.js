@@ -349,7 +349,7 @@ function catChange(pre) {
   if (pre === 'no') calcO(); else calcS();
 }
 
-function getActivePromo(type, cat) {
+function getActivePromo(type, cat, qty=0, svcId=null) {
   const key = type + '-' + cat;
   const curOid = curStaff?.oid || (curOutlet?.id) || 'all';
   return promos.find(p => {
@@ -363,13 +363,20 @@ function getActivePromo(type, cat) {
       if (type === 'satuan') {
         const st = p.targets.satuan || [];
         if (!st.length) return false;
-        if (st[0] === 'all') return true;
-        return st.some(t => t.endsWith('-' + cat) || t === cat);
+        if (st[0] !== 'all' && !st.some(t => t.endsWith('-' + cat) || t === cat)) return false;
+        if (p.minQty?.enabled && p.minQty.satuan > 0 && qty > 0 && qty < p.minQty.satuan) return false;
+        return true;
       } else {
         const kt = p.targets.kiloan || [];
         if (!kt.length) return false;
-        if (kt[0] === 'all') return true;
-        return kt.includes(cat);
+        // Check kiloan service type
+        const ks = p.targets.kiloanServices || [];
+        if (svcId && ks.length && ks[0] !== 'all' && !ks.includes(svcId)) return false;
+        // Check tier
+        if (kt[0] !== 'all' && !kt.includes(cat)) return false;
+        // Check minimum kg
+        if (p.minQty?.enabled && p.minQty.kiloan > 0 && qty > 0 && qty < p.minQty.kiloan) return false;
+        return true;
       }
     }
     const svcOk = p.svc === 'all' || p.svc === key || p.svc === type + '-all';
@@ -428,7 +435,7 @@ function calcBase(pre) {
     addons.forEach(a => {
       if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
     });
-    return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines };
+    return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat, bq), satuanLines };
   }
 
   // Kiloan: support both 'no-kg' (new UI) and 'no-qty' (legacy/SNO)
@@ -447,7 +454,7 @@ function calcBase(pre) {
   addons.forEach(a => {
     if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
   });
-  return { type, cat, rawQty, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat), satuanLines: [] };
+  return { type, cat, rawQty, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat, bq, type), satuanLines: [] };
 }
 
 function doCalc(pre, hasDisc) {

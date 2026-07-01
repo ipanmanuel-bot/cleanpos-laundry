@@ -4823,6 +4823,14 @@ function _mpStep2Html(){
     if(satuanAll)return true;
     return (s.satuanTargets||[]).includes(itemId+'-'+tierKey);
   };
+  // Kiloan service selection
+  const multiSvc=serviceTypes.length>1;
+  const ksAll=(s.kiloanServiceTargets||[]).length===0||(s.kiloanServiceTargets||[])[0]==='all';
+  const ksChk=id=>ksAll||(s.kiloanServiceTargets||[]).includes(id);
+  // Min qty
+  const hasKiloan=(s.kiloanTargets||[]).length>0;
+  const hasSatuan=(s.satuanTargets||[]).length>0;
+  const minOn=s.minQtyEnabled||false;
   return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">2. Berlaku untuk Layanan</div>
   <div class="mp-accord">
     <div class="mp-accord-hd" onclick="_mpToggleAccord('kiloan')">
@@ -4834,14 +4842,28 @@ function _mpStep2Html(){
       <i data-lucide="${s._kiloanOpen!==false?'chevron-up':'chevron-down'}" style="width:16px;height:16px;stroke-width:2;color:var(--t2);display:block"></i>
     </div>
     ${s._kiloanOpen!==false?`<div class="mp-accord-bd">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;font-size:13px;font-weight:600;color:var(--t1)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--t1)">
         <input type="checkbox" id="mp-kiloan-all" ${kiloanAll?'checked':''} onchange="_mpKiloanAllChg(this)"> Semua Kiloan
       </label>
-      <div style="font-size:11px;color:var(--t2);margin-bottom:10px;margin-left:26px">Aktifkan untuk semua layanan kiloan.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:26px">
-        ${activePo.map(po=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:6px 12px;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca)">
-          <input type="checkbox" id="mp-k-${po.key}" ${kiloanChecked(po.key)?'checked':''} onchange="_mpKiloanTierChg('${po.key}',this)"> Kiloan ${esc(po.label)}
-        </label>`).join('')}
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px;margin-left:26px">Aktifkan untuk semua layanan dan tier kiloan.</div>
+      ${multiSvc?`<div style="margin-bottom:12px;margin-left:4px">
+        <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Pilih Layanan</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;font-size:13px;color:var(--t1)">
+          <input type="checkbox" id="mp-ks-all" ${ksAll?'checked':''} onchange="_mpKiloanSvcAllChg(this)"> Semua Layanan Kiloan
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:26px">
+          ${serviceTypes.map(sv=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:6px 12px;border:1.5px solid ${ksChk(sv.id)?'var(--p)':'var(--b1)'};border-radius:8px;background:${ksChk(sv.id)?'var(--pl)':'var(--ca)'};color:${ksChk(sv.id)?'var(--p)':'var(--t1)'}">
+            <input type="checkbox" id="mp-ks-${sv.id}" ${ksChk(sv.id)?'checked':''} onchange="_mpKiloanSvcChg('${sv.id}',this)"> ${esc(sv.name)}
+          </label>`).join('')}
+        </div>
+      </div>`:''}
+      <div style="margin-left:4px">
+        <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Pilih Tier</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${activePo.map(po=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:6px 12px;border:1.5px solid ${kiloanChecked(po.key)?'var(--p)':'var(--b1)'};border-radius:8px;background:${kiloanChecked(po.key)?'var(--pl)':'var(--ca)'};color:${kiloanChecked(po.key)?'var(--p)':'var(--t1)'}">
+            <input type="checkbox" id="mp-k-${po.key}" ${kiloanChecked(po.key)?'checked':''} onchange="_mpKiloanTierChg('${po.key}',this)"> ${esc(po.label)}
+          </label>`).join('')}
+        </div>
       </div>
     </div>`:''}
   </div>
@@ -4876,6 +4898,26 @@ function _mpStep2Html(){
           </tbody>
         </table>
       </div>`:'<div style="font-size:12px;color:var(--t2)">Belum ada item satuan atau tier aktif.</div>'}
+    </div>`:''}
+  </div>
+  <div style="border:1.5px solid var(--b1);border-radius:12px;padding:16px;margin-top:8px;background:var(--ca)">
+    <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:12px">Syarat Minimum Pesanan</div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--t1);margin-bottom:${minOn?'14px':'0'}">
+      <input type="checkbox" id="mp-minqty-toggle" ${minOn?'checked':''} onchange="_mpMinQtyToggle(this)">
+      Aktifkan syarat minimum
+    </label>
+    ${minOn?`<div style="display:flex;flex-direction:column;gap:10px;padding-left:26px">
+      ${hasKiloan?`<div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:13px;color:var(--t1);min-width:100px">Kiloan minimal</label>
+        <input type="number" min="0" step="0.5" value="${s.minQtyKiloan||''}" placeholder="0" oninput="_mpState.minQtyKiloan=parseFloat(this.value)||0" style="width:80px">
+        <span style="font-size:13px;color:var(--t2)">kg</span>
+      </div>`:''}
+      ${hasSatuan?`<div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:13px;color:var(--t1);min-width:100px">Satuan minimal</label>
+        <input type="number" min="0" step="1" value="${s.minQtySatuan||''}" placeholder="0" oninput="_mpState.minQtySatuan=parseInt(this.value)||0" style="width:80px">
+        <span style="font-size:13px;color:var(--t2)">pcs</span>
+      </div>`:''}
+      ${!hasKiloan&&!hasSatuan?`<div style="font-size:12px;color:var(--t2)">Pilih layanan kiloan atau satuan di atas terlebih dahulu.</div>`:''}
     </div>`:''}
   </div>`;
 }
@@ -5145,8 +5187,12 @@ function _mpToggleAccord(type){
 
 function _mpKiloanAllChg(cb){
   _mpState.kiloanTargets=cb.checked?['all']:[];
+  _mpState.kiloanServiceTargets=cb.checked?['all']:[];
   const activePo=_activePoOptions('kiloan');
   activePo.forEach(po=>{const el=g('mp-k-'+po.key);if(el)el.checked=cb.checked;});
+  serviceTypes.forEach(sv=>{const el=g('mp-ks-'+sv.id);if(el)el.checked=cb.checked;});
+  const allSvcCb=g('mp-ks-all');if(allSvcCb)allSvcCb.checked=cb.checked;
+  _mpRenderContent();
 }
 
 function _mpKiloanTierChg(key,cb){
@@ -5156,11 +5202,34 @@ function _mpKiloanTierChg(key,cb){
   else{_mpState.kiloanTargets=t.filter(k=>k!==key);}
   const allCb=g('mp-kiloan-all');
   if(allCb){const activePo=_activePoOptions('kiloan');const allChk=activePo.every(po=>(_mpState.kiloanTargets||[]).includes(po.key));allCb.checked=allChk;allCb.indeterminate=!allChk&&(_mpState.kiloanTargets||[]).length>0;}
+  _mpRenderContent();
+}
+
+function _mpKiloanSvcAllChg(cb){
+  _mpState.kiloanServiceTargets=cb.checked?['all']:[];
+  serviceTypes.forEach(sv=>{const el=g('mp-ks-'+sv.id);if(el)el.checked=cb.checked;});
+  _mpRenderContent();
+}
+
+function _mpKiloanSvcChg(id,cb){
+  const t=_mpState.kiloanServiceTargets||[];
+  if(t[0]==='all'){_mpState.kiloanServiceTargets=serviceTypes.map(sv=>sv.id).filter(k=>k!==id);}
+  else if(cb.checked){if(!t.includes(id))_mpState.kiloanServiceTargets=[...t,id];}
+  else{_mpState.kiloanServiceTargets=t.filter(k=>k!==id);}
+  const allCb=g('mp-ks-all');
+  if(allCb){const allChk=serviceTypes.every(sv=>(_mpState.kiloanServiceTargets||[]).includes(sv.id));allCb.checked=allChk;allCb.indeterminate=!allChk&&(_mpState.kiloanServiceTargets||[]).length>0;}
+  _mpRenderContent();
+}
+
+function _mpMinQtyToggle(cb){
+  _mpState.minQtyEnabled=cb.checked;
+  _mpRenderContent();
 }
 
 function _mpSatuanAllChg(cb){
   _mpState.satuanTargets=cb.checked?['all']:[];
   document.querySelectorAll('.mp-matrix input[type="checkbox"]').forEach(el=>{el.checked=cb.checked;});
+  _mpRenderContent();
 }
 
 function _mpMatrixChg(itemId,tierKey,cb){
@@ -5198,7 +5267,7 @@ function promoDiscChange(){} // kept for backward compat
 function openAddPromo(){
   editPromoId=null;
   _mpStep=1;_mpMaxStep=1;
-  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',useCode:false,codeType:'single',code:'',codes:[],_kiloanOpen:true,_satuanOpen:true};
+  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],kiloanServiceTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',useCode:false,codeType:'single',code:'',codes:[],minQtyEnabled:false,minQtyKiloan:0,minQtySatuan:0,_kiloanOpen:true,_satuanOpen:true};
   g('m-promo-title').textContent='Tambah Promo';
   _mpUpdateSidebar();
   _mpRenderContent();
@@ -5218,7 +5287,7 @@ function openEditPromo(id){
     else if(p.svc.startsWith('kiloan-')){kiloanTargets=[p.svc.replace('kiloan-','')];}
     else if(p.svc.startsWith('satuan-')){satuanTargets=['all'];}
   }
-  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',useCode:p.useCode||false,codeType:p.codeType||'single',code:p.code||'',codes:[...(p.codes||[])],_kiloanOpen:true,_satuanOpen:true};
+  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,kiloanServiceTargets:[...(p.targets?.kiloanServices||[])],satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',useCode:p.useCode||false,codeType:p.codeType||'single',code:p.code||'',codes:[...(p.codes||[])],minQtyEnabled:p.minQty?.enabled||false,minQtyKiloan:p.minQty?.kiloan||0,minQtySatuan:p.minQty?.satuan||0,_kiloanOpen:true,_satuanOpen:true};
   g('m-promo-title').textContent='Edit Promo';
   _mpUpdateSidebar();
   _mpRenderContent();
@@ -5241,10 +5310,11 @@ function savePromo(){
   const codeType=_mpState.codeType||'single';
   if(useCode&&codeType==='single'&&!(_mpState.code||'').trim()){toast('Masukkan kode voucher atau nonaktifkan opsi kode voucher');_mpGo(5);return;}
   if(useCode&&codeType==='bulk'&&!(_mpState.codes||[]).length){toast('Import kode voucher terlebih dahulu atau nonaktifkan opsi kode voucher');_mpGo(5);return;}
+  const ks=_mpState.kiloanServiceTargets||[];
   const obj={
     id:editPromoId||'pr'+promoCtr++,
     name,svc,
-    targets:{kiloan:[...kt],satuan:[...st]},
+    targets:{kiloan:[...kt],kiloanServices:ks.length?[...ks]:['all'],satuan:[...st]},
     discType:_mpState.discType||'persen',
     discVal:val,
     days:[...(_mpState.days||[])],
@@ -5256,7 +5326,8 @@ function savePromo(){
     useCode,
     codeType,
     code:useCode&&codeType==='single'?(_mpState.code||'').trim().toUpperCase():'',
-    codes:useCode&&codeType==='bulk'?[...(_mpState.codes||[])]:[]
+    codes:useCode&&codeType==='bulk'?[...(_mpState.codes||[])]:[],
+    minQty:{enabled:_mpState.minQtyEnabled||false,kiloan:_mpState.minQtyKiloan||0,satuan:_mpState.minQtySatuan||0}
   };
   if(editPromoId){const i=promos.findIndex(x=>x.id===editPromoId);if(i>=0)promos[i]={...promos[i],...obj,id:editPromoId};}
   else promos.unshift(obj);
