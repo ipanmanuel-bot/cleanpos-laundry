@@ -141,37 +141,44 @@ function updWalletOption(pre) {
     if (pmSel.options[i].value === 'Dompet Member' || pmSel.options[i].value === 'Quota Kiloan') pmSel.remove(i);
   }
   const balExpired = isBalanceExpired(cust);
-  // Dompet Member (saldo Rp) — hanya jika bukan package mode atau customer masih punya saldo lama
-  if (membershipStyle !== 'package' && cust && bal > 0 && !balExpired) {
+  const todayStr = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : new Date().toISOString().split('T')[0];
+
+  // Dompet Member (saldo Rp) — tersedia untuk semua customer yang punya saldo, apapun mode membership
+  if (cust && bal > 0 && !balExpired) {
     pmSel.add(new Option('Dompet Member ('+fmt(bal)+')', 'Dompet Member'));
+  }
+
+  // Quota Kiloan — hanya jika package mode + customer punya quota + order type kiloan + tier sesuai
+  const kq = cust?.kiloanQuota||0;
+  const quotaExpired = cust?.kiloanQuotaExpiry && cust.kiloanQuotaExpiry < todayStr;
+  const orderType = g(pre+'-type')?.value;
+  const orderCat = g(pre+'-cat')?.value;
+  const tiers = cust?.kiloanQuotaTiers||[];
+  const tiersOk = !tiers.length || tiers[0]==='all' || tiers.includes(orderCat);
+  const showQuota = membershipStyle === 'package' && cust && kq > 0 && !quotaExpired && orderType === 'kiloan' && tiersOk;
+  if (showQuota) {
+    pmSel.add(new Option('Quota Kiloan ('+kq+' kg tersisa)', 'Quota Kiloan'));
+  }
+
+  // Auto-select & info panel
+  if (showQuota) {
+    pmSel.value = 'Quota Kiloan';
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota kiloan: <strong>${kq} kg</strong> tersisa`; infoEl.style.color=''; }
+    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+  } else if (cust && bal > 0 && !balExpired) {
     pmSel.value = 'Dompet Member';
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>`; infoEl.style.color=''; }
     const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
-  } else if (membershipStyle !== 'package' && cust && bal > 0 && balExpired) {
+  } else if (cust && bal > 0 && balExpired) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo <strong>${fmt(bal)}</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
     if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
-  }
-  // Quota Kiloan — hanya jika package mode + customer punya quota + order type kiloan
-  if (membershipStyle === 'package') {
-    const kq = cust?.kiloanQuota||0;
-    const quotaExpired = cust?.kiloanQuotaExpiry && (cust.kiloanQuotaExpiry < (typeof TODAY_ISO!=='undefined'?TODAY_ISO:new Date().toISOString().split('T')[0]));
-    const orderType = g(pre+'-type')?.value;
-    const orderCat = g(pre+'-cat')?.value;
-    const tiers = cust?.kiloanQuotaTiers||[];
-    const tiersOk = !tiers.length || tiers[0]==='all' || tiers.includes(orderCat);
-    if (cust && kq > 0 && !quotaExpired && orderType === 'kiloan' && tiersOk) {
-      pmSel.add(new Option('Quota Kiloan ('+kq+' kg tersisa)', 'Quota Kiloan'));
-      pmSel.value = 'Quota Kiloan';
-      if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota kiloan: <strong>${kq} kg</strong> tersisa`; infoEl.style.color=''; }
-      const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
-    } else if (cust && kq > 0 && quotaExpired) {
-      if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota <strong>${kq} kg</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
-    } else {
-      if (pmSel.value === 'Quota Kiloan') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
-      if (!cust || (kq <= 0 && bal <= 0)) { if (infoEl) infoEl.style.display='none'; }
-    }
+  } else if (cust && kq > 0 && quotaExpired) {
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota <strong>${kq} kg</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
   } else {
-    if (!cust || bal <= 0) { if (infoEl) infoEl.style.display='none'; }
+    if (pmSel.value === 'Dompet Member' || pmSel.value === 'Quota Kiloan') {
+      pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); }
+    }
+    if (infoEl) infoEl.style.display='none';
   }
 }
 
