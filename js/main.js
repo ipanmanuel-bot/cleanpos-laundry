@@ -4825,7 +4825,7 @@ function _mpStep2Html(){
   };
   // Kiloan service selection
   const multiSvc=serviceTypes.length>1;
-  const ksAll=(s.kiloanServiceTargets||[]).length===0||(s.kiloanServiceTargets||[])[0]==='all';
+  const ksAll=(s.kiloanServiceTargets||[])[0]==='all';
   const ksChk=id=>ksAll||(s.kiloanServiceTargets||[]).includes(id);
   // Min qty
   const hasKiloan=(s.kiloanTargets||[]).length>0;
@@ -5267,7 +5267,7 @@ function promoDiscChange(){} // kept for backward compat
 function openAddPromo(){
   editPromoId=null;
   _mpStep=1;_mpMaxStep=1;
-  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],kiloanServiceTargets:[],satuanTargets:[],discType:'persen',discVal:0,note:'',useCode:false,codeType:'single',code:'',codes:[],minQtyEnabled:false,minQtyKiloan:0,minQtySatuan:0,_kiloanOpen:true,_satuanOpen:true};
+  _mpState={name:'',active:true,from:'',to:'',days:[],outletMode:'all',outlets:[],kiloanTargets:[],kiloanServiceTargets:['all'],satuanTargets:[],discType:'persen',discVal:0,note:'',useCode:false,codeType:'single',code:'',codes:[],minQtyEnabled:false,minQtyKiloan:0,minQtySatuan:0,_kiloanOpen:true,_satuanOpen:true};
   g('m-promo-title').textContent='Tambah Promo';
   _mpUpdateSidebar();
   _mpRenderContent();
@@ -5287,7 +5287,7 @@ function openEditPromo(id){
     else if(p.svc.startsWith('kiloan-')){kiloanTargets=[p.svc.replace('kiloan-','')];}
     else if(p.svc.startsWith('satuan-')){satuanTargets=['all'];}
   }
-  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,kiloanServiceTargets:[...(p.targets?.kiloanServices||[])],satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',useCode:p.useCode||false,codeType:p.codeType||'single',code:p.code||'',codes:[...(p.codes||[])],minQtyEnabled:p.minQty?.enabled||false,minQtyKiloan:p.minQty?.kiloan||0,minQtySatuan:p.minQty?.satuan||0,_kiloanOpen:true,_satuanOpen:true};
+  _mpState={name:p.name,active:p.active!==false,from:p.from||'',to:p.to||'',days:[...(p.days||[])],outletMode:(p.outlets&&p.outlets.length)?'specific':'all',outlets:[...(p.outlets||[])],kiloanTargets,kiloanServiceTargets:[...(p.targets?.kiloanServices?.length?p.targets.kiloanServices:['all'])],satuanTargets,discType:p.discType||'persen',discVal:p.discVal||0,note:p.note||'',useCode:p.useCode||false,codeType:p.codeType||'single',code:p.code||'',codes:[...(p.codes||[])],minQtyEnabled:p.minQty?.enabled||false,minQtyKiloan:p.minQty?.kiloan||0,minQtySatuan:p.minQty?.satuan||0,_kiloanOpen:true,_satuanOpen:true};
   g('m-promo-title').textContent='Edit Promo';
   _mpUpdateSidebar();
   _mpRenderContent();
