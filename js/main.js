@@ -567,7 +567,7 @@ function sGoB(pg,el){document.querySelectorAll('#staff-app .bnav .bni').forEach(
 
 // ===== SEED DATA =====
 function genId(){const r=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();return `LDRY-${r}`;}
-function addCust(name,phone,total,date){if(!customers[phone])customers[phone]={name,phone,orders:0,total:0,balance:0,lastDate:date};customers[phone].orders++;customers[phone].total+=total;customers[phone].lastDate=date;}
+function addCust(name,phone,total,date){if(!customers[phone])customers[phone]={name,phone,orders:0,total:0,balance:0,lastDate:date,kiloanQuota:0,kiloanQuotaExpiry:null,kiloanQuotaTiers:[]};customers[phone].orders++;customers[phone].total+=total;customers[phone].lastDate=date;}
 function seed(){
   const kiloanSeeds=[
     {name:'Budi Santoso',phone:'081234567890',svc:'kiloan',cat:'regular',qty:3,st:'Selesai',pay:'Lunas',waSent:true,oid:'o1'},
@@ -3033,14 +3033,26 @@ function isBalanceExpired(c){
   if(!c||!membershipExpiryEnabled||!(c.balance||0)||!c.balanceExpiry)return false;
   return c.balanceExpiry<todayISO();
 }
+function isKiloanQuotaExpired(c){
+  if(!c||(c.kiloanQuota||0)<=0||!c.kiloanQuotaExpiry)return false;
+  return c.kiloanQuotaExpiry<todayISO();
+}
 function checkExpiredBalances(){
-  if(!membershipExpiryEnabled)return;
   Object.values(customers).forEach(c=>{
-    if((c.balance||0)>0&&isBalanceExpired(c)){
+    // Cek expiry saldo Rp
+    if(membershipExpiryEnabled&&(c.balance||0)>0&&isBalanceExpired(c)){
       const txnId='MBR-'+String(memberTxnCtr++).padStart(5,'0');
-      const txn={id:txnId,phone:c.phone,type:'expired',amount:c.balance,baseAmount:null,bonusAmount:null,note:'Saldo kadaluarsa',orderId:null,time:NOW()};
+      const txn={id:txnId,phone:c.phone,type:'expired',amount:c.balance,kgAmount:null,baseAmount:null,bonusAmount:null,note:'Saldo kadaluarsa',orderId:null,time:NOW()};
       memberTxns.push(txn);syncMemberTxn(txn);
       c.balance=0;c.balanceExpiry=null;
+      syncCustomer(c);
+    }
+    // Cek expiry quota kiloan
+    if((c.kiloanQuota||0)>0&&isKiloanQuotaExpired(c)){
+      const txnId='MBR-'+String(memberTxnCtr++).padStart(5,'0');
+      const txn={id:txnId,phone:c.phone,type:'expired',amount:0,kgAmount:c.kiloanQuota,baseAmount:null,bonusAmount:null,note:'Quota kiloan kadaluarsa',orderId:null,time:NOW()};
+      memberTxns.push(txn);syncMemberTxn(txn);
+      c.kiloanQuota=0;c.kiloanQuotaExpiry=null;c.kiloanQuotaTiers=[];
       syncCustomer(c);
     }
   });
@@ -3105,19 +3117,33 @@ function _renderCustSummary() {
 
 function _renderCustTable(list) {
   const tb = g('cust-tb'); if (!tb) return;
+  // Update header kolom saldo sesuai mode membership
+  const balHdr=tb.closest('table')?.querySelector('thead th:nth-child(3)');
+  if(balHdr&&membershipEnabled)balHdr.textContent=membershipStyle==='package'?'Quota Kiloan':'Saldo';
   if (!list.length) { tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t2)">Tidak ada pelanggan ditemukan</td></tr>`; return; }
   try { tb.innerHTML = list.map(c => {
     const initials = (c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
     const bal = c.balance||0;
+    const kq = c.kiloanQuota||0;
     let balCell = '—';
     if (membershipEnabled) {
-      let bHtml = bal>0 ? `<span style="font-weight:700;color:var(--p);font-size:14px">${fmt(bal)}</span>` : `<span style="color:var(--t2);font-size:14px">Rp 0</span>`;
-      if (membershipExpiryEnabled&&bal>0&&c.balanceExpiry) {
-        const dl=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);
-        const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';
-        bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
+      if (membershipStyle==='package') {
+        let bHtml = kq>0 ? `<span style="font-weight:700;color:var(--p);font-size:14px">${kq} kg</span>` : `<span style="color:var(--t2);font-size:14px">0 kg</span>`;
+        if (kq>0&&c.kiloanQuotaExpiry) {
+          const dl=Math.round((new Date(c.kiloanQuotaExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);
+          const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';
+          bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.kiloanQuotaExpiry)}</div>`;
+        }
+        balCell=bHtml;
+      } else {
+        let bHtml = bal>0 ? `<span style="font-weight:700;color:var(--p);font-size:14px">${fmt(bal)}</span>` : `<span style="color:var(--t2);font-size:14px">Rp 0</span>`;
+        if (membershipExpiryEnabled&&bal>0&&c.balanceExpiry) {
+          const dl=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);
+          const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';
+          bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
+        }
+        balCell=bHtml;
       }
-      balCell = bHtml;
     }
     const acts = membershipEnabled
       ? `<div style="display:flex;gap:5px;align-items:center">
@@ -3153,7 +3179,15 @@ function _renderCustCards(list) {
   try { wrap.innerHTML = list.map(c => {
     const initials = (c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
     const bal = c.balance||0;
-    const balBadge = membershipEnabled ? `<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>` : '';
+    const kq = c.kiloanQuota||0;
+    let balBadge = '';
+    if (membershipEnabled) {
+      if (membershipStyle==='package') {
+        balBadge=`<div style="font-size:${kq>0?'15px':'13px'};font-weight:${kq>0?'800':'500'};color:${kq>0?'var(--p)':'var(--t2)'};">${kq} kg</div><div style="font-size:10px;color:var(--t2)">${kq>0?'Quota aktif':'Belum ada quota'}</div>`;
+      } else {
+        balBadge=`<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>`;
+      }
+    }
     return `<div class="cust-card">
       <div class="cust-card-top">
         <div class="cust-av">${initials}</div>
@@ -3422,7 +3456,10 @@ function renderDepositPackages(){
     el.innerHTML='<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Belum ada paket tersedia. Tambahkan di Pengaturan.</div>';
     return;
   }
-  el.innerHTML=membershipPackages.map(p=>`<div id="md-pkg-${esc(p.id)}" onclick="selectDepositPkg('${esc(p.id)}')" style="padding:12px 14px;border:2px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s"><div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${esc(p.name)}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="font-size:12px"><div style="color:var(--t2)">Harga</div><strong>${fmt(p.price)}</strong></div><div style="font-size:12px"><div style="color:var(--t2)">Bonus</div><strong style="color:var(--p)">+${fmt(p.bonus)}</strong></div><div style="font-size:12px"><div style="color:var(--t2)">Saldo Masuk</div><strong style="color:var(--p)">${fmt(p.price+p.bonus)}</strong></div>${p.expiryDays>0?`<div style="font-size:12px"><div style="color:var(--t2)">Masa Berlaku</div><strong>${p.expiryDays} Hari</strong></div>`:''}</div></div>`).join('');
+  el.innerHTML=membershipPackages.map(p=>{
+    const tierLbl=(p.allowedTiers||['all'])[0]==='all'?'Semua Tier':(p.allowedTiers||[]).map(k=>{const po=priceOptions.find(x=>x.key===k);return po?po.label:k;}).join(', ');
+    return `<div id="md-pkg-${esc(p.id)}" onclick="selectDepositPkg('${esc(p.id)}')" style="padding:12px 14px;border:2px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s"><div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${esc(p.name)}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="font-size:12px"><div style="color:var(--t2)">Harga</div><strong>${fmt(p.price)}</strong></div><div style="font-size:12px"><div style="color:var(--t2)">Quota Kiloan</div><strong style="color:var(--p)">${p.kgQuota||0} kg</strong></div><div style="font-size:12px"><div style="color:var(--t2)">Tier</div><strong>${esc(tierLbl)}</strong></div>${(p.expiryDays||0)>0?`<div style="font-size:12px"><div style="color:var(--t2)">Masa Berlaku</div><strong>${p.expiryDays} Hari</strong></div>`:''}</div></div>`;
+  }).join('');
 }
 
 function selectDepositPkg(id){
@@ -3455,12 +3492,14 @@ function saveDeposit(){
   const payMethod=(g('md-pay-method')?.value||'Tunai');
   let base,bonus,credited,expiryDays=null;
 
+  let kgAmount=null;
   if(membershipStyle==='package'){
     if(!_selectedPkg){toast('⚠️ Pilih paket terlebih dahulu');return;}
     base=_selectedPkg.price;
-    bonus=_selectedPkg.bonus;
-    credited=base+bonus;
-    expiryDays=_selectedPkg.expiryDays>0?_selectedPkg.expiryDays:null;
+    bonus=0;
+    credited=base;
+    kgAmount=_selectedPkg.kgQuota||0;
+    expiryDays=(_selectedPkg.expiryDays||0)>0?_selectedPkg.expiryDays:null;
   } else {
     base=parseInt(g('md-amount')?.value)||0;
     if(!base||base<=0){toast('⚠️ Masukkan jumlah deposit');return;}
@@ -3473,31 +3512,62 @@ function saveDeposit(){
   }
 
   const txnId='MBR-'+String(memberTxnCtr++).padStart(5,'0');
-  const txn={id:txnId,phone:_mdPhone,type:'deposit',amount:credited,baseAmount:base,bonusAmount:bonus,note:note||null,orderId:null,time:NOW()};
+  const txn={id:txnId,phone:_mdPhone,type:'deposit',amount:credited,baseAmount:base,bonusAmount:bonus,kgAmount,note:note||null,orderId:null,time:NOW()};
   memberTxns.push(txn);
-  c.balance=(c.balance||0)+credited;
-  if(expiryDays){
-    const _exp=new Date();_exp.setDate(_exp.getDate()+expiryDays);
-    c.balanceExpiry=_exp.toISOString().split('T')[0];
+
+  if(membershipStyle==='package'&&kgAmount){
+    // Mode paket: tambah quota kg, bukan saldo Rp
+    c.kiloanQuota=(c.kiloanQuota||0)+kgAmount;
+    // Merge tiers: union dari quota lama dan tier paket baru
+    const pkgTiers=_selectedPkg.allowedTiers||['all'];
+    const existTiers=c.kiloanQuotaTiers||[];
+    if(pkgTiers[0]==='all'||existTiers[0]==='all'){
+      c.kiloanQuotaTiers=['all'];
+    } else {
+      const merged=[...new Set([...existTiers,...pkgTiers])];
+      c.kiloanQuotaTiers=merged;
+    }
+    if(expiryDays){
+      const _exp=new Date();_exp.setDate(_exp.getDate()+expiryDays);
+      c.kiloanQuotaExpiry=_exp.toISOString().split('T')[0];
+    }
+  } else {
+    // Mode deposit: tambah saldo Rp
+    c.balance=(c.balance||0)+credited;
+    if(expiryDays){
+      const _exp=new Date();_exp.setDate(_exp.getDate()+expiryDays);
+      c.balanceExpiry=_exp.toISOString().split('T')[0];
+    }
   }
+
   syncMemberTxn(txn);
   syncCustomer(c);
   if(payMethod==='Tunai'){
-    const kasEntry={id:kasCtr++,type:'in',desc:'Deposit Member – '+c.name,note:note||null,amount:base,time:NOW(),date:TODAY_ISO,outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||'')};
+    const kasEntry={id:kasCtr++,type:'in',desc:(membershipStyle==='package'?'Beli Paket Kiloan':'Deposit Member')+' – '+c.name,note:note||null,amount:base,time:NOW(),date:TODAY_ISO,outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||'')};
     kasLog.push(kasEntry);
     syncKas(kasEntry);
   }
   cm('m-member-deposit');
   renderCusts();
   if(curRole==='staff')renderMembership();
-  toast('✅ Deposit '+fmt(credited)+' berhasil'+(bonus>0?' (bonus '+fmt(bonus)+')':''));
+  if(membershipStyle==='package'&&kgAmount){
+    toast('Paket dibeli: '+kgAmount+' kg quota ditambahkan');
+  } else {
+    toast('Deposit '+fmt(credited)+' berhasil'+(bonus>0?' (bonus '+fmt(bonus)+')':''));
+  }
 }
 
 function openMemberTxnHistory(phone){
   const c=customers[phone];if(!c)return;
   if(g('mt-title'))g('mt-title').textContent='Riwayat – '+c.name;
   if(g('mt-cust-info'))g('mt-cust-info').textContent=phone;
-  if(g('mt-balance'))g('mt-balance').textContent=fmt(c.balance||0);
+  if(g('mt-balance')){
+    if(membershipStyle==='package'){
+      g('mt-balance').textContent=(c.kiloanQuota||0)+' kg';
+    } else {
+      g('mt-balance').textContent=fmt(c.balance||0);
+    }
+  }
   const txns=memberTxns.filter(t=>t.phone===phone).slice().reverse();
   const list=g('mt-list');if(!list)return;
   if(!txns.length){list.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Belum ada riwayat transaksi</div>';}
@@ -3505,22 +3575,36 @@ function openMemberTxnHistory(phone){
     list.innerHTML=txns.map(t=>{
       const isDeposit=t.type==='deposit';
       const isExpired=t.type==='expired';
+      const isKgTxn=t.kgAmount!=null;
       const color=isDeposit?'var(--p)':'var(--re)';
       const sign=isDeposit?'+':'-';
-      const typeLabel=isDeposit?'Deposit':isExpired?'Saldo Kadaluarsa':'Bayar Pesanan';
-      const sub=isDeposit&&t.bonusAmount?`<div style="font-size:11px;color:var(--t2)">Bayar: ${fmt(t.baseAmount)} + Bonus: ${fmt(t.bonusAmount)}</div>`:t.orderId?`<div style="font-size:11px;color:var(--t2)">${esc(t.orderId)}</div>`:'';
-      const delBtn=curRole==='owner'&&isDeposit?`<button class="btn bre bsm" onclick="deleteMemberDeposit('${esc(t.id)}','${esc(phone)}',${t.amount})">Hapus</button>`:'';
-      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--b1)"><div style="flex:1"><div style="font-weight:600;font-size:13px">${typeLabel}</div>${sub}<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(t.time)}${t.note?` · ${esc(t.note)}`:''}</div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px;color:${color}">${sign}${fmt(t.amount)}</span>${delBtn}</div></div>`;
+      let typeLabel,amountDisplay,sub;
+      if(isKgTxn){
+        typeLabel=isDeposit?'Beli Paket Kiloan':isExpired?'Quota Kadaluarsa':'Pakai Quota Kiloan';
+        amountDisplay=`${sign}${t.kgAmount} kg`;
+        sub=isDeposit?`<div style="font-size:11px;color:var(--t2)">Harga: ${fmt(t.baseAmount||t.amount)}</div>`:t.orderId?`<div style="font-size:11px;color:var(--t2)">${esc(t.orderId)}</div>`:'';
+      } else {
+        typeLabel=isDeposit?'Deposit':isExpired?'Saldo Kadaluarsa':'Bayar Pesanan';
+        amountDisplay=`${sign}${fmt(t.amount)}`;
+        sub=isDeposit&&t.bonusAmount?`<div style="font-size:11px;color:var(--t2)">Bayar: ${fmt(t.baseAmount)} + Bonus: ${fmt(t.bonusAmount)}</div>`:t.orderId?`<div style="font-size:11px;color:var(--t2)">${esc(t.orderId)}</div>`:'';
+      }
+      const delBtn=curRole==='owner'&&isDeposit?`<button class="btn bre bsm" onclick="deleteMemberDeposit('${esc(t.id)}','${esc(phone)}',${t.amount},${t.kgAmount||0})">Hapus</button>`:'';
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--b1)"><div style="flex:1"><div style="font-weight:600;font-size:13px">${typeLabel}</div>${sub}<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(t.time)}${t.note?` · ${esc(t.note)}`:''}</div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px;color:${color}">${amountDisplay}</span>${delBtn}</div></div>`;
     }).join('');
   }
   openModal('m-member-txn');
 }
 
-function deleteMemberDeposit(txnId,phone,amount){
-  confirm_('Hapus Deposit?',`Saldo ${fmt(amount)} akan dikurangi dari akun ${customers[phone]?.name||phone}.`,()=>{
+function deleteMemberDeposit(txnId,phone,amount,kgAmount){
+  const isKg=kgAmount>0;
+  const desc=isKg?`Quota ${kgAmount} kg akan dikurangi dari ${customers[phone]?.name||phone}.`:`Saldo ${fmt(amount)} akan dikurangi dari akun ${customers[phone]?.name||phone}.`;
+  confirm_('Hapus Deposit?',desc,()=>{
     const idx=memberTxns.findIndex(t=>t.id===txnId);if(idx<0)return;
     const c=customers[phone];
-    if(c)c.balance=Math.max(0,(c.balance||0)-amount);
+    if(c){
+      if(isKg){c.kiloanQuota=Math.max(0,(c.kiloanQuota||0)-kgAmount);}
+      else{c.balance=Math.max(0,(c.balance||0)-amount);}
+    }
     memberTxns.splice(idx,1);
     deleteMemberTxn(txnId);
     if(c)syncCustomer(c);
@@ -3596,7 +3680,10 @@ function renderMbrPackages(){
     el.innerHTML='<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px;border:2px dashed var(--b1);border-radius:10px">Belum ada paket. Klik "+ Tambah Paket" untuk membuat paket.</div>';
     return;
   }
-  el.innerHTML=membershipPackages.map(p=>`<div style="display:flex;align-items:stretch;gap:12px;padding:12px 14px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${esc(p.name)}</div><div style="font-size:12px;color:var(--t2);line-height:1.9">Harga <strong style="color:var(--t1)">${fmt(p.price)}</strong> &nbsp;·&nbsp; Bonus <strong style="color:var(--p)">${fmt(p.bonus)}</strong> &nbsp;·&nbsp; Masa Berlaku <strong>${p.expiryDays>0?p.expiryDays+' Hari':'Tanpa Batas'}</strong></div></div><div style="display:flex;flex-direction:column;gap:5px;justify-content:center"><button class="btn bsm" onclick="openAddMbrPackage('${esc(p.id)}')">Edit</button><button class="btn bre bsm" onclick="deleteMbrPackage('${esc(p.id)}')">Hapus</button></div></div>`).join('');
+  el.innerHTML=membershipPackages.map(p=>{
+    const tierLbl=(p.allowedTiers||['all'])[0]==='all'?'Semua Tier':(p.allowedTiers||[]).map(k=>{const po=priceOptions.find(x=>x.key===k);return po?po.label:k;}).join(', ');
+    return `<div style="display:flex;align-items:stretch;gap:12px;padding:12px 14px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${esc(p.name)}</div><div style="font-size:12px;color:var(--t2);line-height:1.9">Harga <strong style="color:var(--t1)">${fmt(p.price)}</strong> &nbsp;·&nbsp; Quota <strong style="color:var(--p)">${p.kgQuota||0} kg</strong> &nbsp;·&nbsp; Tier <strong>${esc(tierLbl)}</strong> &nbsp;·&nbsp; Masa Berlaku <strong>${(p.expiryDays||0)>0?p.expiryDays+' Hari':'Tanpa Batas'}</strong></div></div><div style="display:flex;flex-direction:column;gap:5px;justify-content:center"><button class="btn bsm" onclick="openAddMbrPackage('${esc(p.id)}')">Edit</button><button class="btn bre bsm" onclick="deleteMbrPackage('${esc(p.id)}')">Hapus</button></div></div>`;
+  }).join('');
 }
 
 let _editPkgId=null;
@@ -3606,10 +3693,27 @@ function openAddMbrPackage(id){
   if(g('mpkg-title'))g('mpkg-title').textContent=pkg?'Edit Paket':'Tambah Paket';
   if(g('mpkg-name'))g('mpkg-name').value=pkg?pkg.name:'';
   if(g('mpkg-price'))g('mpkg-price').value=pkg?pkg.price:'';
-  if(g('mpkg-bonus'))g('mpkg-bonus').value=pkg?pkg.bonus:'';
+  if(g('mpkg-kgquota'))g('mpkg-kgquota').value=pkg?(pkg.kgQuota||0):'';
   if(g('mpkg-expiry'))g('mpkg-expiry').value=pkg?pkg.expiryDays:'';
+  // Render tier checkboxes
+  const tierWrap=g('mpkg-tiers');
+  if(tierWrap){
+    const allPo=_activePoOptions('kiloan');
+    const pkgTiers=pkg?.allowedTiers||['all'];
+    const allSelected=pkgTiers[0]==='all';
+    tierWrap.innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="mpkg-tier-all" ${allSelected?'checked':''} onchange="_mpkgTierAllChg(this)"> Semua Tier
+    </label>`+allPo.map(po=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-left:20px">
+      <input type="checkbox" id="mpkg-tier-${po.key}" ${allSelected||pkgTiers.includes(po.key)?'checked':''} ${allSelected?'disabled':''}> ${esc(po.label)}
+    </label>`).join('');
+  }
   openModal('m-mbr-pkg');
   setTimeout(()=>g('mpkg-name')?.focus(),100);
+}
+
+function _mpkgTierAllChg(cb){
+  const allPo=_activePoOptions('kiloan');
+  allPo.forEach(po=>{const el=g('mpkg-tier-'+po.key);if(el){el.checked=cb.checked;el.disabled=cb.checked;}});
 }
 
 function saveMbrPackage(){
@@ -3617,18 +3721,27 @@ function saveMbrPackage(){
   if(!name){toast('⚠️ Nama paket wajib diisi');return;}
   const price=parseInt(g('mpkg-price')?.value)||0;
   if(price<=0){toast('⚠️ Harga paket harus lebih dari 0');return;}
-  const bonus=parseInt(g('mpkg-bonus')?.value)||0;
+  const kgQuota=parseFloat(g('mpkg-kgquota')?.value)||0;
+  if(kgQuota<=0){toast('⚠️ Quota kiloan harus lebih dari 0 kg');return;}
   const expiryDays=parseInt(g('mpkg-expiry')?.value)||0;
+  const allPo=_activePoOptions('kiloan');
+  let allowedTiers;
+  if(g('mpkg-tier-all')?.checked){
+    allowedTiers=['all'];
+  } else {
+    allowedTiers=allPo.filter(po=>g('mpkg-tier-'+po.key)?.checked).map(po=>po.key);
+    if(!allowedTiers.length)allowedTiers=['all'];
+  }
   if(_editPkgId){
     const pkg=membershipPackages.find(p=>p.id===_editPkgId);
-    if(pkg){pkg.name=name;pkg.price=price;pkg.bonus=bonus;pkg.expiryDays=expiryDays;}
+    if(pkg){pkg.name=name;pkg.price=price;pkg.kgQuota=kgQuota;pkg.allowedTiers=allowedTiers;pkg.expiryDays=expiryDays;}
   } else {
-    membershipPackages.push({id:'pkg'+String(membershipPkgCtr++).padStart(3,'0'),name,price,bonus,expiryDays});
+    membershipPackages.push({id:'pkg'+String(membershipPkgCtr++).padStart(3,'0'),name,price,kgQuota,allowedTiers,expiryDays});
   }
   cm('m-mbr-pkg');
   renderMbrPackages();
   syncSettings();
-  toast('✅ Paket '+(name)+' disimpan');
+  toast('Paket '+name+' disimpan');
 }
 
 function deleteMbrPackage(id){
