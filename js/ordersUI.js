@@ -376,7 +376,7 @@ function catChange(pre) {
   if (pre === 'no') calcO(); else calcS();
 }
 
-function getActivePromo(type, cat, qty=0, svcId=null) {
+function getActivePromo(type, cat, qty=0, svcId=null, satuanLines=null) {
   const key = type + '-' + cat;
   const curOid = curStaff?.oid || (curOutlet?.id) || 'all';
   return promos.find(p => {
@@ -390,7 +390,17 @@ function getActivePromo(type, cat, qty=0, svcId=null) {
       if (type === 'satuan') {
         const st = p.targets.satuan || [];
         if (!st.length) return false;
-        if (st[0] !== 'all' && !st.some(t => t.endsWith('-' + cat) || t === cat)) return false;
+        if (st[0] !== 'all') {
+          if (satuanLines && satuanLines.length > 0) {
+            const hasMatch = satuanLines.some(line => {
+              const tk = line.tierKey || cat;
+              return st.includes(line.id + '-' + tk) || st.includes(line.id);
+            });
+            if (!hasMatch) return false;
+          } else if (!st.some(t => t.endsWith('-' + cat) || t === cat)) {
+            return false;
+          }
+        }
         if (p.minQty?.enabled && p.minQty.satuan > 0 && qty > 0 && qty < p.minQty.satuan) return false;
         return true;
       } else {
@@ -462,7 +472,7 @@ function calcBase(pre) {
     addons.forEach(a => {
       if (isAddonSelected(a)) { const v = a.unit === 'per_qty' ? a.price * bq : a.price; addTotal += v; addonLines.push({ n: a.name, v }); }
     });
-    return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat, bq), satuanLines };
+    return { type, cat, rawQty: bq, bq, base, addTotal, addonLines, subtotal: base + addTotal, actPromo: getActivePromo(type, cat, bq, null, satuanLines), satuanLines };
   }
 
   // Kiloan: support both 'no-kg' (new UI) and 'no-qty' (legacy/SNO)
