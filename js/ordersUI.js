@@ -941,6 +941,7 @@ function renderOrders() {
   }
 
   const fullList = orders.filter(o => {
+    if (o.isDeposit) return false;
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || (o.phone && o.phone.includes(q));
     const matchS = !fs || o.status === fs;
     const matchP = !fp || o.payStatus === fp;
@@ -1224,9 +1225,10 @@ function renderKanban(role) {
     const tc = g('trk-outlet-chips');
     if (tc) tc.innerHTML = buildOutletFilterChips(trkOutlet, 'setTrkOutlet');
   }
-  const src = role === 'o'
+  const src = (role === 'o'
     ? (trkOutlet !== 'all' ? orders.filter(o => o.outletId === trkOutlet) : orders)
-    : (curStaff ? orders.filter(o => o.outletId === curStaff.oid) : orders);
+    : (curStaff ? orders.filter(o => o.outletId === curStaff.oid) : orders)
+  ).filter(o => !o.isDeposit);
 
   const searchId = role === 'o' ? 'trk-search' : 's-trk-search';
   const q = (g(searchId) ? g(searchId).value.trim().toLowerCase() : '');
@@ -1638,6 +1640,14 @@ function buildMsg(tpl, o) {
     ? (window.location.origin + window.location.pathname + '?track=' + o.tracking_token)
     : '';
   const bayarTxt = o.payStatus === 'Lunas' ? 'Lunas' : o.payStatus === 'DP' ? 'DP (Belum Lunas)' : 'Belum Lunas';
+  let sisaMember = '';
+  if (typeof membershipEnabled !== 'undefined' && membershipEnabled && o.phone && o.phone !== '—') {
+    const cust = (typeof customers !== 'undefined') ? customers[o.phone] : null;
+    if (cust) {
+      if (o.payMethod === 'Dompet Member') sisaMember = `\n${typeof waSisaSaldoLabel!=='undefined'?waSisaSaldoLabel:'Sisa saldo member'}: *${fmt(cust.balance||0)}*`;
+      else if (o.payMethod === 'Quota Kiloan') sisaMember = `\n${typeof waSisaKuotaLabel!=='undefined'?waSisaKuotaLabel:'Sisa kuota kiloan'}: *${cust.kiloanQuota||0} kg*`;
+    }
+  }
   return tpl
     .replace(/{nama}/g, o.name)
     .replace(/{id}/g, o.id)
@@ -1645,7 +1655,8 @@ function buildMsg(tpl, o) {
     .replace(/{layanan}/g, getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)
     .replace(/{est}/g, { regular: '2-3 hari', express: '1 hari', sameday: '± 8 jam' }[o.svcCat] || '')
     .replace(/{link}/g, trackingUrl)
-    .replace(/{bayar}/g, bayarTxt);
+    .replace(/{bayar}/g, bayarTxt)
+    .replace(/{sisa_member}/g, sisaMember);
 }
 
 function fmtPh(p) {
@@ -1692,7 +1703,8 @@ const WA_TPL_HINTS = {
   selesai:     'Dikirim otomatis saat status pesanan berubah ke Selesai',
   tagih_dp:    'Digunakan saat pesanan baru masuk dan status bayar = DP',
   tagih_lunas: 'Digunakan saat menagih pelunasan pembayaran',
-  konfirmasi:  'Dikirim otomatis saat pesanan baru dibuat'
+  konfirmasi:  'Dikirim otomatis saat pesanan baru dibuat',
+  deposit:     'Muncul otomatis setelah deposit atau pembelian paket membership berhasil'
 };
 
 function switchWaTplTab(type, el) {
@@ -1700,8 +1712,11 @@ function switchWaTplTab(type, el) {
   document.querySelectorAll('#wa-tpl-tabs .chip').forEach(c => c.classList.remove('on'));
   if (el) el.classList.add('on');
   const hint = g('wa-tpl-hint'); if (hint) hint.textContent = WA_TPL_HINTS[type] || '';
-  const tpl = type === 'selesai' ? waTplSelesai : (waTplNew[type] || '');
+  const tpl = type === 'selesai' ? waTplSelesai : type === 'deposit' ? waTplDeposit : (waTplNew[type] || '');
   const ta = g('wa-tpl'); if (ta) { ta.value = tpl; prevTpl(); }
+  // Tampilkan/sembunyikan chip variabel sesuai tab
+  const orderVars = g('wa-vars-order'); if (orderVars) orderVars.style.display = type === 'deposit' ? 'none' : '';
+  const depositVars = g('wa-vars-deposit'); if (depositVars) depositVars.style.display = type === 'deposit' ? '' : 'none';
 }
 
 function prevTpl() {
@@ -1715,7 +1730,12 @@ function prevTpl() {
     .replace(/{layanan}/g, 'kiloan regular')
     .replace(/{est}/g,     '2-3 hari')
     .replace(/{link}/g,    exLink ? '<a href="#" style="color:#0a5c7a">' + exLink + '</a>' : '<em style="color:#aaa">[link tracking]</em>')
-    .replace(/{bayar}/g,   '<strong>Lunas</strong>')
+    .replace(/{bayar}/g,        '<strong>Lunas</strong>')
+    .replace(/{sisa_member}/g,  '\nSisa saldo member: <strong>Rp 75.000</strong>')
+    .replace(/{nominal}/g, '<strong>Rp 100.000</strong>')
+    .replace(/{sisa}/g,    '<strong>Rp 150.000</strong>')
+    .replace(/{bonus}/g,   '<strong>Rp 10.000</strong>')
+    .replace(/{paket}/g,   '<strong>Paket Silver</strong>')
     .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
     .replace(/_(.*?)_/g,   '<em>$1</em>')
     .replace(/~(.*?)~/g,   '<s>$1</s>')
@@ -1754,8 +1774,9 @@ function waTplList() {
 }
 
 const WA_TPL_DEFAULTS = {
-  selesai:     `Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n💳 Status: {bayar}\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`,
-  konfirmasi:  `Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,
+  selesai:     `Halo {nama} 👋\n\nCucian Anda sudah *selesai* dan siap diambil! 🎉\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*\n💳 Status: {bayar}{sisa_member}\n\nTerima kasih sudah menggunakan CleanPOS Laundry! 🙏`,
+  konfirmasi:  `Halo {nama} 👋\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. 🧺\n\n📋 No: *{id}*\n👕 Layanan: {layanan}\n💰 Total: *{total}*{sisa_member}\n\nKami akan kabarkan saat cucian siap diambil! 🙏`,
+  deposit:     `Halo *{nama}*!\n\nDeposit membership kamu sebesar *{nominal}* sudah diterima.\nSisa saldo kamu sekarang: *{sisa}*\n\nTerima kasih! — CleanPOS Laundry`,
   tagih_dp:    `Halo {nama} 👋\n\nPesanan Anda sudah dicatat!\n📋 No: *{id}*\n💰 Total: *{total}*\n\nMohon transfer DP 50% ke:\n🏦 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! 🙏`,
   tagih_lunas: `Halo {nama} 👋\n\nKonfirmasi pembayaran:\n📋 No: *{id}*\n💰 Total: *{total}*\n\nTransfer ke:\n🏦 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. 🙏`
 };
@@ -1769,14 +1790,34 @@ function resetWaTpl() {
 function saveTpl() {
   const val = g('wa-tpl')?.value || '';
   if (curWaTplTab === 'selesai') { waTplSelesai = val; }
+  else if (curWaTplTab === 'deposit') { waTplDeposit = val; }
   else { waTplNew[curWaTplTab] = val; }
   if (typeof syncSettings === 'function') syncSettings();
-  toast('✓ Template "' + { selesai: 'Pesanan Selesai', tagih_dp: 'Tagih DP', tagih_lunas: 'Tagih Lunas', konfirmasi: 'Konfirmasi Terima' }[curWaTplTab] + '" tersimpan!');
+  toast('✓ Template "' + { selesai: 'Pesanan Selesai', tagih_dp: 'Tagih DP', tagih_lunas: 'Tagih Lunas', konfirmasi: 'Konfirmasi Terima', deposit: 'Konfirmasi Deposit' }[curWaTplTab] + '" tersimpan!');
+}
+
+function saveSisaLabel() {
+  const sl = g('wa-sisa-saldo-lbl')?.value.trim();
+  const kl = g('wa-sisa-kuota-lbl')?.value.trim();
+  if (sl) waSisaSaldoLabel = sl;
+  if (kl) waSisaKuotaLabel = kl;
+  _updateSisaPreview();
+  if (typeof syncSettings === 'function') syncSettings();
+  toast('Label tersimpan');
+}
+
+function _updateSisaPreview() {
+  const ps = g('wa-sisa-preview-saldo'); if (ps) ps.textContent = typeof waSisaSaldoLabel !== 'undefined' ? waSisaSaldoLabel : 'Sisa saldo member';
+  const pk = g('wa-sisa-preview-kuota'); if (pk) pk.textContent = typeof waSisaKuotaLabel !== 'undefined' ? waSisaKuotaLabel : 'Sisa kuota kiloan';
 }
 
 function renderWaCenter() {
-  const tpl = curWaTplTab === 'selesai' ? waTplSelesai : (waTplNew[curWaTplTab] || '');
+  const tpl = curWaTplTab === 'selesai' ? waTplSelesai : curWaTplTab === 'deposit' ? waTplDeposit : (waTplNew[curWaTplTab] || '');
   const ta = g('wa-tpl'); if (ta) ta.value = tpl;
+  // Isi nilai input label sisa member dari variabel global
+  const sl = g('wa-sisa-saldo-lbl'); if (sl && typeof waSisaSaldoLabel !== 'undefined') sl.value = waSisaSaldoLabel;
+  const kl = g('wa-sisa-kuota-lbl'); if (kl && typeof waSisaKuotaLabel !== 'undefined') kl.value = waSisaKuotaLabel;
+  _updateSisaPreview();
   prevTpl();
   const pend = orders.filter(o => o.status === 'Selesai' && !o.waSent);
   const cnt = g('wa-pend-cnt'); if (cnt) { cnt.textContent = pend.length; cnt.className = 'badge ' + (pend.length ? 'gam' : 'gg'); }

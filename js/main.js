@@ -60,11 +60,14 @@ let membershipPackages = []; let membershipPkgCtr = 1;
 let membershipExpiryEnabled = false; let membershipExpiryDays = 30;
 let waLog = [];
 let waTplSelesai = `Halo {nama} \uD83D\uDC4B\n\nCucian Anda sudah *selesai* dan siap diambil! \uD83C\uDF89\n\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDC55 Layanan: {layanan}\n\uD83D\uDCB0 Total: *{total}*\n\nTerima kasih sudah menggunakan CleanPOS Laundry! \uD83D\uDE4F`;
+let waTplDeposit = `Halo *{nama}*!\n\nDeposit membership kamu sebesar *{nominal}* sudah diterima.\nSisa saldo kamu sekarang: *{sisa}*\n\nTerima kasih! \u2014 CleanPOS Laundry`;
 let waTplNew = {
   konfirmasi:  `Halo {nama} \uD83D\uDC4B\n\nPesanan Anda sudah *diterima* di CleanPOS Laundry. \uD83E\uDDFA\n\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDC55 Layanan: {layanan}\n\uD83D\uDCB0 Total: *{total}*\n\nKami akan kabarkan saat cucian siap diambil! \uD83D\uDE4F`,
   tagih_dp:    `Halo {nama} \uD83D\uDC4B\n\nPesanan Anda sudah dicatat!\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDCB0 Total: *{total}*\n\nMohon transfer DP 50% ke:\n\uD83C\uDFE6 BCA 1234567890 a/n Laundry Kita\n\nKirim bukti transfer ya! \uD83D\uDE4F`,
   tagih_lunas: `Halo {nama} \uD83D\uDC4B\n\nKonfirmasi pembayaran:\n\uD83D\uDCCB No: *{id}*\n\uD83D\uDCB0 Total: *{total}*\n\nTransfer ke:\n\uD83C\uDFE6 BCA 1234567890 a/n Laundry Kita\nAtau bayar tunai saat pickup. \uD83D\uDE4F`
 };
+let waSisaSaldoLabel = 'Sisa saldo member';
+let waSisaKuotaLabel = 'Sisa kuota kiloan';
 let curWaNewType = 'konfirmasi'; let curWaNewOrder = null; let curRcptOrderId = null; let curRcptOrder = null;
 let storeName = 'CleanPOS Laundry'; let storeAddr = ''; let storeWa = ''; let storeFooter = 'Terima kasih atas kepercayaan Anda! \uD83D\uDE4F';
 let cutiPerBulan = 2;
@@ -1662,14 +1665,23 @@ function downloadCardGuide() {
 }
 
 function _buildCardWaMsg(cu) {
-  return 'Halo *'+cu.name+'*! 🎉\n\nSaldo member kamu saat ini: *'+fmt(cu.balance||0)+'*\n\nTerima kasih telah menjadi pelanggan setia kami! 🙏\n— '+(storeName||'CleanPOS Laundry');
+  const store = storeName || 'CleanPOS Laundry';
+  if (membershipStyle === 'package') {
+    return `Halo *${cu.name}*!\n\nQuota kiloan kamu saat ini: *${cu.kiloanQuota||0} kg*\n\nTerima kasih telah menjadi pelanggan setia kami!\n— ${store}`;
+  }
+  return `Halo *${cu.name}*!\n\nSaldo member kamu saat ini: *${fmt(cu.balance||0)}*\n\nTerima kasih telah menjadi pelanggan setia kami!\n— ${store}`;
 }
 
 function openSendMemberCard(phone) {
   const c=customers[phone]; if(!c) return;
   _cardSendCust=c;
   // Customer info panel
-  if(g('sc-cust-info')) g('sc-cust-info').innerHTML=`<div style="font-weight:700;font-size:14px;color:var(--t1)">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2);margin-top:1px">${esc(c.phone||'—')}</div><div style="margin-top:8px;font-size:13px">Saldo: <span style="font-weight:700;color:var(--p)">${fmt(c.balance||0)}</span></div>`;
+  const _memberVal = membershipStyle === 'package'
+    ? `Quota: <span style="font-weight:700;color:var(--p)">${c.kiloanQuota||0} kg</span>`
+    : `Saldo: <span style="font-weight:700;color:var(--p)">${fmt(c.balance||0)}</span>`;
+  if(g('sc-cust-info')) g('sc-cust-info').innerHTML=`<div style="font-weight:700;font-size:14px;color:var(--t1)">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2);margin-top:1px">${esc(c.phone||'—')}</div><div style="margin-top:8px;font-size:13px">${_memberVal}</div>`;
+  const _saldoBtn = document.querySelector('#m-send-card .sc-chip[onclick*="saldo"]');
+  if(_saldoBtn) _saldoBtn.textContent = membershipStyle === 'package' ? 'Quota Update' : 'Saldo Update';
   // Pre-fill WA message textarea
   if(g('card-wa-msg')){g('card-wa-msg').value=_buildCardWaMsg(c);_scUpdateCharCount();}
   // Show/hide card preview section
@@ -1866,17 +1878,21 @@ function _ordersInRange(curISO, curEndISO){
 }
 
 function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
+  const MEMBER_PAY=['Dompet Member','Quota Kiloan'];
+  const incomeCur=cur.filter(o=>!MEMBER_PAY.includes(o.payMethod));
+  const incomePrev=prev.filter(o=>!MEMBER_PAY.includes(o.payMethod));
+  const laundry=arr=>arr.filter(o=>!o.isDeposit);
   const sum=arr=>arr.reduce((s,o)=>s+o.total,0);
-  const total=sum(cur), prevTotal=sum(prev);
-  const belum=cur.filter(o=>o.payStatus!=='Lunas').reduce((s,o)=>s+o.total,0);
-  const bayar=cur.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
-  const trx=cur.length, prevTrx=prev.length;
+  const total=sum(incomeCur), prevTotal=sum(incomePrev);
+  const belum=incomeCur.filter(o=>o.payStatus!=='Lunas').reduce((s,o)=>s+o.total,0);
+  const bayar=incomeCur.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
+  const trx=laundry(cur).length, prevTrx=laundry(prev).length;
   // Pesanan Diterima (status = Diterima)
-  const diterima=cur.filter(o=>o.status==='Diterima').length;
-  const prevDiterima=prev.filter(o=>o.status==='Diterima').length;
+  const diterima=laundry(cur).filter(o=>o.status==='Diterima').length;
+  const prevDiterima=laundry(prev).filter(o=>o.status==='Diterima').length;
   // Pesanan Selesai (status = Selesai or Diambil)
-  const selesai=cur.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
-  const prevSelesai=prev.filter(o=>['Selesai','Diambil'].includes(o.status)).length;
+  const selesai=laundry(cur).filter(o=>['Selesai','Diambil'].includes(o.status)).length;
+  const prevSelesai=laundry(prev).filter(o=>['Selesai','Diambil'].includes(o.status)).length;
   // Pengeluaran
   const _expFilter=e=>dashOutlet==='all'||!e.outletId||e.outletId===dashOutlet;
   const pengeluaran=expenses.filter(e=>e.date>=curISO&&e.date<=curEndISO&&_expFilter(e)).reduce((s,e)=>s+e.nominal,0);
@@ -1894,7 +1910,8 @@ function _renderDashStats(s, range){
   const el=g('dash-stats'); if(!el)return;
   // Month-to-date accumulation (always for the month of curStart)
   const mISO=range.curISO.slice(0,7);
-  const mOrders=orders.filter(o=>o.payStatus==='Lunas'&&_orderDateISO(o).startsWith(mISO)&&(dashOutlet==='all'||o.outletId===dashOutlet));
+  const _mMemberPay=['Dompet Member','Quota Kiloan'];
+  const mOrders=orders.filter(o=>o.payStatus==='Lunas'&&!_mMemberPay.includes(o.payMethod)&&_orderDateISO(o).startsWith(mISO)&&(dashOutlet==='all'||o.outletId===dashOutlet));
   const mTotal=mOrders.reduce((sum,o)=>sum+o.total,0);
   // Days elapsed in that month (up to today or end of period)
   const dayOfMonth=parseInt(range.curEndISO.slice(8),10)||1;
@@ -3251,13 +3268,18 @@ function _custSaveContact(phone) { const c=customers[phone]; if(c) saveToContact
 // ===== MEMBERSHIP CARD SEND MODAL HELPERS =====
 function _setMsgPreset(type) {
   if (!_cardSendCust) return;
-  const c=_cardSendCust; const bal=fmt(c.balance||0); const store=storeName||'CleanPOS Laundry';
+  const c = _cardSendCust;
+  const store = storeName || 'CleanPOS Laundry';
+  const isPkg = membershipStyle === 'package';
+  const val = isPkg ? `${c.kiloanQuota||0} kg` : fmt(c.balance||0);
+  const label = isPkg ? 'Quota kiloan' : 'Saldo';
   const msgs = {
-    saldo:`Halo *${c.name}*!\n\nBerikut kartu membership kamu.\nSaldo saat ini: *${bal}*\n\nTerima kasih telah menjadi pelanggan setia kami!\n— ${store}`,
-    promo:`Halo *${c.name}*!\n\nKami punya promo spesial untuk kamu.\nSaldo kamu saat ini: *${bal}*\n\nYuk gunakan sekarang!\n— ${store}`,
-    reminder:`Halo *${c.name}*!\n\nSaldo laundry kamu saat ini: *${bal}*\n\nJangan lupa untuk melakukan laundry ya!\n— ${store}`,
+    saldo:    `Halo *${c.name}*!\n\nBerikut kartu membership kamu.\n${label} saat ini: *${val}*\n\nTerima kasih telah menjadi pelanggan setia kami!\n— ${store}`,
+    promo:    `Halo *${c.name}*!\n\nKami punya promo spesial untuk kamu.\n${label} kamu saat ini: *${val}*\n\nYuk gunakan sekarang!\n— ${store}`,
+    reminder: `Halo *${c.name}*!\n\n${label} laundry kamu saat ini: *${val}*\n\nJangan lupa untuk melakukan laundry ya!\n— ${store}`,
   };
-  const ta=g('card-wa-msg'); if(ta){ta.value=msgs[type]||'';_scUpdateCharCount();}
+  const ta = g('card-wa-msg');
+  if (ta) { ta.value = msgs[type] || ''; _scUpdateCharCount(); }
 }
 function _scUpdateCharCount() {
   const ta=g('card-wa-msg'); const cc=g('sc-char-count');
@@ -3547,6 +3569,9 @@ function saveDeposit(){
     kasLog.push(kasEntry);
     syncKas(kasEntry);
   }
+  const depositOrder={id:genId(),name:c.name,phone:c.phone||'—',svcType:'membership',svcCat:membershipStyle==='package'?'package':'deposit',qty:0,rawQty:0,satuanLines:[],addOns:[],addOnAmt:0,base,discType:'none',discAmt:0,promoAmt:0,total:base,payMethod,payStatus:'Lunas',status:'Selesai',notes:note||'',date:TODAY_STR,isoDate:new Date().toISOString(),waSent:false,handledBy:curStaff?.name||'Owner',outletId:curStaff?.oid||curOutlet?.id||(outlets[0]?.id||''),isDeposit:true};
+  orders.unshift(depositOrder);
+  syncOrder(depositOrder);
   cm('m-member-deposit');
   renderCusts();
   if(curRole==='staff')renderMembership();
@@ -3555,6 +3580,28 @@ function saveDeposit(){
   } else {
     toast('Deposit '+fmt(credited)+' berhasil'+(bonus>0?' (bonus '+fmt(bonus)+')':''));
   }
+  if(c.phone&&c.phone!=='—') openDepositWa(c, base, credited, bonus, kgAmount, _selectedPkg?.name);
+}
+
+function buildDepositMsg(tpl, c, base, bonus, kgAmount, pkgName){
+  const isPkg=membershipStyle==='package'&&kgAmount;
+  const sisa=isPkg?`${c.kiloanQuota||0} kg`:fmt(c.balance||0);
+  const bonusVal=bonus>0?fmt(bonus):'';
+  return tpl
+    .replace(/{nama}/g, c.name)
+    .replace(/{nominal}/g, fmt(base))
+    .replace(/{sisa}/g, sisa)
+    .replace(/{bonus}/g, bonusVal)
+    .replace(/{paket}/g, pkgName||'');
+}
+
+function openDepositWa(c, base, credited, bonus, kgAmount, pkgName){
+  const msg=buildDepositMsg(waTplDeposit, c, base, bonus, kgAmount, pkgName);
+  const body=g('m-wa-body');
+  if(body)body.innerHTML=`<div style="margin-bottom:12px"><div style="font-weight:600;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div class="wa-bg"><div class="wa-bbl">${esc(msg).replace(/\*(.*?)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div></div>`;
+  const sendBtn=g('m-wa-send');
+  if(sendBtn)sendBtn.onclick=()=>{openWa(c.phone,msg);cm('m-wa');toast('WA konfirmasi deposit terkirim!');};
+  setTimeout(()=>openModal('m-wa'),350);
 }
 
 function openMemberTxnHistory(phone){
@@ -3614,6 +3661,17 @@ function deleteMemberDeposit(txnId,phone,amount,kgAmount){
   });
 }
 
+let _sMbrFilter = 'all';
+let _sMbrPage = 1;
+
+function setSMbrFilter(f) {
+  _sMbrFilter = f; _sMbrPage = 1;
+  ['all','ada','nol'].forEach(k => { const b = g('s-cfb-'+k); if (b) b.className = 'cfb' + (f===k?' on':''); });
+  renderMembership();
+}
+
+function setSMbrPage(p) { _sMbrPage = Math.max(1, p); renderMembership(); }
+
 function renderMembership(){
   const disEl=g('s-mbr-disabled');
   const conEl=g('s-mbr-content');
@@ -3624,21 +3682,170 @@ function renderMembership(){
   }
   if(disEl)disEl.style.display='none';
   if(conEl)conEl.style.display='';
+  _sMbrRenderSummary();
   const q=(g('s-mbr-srch')?.value||'').toLowerCase();
-  const list=Object.values(customers).filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q));
-  const el=g('s-mbr-list');if(!el)return;
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2)">Tidak ada pelanggan</div>';return;}
-  el.innerHTML=list.map(c=>{
+  const all=Object.values(customers);
+  const list=all.filter(c=>{
+    const matchQ=!q||(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q);
     const bal=c.balance||0;
-    let exHtml='';
-    if(membershipExpiryEnabled&&bal>0&&c.balanceExpiry){
-      const today=todayISO();
-      const daysLeft=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
-      let exColor=daysLeft<0?'var(--re,#c62828)':daysLeft<=7?'var(--amb,#e65100)':'var(--gr,#2e7d32)';
-      exHtml=`<div style="font-size:10px;color:${exColor};margin-top:1px">${daysLeft<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
+    const matchF=_sMbrFilter==='all'||(_sMbrFilter==='ada'&&bal>0)||(_sMbrFilter==='nol'&&bal<=0);
+    return matchQ&&matchF;
+  }).sort((a,b)=>(b.lastDate||'').localeCompare(a.lastDate||'')||(a.name||'').localeCompare(b.name||''));
+  const _PER=10;
+  const _tp=Math.max(1,Math.ceil(list.length/_PER));
+  if(_sMbrPage>_tp)_sMbrPage=_tp;
+  const paged=list.slice((_sMbrPage-1)*_PER,_sMbrPage*_PER);
+  _sMbrRenderTable(paged);
+  _sMbrRenderCards(paged);
+  _sMbrRenderPager(list.length,_tp);
+}
+
+function _sMbrRenderSummary(){
+  const wrap=g('s-cust-summary');if(!wrap)return;
+  if(!membershipEnabled){wrap.style.display='none';return;}
+  wrap.style.display='';
+  const all=Object.values(customers);
+  const totalBal=all.reduce((s,c)=>s+(c.balance||0),0);
+  const withBal=all.filter(c=>(c.balance||0)>0).length;
+  const zeroBal=all.length-withBal;
+  wrap.innerHTML=`
+    <div class="cust-sum-card">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Total Saldo</div>
+      <div style="font-size:20px;font-weight:800;color:var(--p)">${fmt(totalBal)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:2px">dari ${all.length} pelanggan</div>
+    </div>
+    <div class="cust-sum-card">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Ada Saldo</div>
+      <div style="font-size:20px;font-weight:800;color:var(--p)">${withBal}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(withBal/all.length*100):0}% dari total</div>
+    </div>
+    <div class="cust-sum-card">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Saldo 0</div>
+      <div style="font-size:20px;font-weight:800;color:var(--t2)">${zeroBal}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(zeroBal/all.length*100):0}% dari total</div>
+    </div>`;
+}
+
+function _sMbrRenderTable(list){
+  const tb=g('s-cust-tb');if(!tb)return;
+  const balHdr=g('s-cust-bal-hdr');
+  if(balHdr&&membershipEnabled)balHdr.textContent=membershipStyle==='package'?'Quota Kiloan':'Saldo';
+  if(!list.length){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t2)">Tidak ada pelanggan ditemukan</td></tr>`;return;}
+  try{tb.innerHTML=list.map(c=>{
+    const initials=(c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    const bal=c.balance||0;
+    const kq=c.kiloanQuota||0;
+    let balCell='—';
+    if(membershipEnabled){
+      if(membershipStyle==='package'){
+        let bHtml=kq>0?`<span style="font-weight:700;color:var(--p);font-size:14px">${kq} kg</span>`:`<span style="color:var(--t2);font-size:14px">0 kg</span>`;
+        if(kq>0&&c.kiloanQuotaExpiry){const dl=Math.round((new Date(c.kiloanQuotaExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.kiloanQuotaExpiry)}</div>`;}
+        balCell=bHtml;
+      } else {
+        let bHtml=bal>0?`<span style="font-weight:700;color:var(--p);font-size:14px">${fmt(bal)}</span>`:`<span style="color:var(--t2);font-size:14px">Rp 0</span>`;
+        if(membershipExpiryEnabled&&bal>0&&c.balanceExpiry){const dl=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;}
+        balCell=bHtml;
+      }
     }
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--ca);margin-bottom:8px"><div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--t2)">${esc(c.phone)}</div></div><div style="text-align:right;margin-right:8px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-weight:800;font-size:16px;color:var(--p)">${fmt(bal)}</div>${exHtml}</div><div style="display:flex;flex-direction:column;gap:4px"><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Kirim Saldo / Kartu" style="padding-left:6px;padding-right:6px">🎫</button><button class="btn bp bsm" onclick="openMemberDeposit('${esc(c.phone)}')">+ Deposit</button><button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button></div></div>`;
-  }).join('');
+    const acts=membershipEnabled
+      ?`<div style="display:flex;gap:5px;align-items:center">
+          <button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button>
+          <button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" title="Membership Card" style="padding:5px 8px">${_C_IC_CARD}</button>
+          <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
+          <div style="position:relative" id="s-cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_sMbrMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+        </div>`
+      :`<div style="display:flex;gap:5px;align-items:center">
+          <button class="btn bsm" onclick="openEditCust('${esc(c.phone)}')">Edit</button>
+          <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" title="WhatsApp" style="padding:5px 8px">${_C_IC_WA}</button>
+          <div style="position:relative" id="s-cmw-${esc(c.phone)}"><button class="btn bsm" onclick="_sMbrMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${_C_IC_MORE}</button></div>
+        </div>`;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="cust-av">${initials}</div>
+        <div><div class="cust-name">${esc(c.name)}</div><div class="cust-ph">${esc(c.phone||'—')}</div></div>
+      </div></td>
+      <td><div style="font-weight:700;font-size:14px">${fmt(c.total||0)}</div><div style="font-size:11px;color:var(--t2);margin-top:1px">${c.orders||0} transaksi</div></td>
+      <td>${balCell}</td>
+      <td style="font-size:12px;color:var(--t2);white-space:nowrap">${esc(c.lastDate||'—')}</td>
+      <td>${acts}</td>
+    </tr>`;
+  }).join('');}catch(e){console.error('[renderMembership table]',e);tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--re,#c62828)">Error rendering. Coba refresh halaman.</td></tr>`;}
+}
+
+function _sMbrRenderCards(list){
+  const wrap=g('s-cust-cards');if(!wrap)return;
+  const IC_WA14=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+  const IC_CARD14=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+  const IC_MORE14=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
+  if(!list.length){wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">Tidak ada pelanggan ditemukan</div>`;return;}
+  try{wrap.innerHTML=list.map(c=>{
+    const initials=(c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    const bal=c.balance||0;
+    const kq=c.kiloanQuota||0;
+    let balBadge='';
+    if(membershipEnabled){
+      if(membershipStyle==='package'){
+        balBadge=`<div style="font-size:${kq>0?'15px':'13px'};font-weight:${kq>0?'800':'500'};color:${kq>0?'var(--p)':'var(--t2)'};">${kq} kg</div><div style="font-size:10px;color:var(--t2)">${kq>0?'Quota aktif':'Belum ada quota'}</div>`;
+      } else {
+        balBadge=`<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>`;
+      }
+    }
+    return `<div class="cust-card">
+      <div class="cust-card-top">
+        <div class="cust-av">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div class="cust-name">${esc(c.name)}</div>
+          <div class="cust-ph">${esc(c.phone||'—')}</div>
+        </div>
+        ${membershipEnabled?`<div style="text-align:right">${balBadge}</div>`:''}
+      </div>
+      <div class="cust-card-meta">
+        <span>${fmt(c.total||0)}</span>
+        <span style="color:var(--b1)">•</span>
+        <span>${c.orders||0} transaksi</span>
+        <span style="color:var(--b1)">•</span>
+        <span>${esc(c.lastDate||'—')}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        ${membershipEnabled?`<button class="btn bsm bp" onclick="openMemberDeposit('${esc(c.phone)}')" style="gap:4px">+ Deposit</button><button class="btn bsm" onclick="openSendMemberCard('${esc(c.phone)}')" style="gap:4px;padding:5px 9px">${IC_CARD14}</button>`:''}
+        <button class="btn bsm bwa" onclick="openWa('${esc(c.phone)}','')" style="gap:4px;padding:5px 9px">${IC_WA14}</button>
+        <div style="position:relative" id="s-cmm-${esc(c.phone)}"><button class="btn bsm" onclick="_sMbrMoreMenu('${esc(c.phone)}')" style="padding:5px 8px">${IC_MORE14}</button></div>
+      </div>
+    </div>`;
+  }).join('');}catch(e){console.error('[renderMembership cards]',e);wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--re,#c62828);font-size:13px">Error rendering. Coba refresh halaman.</div>`;}
+}
+
+function _sMbrRenderPager(total,totalPages){
+  const wrap=g('s-cust-pager');if(!wrap)return;
+  if(totalPages<=1){wrap.innerHTML='';return;}
+  const p=_sMbrPage;
+  let btns='';
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||(i>=p-1&&i<=p+1))btns+=`<button class="btn bsm${i===p?' bp':''}" onclick="setSMbrPage(${i})" style="min-width:32px;padding:4px 8px">${i}</button>`;
+    else if(i===p-2||i===p+2)btns+=`<span style="align-self:center;color:var(--t2);padding:0 2px;font-size:13px">…</span>`;
+  }
+  wrap.innerHTML=`<div style="display:flex;align-items:center;gap:5px;justify-content:center;padding:12px 16px;border-top:1px solid var(--b1);flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--t2);margin-right:4px">${total} pelanggan</span>
+    <button class="btn bsm" onclick="setSMbrPage(${p-1})" ${p===1?'disabled':''} style="min-width:32px;padding:4px 8px">‹</button>
+    ${btns}
+    <button class="btn bsm" onclick="setSMbrPage(${p+1})" ${p===totalPages?'disabled':''} style="min-width:32px;padding:4px 8px">›</button>
+  </div>`;
+}
+
+function _sMbrMoreMenu(phone){
+  document.querySelectorAll('.cust-dd').forEach(d=>d.remove());
+  const anchor=g('s-cmw-'+phone)||g('s-cmm-'+phone);if(!anchor)return;
+  const items=[
+    {label:'Edit',fn:`openEditCust('${phone}')`},
+    ...(membershipEnabled?[{label:'Riwayat Saldo',fn:`openMemberTxnHistory('${phone}')`}]:[]),
+    {label:'Simpan Kontak',fn:`_custSaveContact('${phone}')`},
+  ];
+  const dd=document.createElement('div');
+  dd.className='cust-dd';
+  dd.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--ca);border:1.5px solid var(--b1);border-radius:10px;box-shadow:var(--sh2);z-index:300;min-width:160px;overflow:hidden';
+  dd.innerHTML=items.map(it=>`<button style="display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--t1);transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''" onclick="document.querySelectorAll('.cust-dd').forEach(d=>d.remove());${it.fn}">${it.label}</button>`).join('');
+  anchor.appendChild(dd);
+  setTimeout(()=>document.addEventListener('click',function _cl(e){if(!anchor.contains(e.target)){dd.remove();document.removeEventListener('click',_cl);}},true),0);
 }
 
 function toggleMembership(){
@@ -5780,10 +5987,11 @@ function renderReports(){
     if(rptFilter==='custom'&&fr&&to_)return e.date>=fr&&e.date<=to_;
     return true;
   });
-  const rev=filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
+  const _rptMemberPay=['Dompet Member','Quota Kiloan'];
+  const rev=filtered.filter(o=>o.payStatus==='Lunas'&&!_rptMemberPay.includes(o.payMethod)).reduce((s,o)=>s+o.total,0);
   const totalExp=filtExp.reduce((s,e)=>s+e.nominal,0);
   const profit=rev-totalExp;
-  _rptUpdateSummary(filtered.length);
+  _rptUpdateSummary(filtered.filter(o=>!o.isDeposit).length);
 
   // --- KPI cards ---
   const avgOrder=filtered.length?Math.round(rev/filtered.length):0;
@@ -5840,7 +6048,7 @@ function renderReports(){
 
   // --- Payment breakdown ---
   const pm={Tunai:0,QRIS:0,Transfer:0};
-  filtered.filter(o=>o.payStatus==='Lunas').forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=o.total;});
+  filtered.filter(o=>o.payStatus==='Lunas'&&!_rptMemberPay.includes(o.payMethod)).forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=o.total;});
   const pmTotal=Object.values(pm).reduce((s,v)=>s+v,0)||1;
   const rp=g('rpt-pay');
   if(rp)rp.innerHTML=Object.entries(pm).map(([k,v])=>`

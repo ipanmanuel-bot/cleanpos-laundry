@@ -1399,6 +1399,7 @@ tr:hover td{background:#F6F7F9}
     <span class="chip" onclick="switchWaTplTab('tagih_dp',this)"><i data-lucide="banknote" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih DP</span>
     <span class="chip" onclick="switchWaTplTab('tagih_lunas',this)"><i data-lucide="credit-card" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Tagih Lunas</span>
     <span class="chip" onclick="switchWaTplTab('konfirmasi',this)"><i data-lucide="clipboard-check" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Terima</span>
+    <span class="chip" onclick="switchWaTplTab('deposit',this)"><i data-lucide="wallet" style="width:13px;height:13px;stroke-width:2;vertical-align:-2px;display:inline;margin-right:3px"></i>Konfirmasi Deposit</span>
   </div>
 
   <!-- Auto-send hint -->
@@ -1418,7 +1419,7 @@ tr:hover td{background:#F6F7F9}
         </div>
         <!-- Variable chips -->
         <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Variabel — klik untuk sisipkan</div>
-        <div class="wa-var-chips">
+        <div id="wa-vars-order" class="wa-var-chips">
           <span class="wa-var-chip" onclick="insertWaVar('{nama}')">{nama}</span>
           <span class="wa-var-chip" onclick="insertWaVar('{id}')">{id}</span>
           <span class="wa-var-chip" onclick="insertWaVar('{total}')">{total}</span>
@@ -1426,6 +1427,14 @@ tr:hover td{background:#F6F7F9}
           <span class="wa-var-chip" onclick="insertWaVar('{est}')">{est}</span>
           <span class="wa-var-chip" onclick="insertWaVar('{link}')">{link}</span>
           <span class="wa-var-chip" onclick="insertWaVar('{bayar}')">{bayar}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{sisa_member}')" title="Sisa saldo/kuota membership (otomatis sesuai metode bayar)">{sisa_member}</span>
+        </div>
+        <div id="wa-vars-deposit" class="wa-var-chips" style="display:none">
+          <span class="wa-var-chip" onclick="insertWaVar('{nama}')">{nama}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{nominal}')">{nominal}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{sisa}')">{sisa}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{bonus}')">{bonus}</span>
+          <span class="wa-var-chip" onclick="insertWaVar('{paket}')">{paket}</span>
         </div>
         <!-- Toolbar -->
         <div class="wa-toolbar">
@@ -1453,6 +1462,23 @@ tr:hover td{background:#F6F7F9}
             <div class="wa-toggle-desc">Sertakan link tracking pesanan dalam pesan. Variabel <code style="font-size:10px">{link}</code></div>
           </div>
           <button id="wa-link-toggle" class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off');prevTpl()"></button>
+        </div>
+      </div>
+      <!-- Sisa Member Label settings -->
+      <div class="card" style="margin-top:0">
+        <div class="ct" style="margin-bottom:4px">Teks Label <code style="font-size:11px">{sisa_member}</code></div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Teks yang muncul di pesan saat pelanggan bayar pakai membership.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Dompet Member (Saldo Rp)</label>
+            <input id="wa-sisa-saldo-lbl" type="text" value="Sisa saldo member" style="width:100%;box-sizing:border-box;font-size:13px;padding:7px 10px;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);font-family:inherit">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Quota Kiloan (kg)</label>
+            <input id="wa-sisa-kuota-lbl" type="text" value="Sisa kuota kiloan" style="width:100%;box-sizing:border-box;font-size:13px;padding:7px 10px;border:1.5px solid var(--b1);border-radius:8px;background:var(--ca);color:var(--t1);font-family:inherit">
+          </div>
+          <div style="font-size:11px;color:var(--t2)">Contoh hasil: "<span id="wa-sisa-preview-saldo">Sisa saldo member</span>: <strong>Rp 75.000</strong>" atau "<span id="wa-sisa-preview-kuota">Sisa kuota kiloan</span>: <strong>5 kg</strong>"</div>
+          <button class="btn bp bsm bpill" style="align-self:flex-start" onclick="saveSisaLabel()">Simpan Label</button>
         </div>
       </div>
     </div>
@@ -2561,10 +2587,25 @@ tr:hover td{background:#F6F7F9}
         Fitur membership belum diaktifkan oleh owner. Hubungi owner untuk mengaktifkannya di menu Pengaturan.
       </div>
       <div id="s-mbr-content">
+        <div id="s-cust-summary" class="cust-summary" style="display:none;padding:12px 16px 0"></div>
         <div class="cust-filter-bar">
-          <input id="s-mbr-srch" class="ord-search" placeholder="Cari nama / telepon pelanggan..." oninput="renderMembership()" style="flex:1;min-width:160px">
+          <input id="s-mbr-srch" class="ord-search" placeholder="Cari nama / telepon pelanggan..." oninput="_sMbrPage=1;renderMembership()" style="flex:1;min-width:160px">
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="cfb on" id="s-cfb-all" onclick="setSMbrFilter('all')">Semua</button>
+            <button class="cfb" id="s-cfb-ada" onclick="setSMbrFilter('ada')">Ada Saldo</button>
+            <button class="cfb" id="s-cfb-nol" onclick="setSMbrFilter('nol')">Saldo 0</button>
+          </div>
         </div>
-        <div id="s-mbr-list" style="padding:8px 16px 12px"></div>
+        <div class="cust-tbl-wrap">
+          <table class="cust-tbl">
+            <thead><tr>
+              <th>Pelanggan</th><th>Aktivitas</th><th id="s-cust-bal-hdr">Saldo</th><th>Terakhir Transaksi</th><th>Aksi</th>
+            </tr></thead>
+            <tbody id="s-cust-tb"></tbody>
+          </table>
+        </div>
+        <div id="s-cust-cards" class="cust-cards-wrap"></div>
+        <div id="s-cust-pager"></div>
       </div>
     </div>
   </div>
