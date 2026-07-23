@@ -3998,14 +3998,15 @@ function setPricingTab(tab, btn){
 
 function _renderPricingHeaderActions(tab){
   const el=g('prc-header-actions');if(!el)return;
+  const IC_GEAR=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>`;
+  const IC_PLUS=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const iconBtn=(icon,cls,onclick,title)=>`<button class="btn bsm ${cls}" style="padding:6px 9px;display:flex;align-items:center;justify-content:center" onclick="${onclick}" title="${title}">${icon}</button>`;
   if(tab==='kiloan'){
-    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('kiloan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Kiloan</button>
-    <button class="btn bp bsm" onclick="openAddSvc()">+ Tambah Layanan Kiloan</button>`;
+    el.innerHTML=iconBtn(IC_GEAR,'',`openPriceOptModal('kiloan')`,'Kelola Opsi Harga Kiloan')+iconBtn(IC_PLUS,'bp','openAddSvc()','Tambah Layanan Kiloan');
   }else if(tab==='satuan'){
-    el.innerHTML=`<button class="btn bsm" style="display:flex;align-items:center;gap:5px" onclick="openPriceOptModal('satuan')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg> Kelola Opsi Harga Satuan</button>
-    <button class="btn bp bsm" onclick="openAddSatuanItem()">+ Tambah Layanan Satuan</button>`;
+    el.innerHTML=iconBtn(IC_GEAR,'',`openPriceOptModal('satuan')`,'Kelola Opsi Harga Satuan')+iconBtn(IC_PLUS,'bp','openAddSatuanItem()','Tambah Layanan Satuan');
   }else{
-    el.innerHTML=`<button class="btn bp bsm" onclick="openAddAddon()">+ Tambah Layanan Tambahan</button>`;
+    el.innerHTML=iconBtn(IC_PLUS,'bp','openAddAddon()','Tambah Layanan Tambahan');
   }
 }
 
