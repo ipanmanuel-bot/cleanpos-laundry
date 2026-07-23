@@ -171,6 +171,7 @@ function _saveSettingsLocal() {
       promos: JSON.stringify(promos),
       wa_tpl_selesai: waTplSelesai,
       wa_tpl_new: JSON.stringify(waTplNew),
+      wa_tpl_deposit: waTplDeposit,
       cuti_per_bulan: cutiPerBulan,
       membership_enabled: membershipEnabled,
       membership_bonus: membershipBonus,
@@ -202,6 +203,7 @@ function _applySettingsObj(s) {
   if (promos.length) { const mx=promos.reduce((m,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0); if(mx>=promoCtr)promoCtr=mx+1; }
   if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
   try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) {}
+  if (s.wa_tpl_deposit) waTplDeposit = s.wa_tpl_deposit;
   if (s.cuti_per_bulan != null) cutiPerBulan = Number(s.cuti_per_bulan);
   if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
   if (s.membership_bonus   != null) membershipBonus   = Number(s.membership_bonus);
@@ -233,6 +235,7 @@ function syncSettings() {
     promos: JSON.stringify(promos),
     wa_tpl_selesai: waTplSelesai,
     wa_tpl_new: JSON.stringify(waTplNew),
+    wa_tpl_deposit: waTplDeposit,
     cuti_per_bulan: cutiPerBulan,
     membership_enabled: membershipEnabled,
     membership_bonus: membershipBonus,
@@ -305,6 +308,7 @@ async function supaLoadAll() {
     }
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) { console.error('[parse] wa_tpl_new:', e); }
+    if (s.wa_tpl_deposit) waTplDeposit = s.wa_tpl_deposit;
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
     if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
     if (s.membership_bonus  != null) membershipBonus  = Number(s.membership_bonus);
@@ -437,6 +441,7 @@ function supaSubscribeSettings() {
       if (s.promos) { try { promos = JSON.parse(s.promos); } catch(e){} }
       if (s.wa_tpl_selesai !== undefined) waTplSelesai = s.wa_tpl_selesai;
       if (s.wa_tpl_new) { try { waTplNew = JSON.parse(s.wa_tpl_new); } catch(e){} }
+      if (s.wa_tpl_deposit !== undefined) waTplDeposit = s.wa_tpl_deposit;
       if (s.cuti_per_bulan !== undefined) cutiPerBulan = s.cuti_per_bulan;
       if (s.membership_enabled !== undefined) membershipEnabled = s.membership_enabled;
       if (s.membership_bonus !== undefined) membershipBonus = s.membership_bonus;
