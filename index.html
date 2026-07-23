@@ -900,6 +900,28 @@ tr:hover td{background:#F6F7F9}
 @media(max-width:900px){.kas-sum-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.kas-qa-row{grid-template-columns:1fr}.kas-ph{margin-bottom:14px}}
 @media(max-width:500px){.kas-sum-grid{grid-template-columns:1fr 1fr}.kas-sc-main .kas-sc-val{font-size:22px}.kas-tx-badge{display:none}}
+@media(max-width:640px){
+  /* Kiloan: sembunyikan header baris & kolom Satuan, buat kolom lain adaptif */
+  .prc-col-hdr{display:none}
+  .prc-svc-col-unit{display:none}
+  .prc-svc-col-price{width:auto;font-size:11px;flex-shrink:1;min-width:0}
+  .prc-svc-col-status{width:auto}
+  .prc-svc-row{gap:6px;padding:10px 12px}
+  /* Pengaturan layanan kiloan: stack vertikal, simpan di kiri */
+  .prc-svc-settings{padding:10px 12px 12px}
+  .prc-svc-settings-body{gap:10px}
+  .prc-svc-save-row{justify-content:flex-start}
+  /* Tabel Satuan: sembunyikan kolom Satuan (2) dan Opsi Harga (4) */
+  #prc-sat-tbl-wrap .prc-tbl th:nth-child(2),
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(2),
+  #prc-sat-tbl-wrap .prc-tbl th:nth-child(4),
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(4){display:none}
+  /* Tabel Tambahan: sembunyikan kolom Satuan (3), padding lebih kecil */
+  #ptab-tambahan .prc-tbl th:nth-child(3),
+  #ptab-tambahan .prc-tbl td:nth-child(3){display:none}
+  #ptab-tambahan .prc-tbl td:nth-child(2) input{width:80px}
+  .prc-tbl th,.prc-tbl td{padding:10px 10px}
+}
 </style>
 </head>
 <body>
