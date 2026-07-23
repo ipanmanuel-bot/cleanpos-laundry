@@ -1644,8 +1644,8 @@ function buildMsg(tpl, o) {
   if (typeof membershipEnabled !== 'undefined' && membershipEnabled && o.phone && o.phone !== '—') {
     const cust = (typeof customers !== 'undefined') ? customers[o.phone] : null;
     if (cust) {
-      if (o.payMethod === 'Dompet Member') sisaMember = `\nSisa saldo member: *${fmt(cust.balance||0)}*`;
-      else if (o.payMethod === 'Quota Kiloan') sisaMember = `\nSisa quota kiloan: *${cust.kiloanQuota||0} kg*`;
+      if (o.payMethod === 'Dompet Member') sisaMember = `\n${typeof waSisaSaldoLabel!=='undefined'?waSisaSaldoLabel:'Sisa saldo member'}: *${fmt(cust.balance||0)}*`;
+      else if (o.payMethod === 'Quota Kiloan') sisaMember = `\n${typeof waSisaKuotaLabel!=='undefined'?waSisaKuotaLabel:'Sisa kuota kiloan'}: *${cust.kiloanQuota||0} kg*`;
     }
   }
   return tpl
@@ -1730,7 +1730,8 @@ function prevTpl() {
     .replace(/{layanan}/g, 'kiloan regular')
     .replace(/{est}/g,     '2-3 hari')
     .replace(/{link}/g,    exLink ? '<a href="#" style="color:#0a5c7a">' + exLink + '</a>' : '<em style="color:#aaa">[link tracking]</em>')
-    .replace(/{bayar}/g,   '<strong>Lunas</strong>')
+    .replace(/{bayar}/g,        '<strong>Lunas</strong>')
+    .replace(/{sisa_member}/g,  '\nSisa saldo member: <strong>Rp 75.000</strong>')
     .replace(/{nominal}/g, '<strong>Rp 100.000</strong>')
     .replace(/{sisa}/g,    '<strong>Rp 150.000</strong>')
     .replace(/{bonus}/g,   '<strong>Rp 10.000</strong>')
@@ -1795,9 +1796,28 @@ function saveTpl() {
   toast('✓ Template "' + { selesai: 'Pesanan Selesai', tagih_dp: 'Tagih DP', tagih_lunas: 'Tagih Lunas', konfirmasi: 'Konfirmasi Terima', deposit: 'Konfirmasi Deposit' }[curWaTplTab] + '" tersimpan!');
 }
 
+function saveSisaLabel() {
+  const sl = g('wa-sisa-saldo-lbl')?.value.trim();
+  const kl = g('wa-sisa-kuota-lbl')?.value.trim();
+  if (sl) waSisaSaldoLabel = sl;
+  if (kl) waSisaKuotaLabel = kl;
+  _updateSisaPreview();
+  if (typeof syncSettings === 'function') syncSettings();
+  toast('Label tersimpan');
+}
+
+function _updateSisaPreview() {
+  const ps = g('wa-sisa-preview-saldo'); if (ps) ps.textContent = typeof waSisaSaldoLabel !== 'undefined' ? waSisaSaldoLabel : 'Sisa saldo member';
+  const pk = g('wa-sisa-preview-kuota'); if (pk) pk.textContent = typeof waSisaKuotaLabel !== 'undefined' ? waSisaKuotaLabel : 'Sisa kuota kiloan';
+}
+
 function renderWaCenter() {
   const tpl = curWaTplTab === 'selesai' ? waTplSelesai : curWaTplTab === 'deposit' ? waTplDeposit : (waTplNew[curWaTplTab] || '');
   const ta = g('wa-tpl'); if (ta) ta.value = tpl;
+  // Isi nilai input label sisa member dari variabel global
+  const sl = g('wa-sisa-saldo-lbl'); if (sl && typeof waSisaSaldoLabel !== 'undefined') sl.value = waSisaSaldoLabel;
+  const kl = g('wa-sisa-kuota-lbl'); if (kl && typeof waSisaKuotaLabel !== 'undefined') kl.value = waSisaKuotaLabel;
+  _updateSisaPreview();
   prevTpl();
   const pend = orders.filter(o => o.status === 'Selesai' && !o.waSent);
   const cnt = g('wa-pend-cnt'); if (cnt) { cnt.textContent = pend.length; cnt.className = 'badge ' + (pend.length ? 'gam' : 'gg'); }

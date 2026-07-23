@@ -174,6 +174,8 @@ function _saveSettingsLocal() {
       wa_tpl_selesai: waTplSelesai,
       wa_tpl_new: JSON.stringify(waTplNew),
       wa_tpl_deposit: waTplDeposit,
+      wa_sisa_saldo_label: waSisaSaldoLabel,
+      wa_sisa_kuota_label: waSisaKuotaLabel,
       cuti_per_bulan: cutiPerBulan,
       membership_enabled: membershipEnabled,
       membership_bonus: membershipBonus,
@@ -206,6 +208,8 @@ function _applySettingsObj(s) {
   if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
   try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) {}
   if (s.wa_tpl_deposit) waTplDeposit = s.wa_tpl_deposit;
+  if (s.wa_sisa_saldo_label) waSisaSaldoLabel = s.wa_sisa_saldo_label;
+  if (s.wa_sisa_kuota_label) waSisaKuotaLabel = s.wa_sisa_kuota_label;
   if (s.cuti_per_bulan != null) cutiPerBulan = Number(s.cuti_per_bulan);
   if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
   if (s.membership_bonus   != null) membershipBonus   = Number(s.membership_bonus);
@@ -311,6 +315,8 @@ async function supaLoadAll() {
     if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
     try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) { console.error('[parse] wa_tpl_new:', e); }
     if (s.wa_tpl_deposit) waTplDeposit = s.wa_tpl_deposit;
+  if (s.wa_sisa_saldo_label) waSisaSaldoLabel = s.wa_sisa_saldo_label;
+  if (s.wa_sisa_kuota_label) waSisaKuotaLabel = s.wa_sisa_kuota_label;
     if (s.cuti_per_bulan) cutiPerBulan = Number(s.cuti_per_bulan);
     if (s.membership_enabled != null) membershipEnabled = !!s.membership_enabled;
     if (s.membership_bonus  != null) membershipBonus  = Number(s.membership_bonus);
@@ -444,6 +450,8 @@ function supaSubscribeSettings() {
       if (s.wa_tpl_selesai !== undefined) waTplSelesai = s.wa_tpl_selesai;
       if (s.wa_tpl_new) { try { waTplNew = JSON.parse(s.wa_tpl_new); } catch(e){} }
       if (s.wa_tpl_deposit !== undefined) waTplDeposit = s.wa_tpl_deposit;
+      if (s.wa_sisa_saldo_label !== undefined) waSisaSaldoLabel = s.wa_sisa_saldo_label;
+      if (s.wa_sisa_kuota_label !== undefined) waSisaKuotaLabel = s.wa_sisa_kuota_label;
       if (s.cuti_per_bulan !== undefined) cutiPerBulan = s.cuti_per_bulan;
       if (s.membership_enabled !== undefined) membershipEnabled = s.membership_enabled;
       if (s.membership_bonus !== undefined) membershipBonus = s.membership_bonus;
