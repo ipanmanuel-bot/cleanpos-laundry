@@ -1882,10 +1882,11 @@ function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
   const incomeCur=cur.filter(o=>!MEMBER_PAY.includes(o.payMethod));
   const incomePrev=prev.filter(o=>!MEMBER_PAY.includes(o.payMethod));
   const laundry=arr=>arr.filter(o=>!o.isDeposit);
-  const sum=arr=>arr.reduce((s,o)=>s+o.total,0);
+  const _net=o=>Math.max(0,(o.total||0)-(o.walletAmt||0));
+  const sum=arr=>arr.reduce((s,o)=>s+_net(o),0);
   const total=sum(incomeCur), prevTotal=sum(incomePrev);
-  const belum=incomeCur.filter(o=>o.payStatus!=='Lunas').reduce((s,o)=>s+o.total,0);
-  const bayar=incomeCur.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
+  const belum=incomeCur.filter(o=>o.payStatus!=='Lunas').reduce((s,o)=>s+_net(o),0);
+  const bayar=incomeCur.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+_net(o),0);
   const trx=laundry(cur).length, prevTrx=laundry(prev).length;
   // Pesanan Diterima (status = Diterima)
   const diterima=laundry(cur).filter(o=>o.status==='Diterima').length;
@@ -1912,7 +1913,7 @@ function _renderDashStats(s, range){
   const mISO=range.curISO.slice(0,7);
   const _mMemberPay=['Dompet Member','Quota Kiloan'];
   const mOrders=orders.filter(o=>o.payStatus==='Lunas'&&!_mMemberPay.includes(o.payMethod)&&_orderDateISO(o).startsWith(mISO)&&(dashOutlet==='all'||o.outletId===dashOutlet));
-  const mTotal=mOrders.reduce((sum,o)=>sum+o.total,0);
+  const mTotal=mOrders.reduce((sum,o)=>sum+Math.max(0,(o.total||0)-(o.walletAmt||0)),0);
   // Days elapsed in that month (up to today or end of period)
   const dayOfMonth=parseInt(range.curEndISO.slice(8),10)||1;
   const daysInMonth=new Date(parseInt(range.curISO.slice(0,4)),parseInt(range.curISO.slice(5,7)),0).getDate();
@@ -3090,11 +3091,13 @@ function setCustPage(p) { _custPage = Math.max(1, p); renderCusts(); }
 function renderCusts() {
   const q = (g('cust-srch')?.value||'').toLowerCase();
   _renderCustSummary();
+  _renderCustFilterLabels();
+  const isPkg = membershipEnabled && membershipStyle==='package';
   const all = Object.values(customers);
   const list = all.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
-    const bal = c.balance||0;
-    const matchF = _custFilter==='all' || (_custFilter==='ada'&&bal>0) || (_custFilter==='nol'&&bal<=0);
+    const cmpVal = isPkg ? (c.kiloanQuota||0) : (c.balance||0);
+    const matchF = _custFilter==='all' || (_custFilter==='ada'&&cmpVal>0) || (_custFilter==='nol'&&cmpVal<=0);
     return matchQ && matchF;
   }).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||'') || (a.name||'').localeCompare(b.name||''));
   const _PER = 10;
@@ -3106,11 +3109,41 @@ function renderCusts() {
   _renderCustPager(list.length, _tp);
 }
 
+function _renderCustFilterLabels() {
+  const isPkg = membershipEnabled && membershipStyle==='package';
+  const ada = g('cfb-ada'), nol = g('cfb-nol');
+  if (ada) ada.textContent = isPkg ? 'Ada Quota' : 'Ada Saldo';
+  if (nol) nol.textContent = isPkg ? 'Quota 0' : 'Saldo 0';
+}
+
 function _renderCustSummary() {
   const wrap = g('cust-summary'); if (!wrap) return;
   if (!membershipEnabled) { wrap.style.display='none'; return; }
   wrap.style.display = '';
   const all = Object.values(customers);
+  const isPkg = membershipStyle==='package';
+  if (isPkg) {
+    const totalKg = all.reduce((s,c) => s+(c.kiloanQuota||0), 0);
+    const withKq = all.filter(c => (c.kiloanQuota||0)>0).length;
+    const zeroKq = all.length - withKq;
+    wrap.innerHTML = `
+      <div class="cust-sum-card">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Total Quota</div>
+        <div style="font-size:20px;font-weight:800;color:var(--p)">${totalKg} kg</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">dari ${all.length} pelanggan</div>
+      </div>
+      <div class="cust-sum-card">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Ada Quota</div>
+        <div style="font-size:20px;font-weight:800;color:var(--p)">${withKq}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(withKq/all.length*100):0}% dari total</div>
+      </div>
+      <div class="cust-sum-card">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Quota 0</div>
+        <div style="font-size:20px;font-weight:800;color:var(--t2)">${zeroKq}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(zeroKq/all.length*100):0}% dari total</div>
+      </div>`;
+    return;
+  }
   const totalBal = all.reduce((s,c) => s+(c.balance||0), 0);
   const withBal = all.filter(c => (c.balance||0)>0).length;
   const zeroBal = all.length - withBal;
@@ -3136,7 +3169,7 @@ function _renderCustTable(list) {
   const tb = g('cust-tb'); if (!tb) return;
   // Update header kolom saldo sesuai mode membership
   const balHdr=tb.closest('table')?.querySelector('thead th:nth-child(3)');
-  if(balHdr&&membershipEnabled)balHdr.textContent=membershipStyle==='package'?'Quota Kiloan':'Saldo';
+  if(balHdr&&membershipEnabled)balHdr.textContent=membershipStyle==='package'?'Saldo / Quota':'Saldo';
   if (!list.length) { tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t2)">Tidak ada pelanggan ditemukan</td></tr>`; return; }
   try { tb.innerHTML = list.map(c => {
     const initials = (c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
@@ -3150,6 +3183,14 @@ function _renderCustTable(list) {
           const dl=Math.round((new Date(c.kiloanQuotaExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);
           const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';
           bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.kiloanQuotaExpiry)}</div>`;
+        }
+        if (bal>0) {
+          bHtml+=`<div style="font-size:11px;color:var(--t2);margin-top:3px">Sisa saldo: <strong style="color:var(--p)">${fmt(bal)}</strong></div>`;
+          if (membershipExpiryEnabled&&c.balanceExpiry) {
+            const dl=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);
+            const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';
+            bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;
+          }
         }
         balCell=bHtml;
       } else {
@@ -3201,6 +3242,7 @@ function _renderCustCards(list) {
     if (membershipEnabled) {
       if (membershipStyle==='package') {
         balBadge=`<div style="font-size:${kq>0?'15px':'13px'};font-weight:${kq>0?'800':'500'};color:${kq>0?'var(--p)':'var(--t2)'};">${kq} kg</div><div style="font-size:10px;color:var(--t2)">${kq>0?'Quota aktif':'Belum ada quota'}</div>`;
+        if (bal>0) balBadge+=`<div style="font-size:11px;color:var(--t2);margin-top:3px">Sisa: <strong style="color:var(--p)">${fmt(bal)}</strong></div>`;
       } else {
         balBadge=`<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>`;
       }
@@ -3683,12 +3725,14 @@ function renderMembership(){
   if(disEl)disEl.style.display='none';
   if(conEl)conEl.style.display='';
   _sMbrRenderSummary();
+  _sMbrRenderFilterLabels();
+  const isPkg=membershipStyle==='package';
   const q=(g('s-mbr-srch')?.value||'').toLowerCase();
   const all=Object.values(customers);
   const list=all.filter(c=>{
     const matchQ=!q||(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q);
-    const bal=c.balance||0;
-    const matchF=_sMbrFilter==='all'||(_sMbrFilter==='ada'&&bal>0)||(_sMbrFilter==='nol'&&bal<=0);
+    const cmpVal=isPkg?(c.kiloanQuota||0):(c.balance||0);
+    const matchF=_sMbrFilter==='all'||(_sMbrFilter==='ada'&&cmpVal>0)||(_sMbrFilter==='nol'&&cmpVal<=0);
     return matchQ&&matchF;
   }).sort((a,b)=>(b.lastDate||'').localeCompare(a.lastDate||'')||(a.name||'').localeCompare(b.name||''));
   const _PER=10;
@@ -3700,11 +3744,41 @@ function renderMembership(){
   _sMbrRenderPager(list.length,_tp);
 }
 
+function _sMbrRenderFilterLabels(){
+  const isPkg=membershipEnabled&&membershipStyle==='package';
+  const ada=g('s-cfb-ada'),nol=g('s-cfb-nol');
+  if(ada)ada.textContent=isPkg?'Ada Quota':'Ada Saldo';
+  if(nol)nol.textContent=isPkg?'Quota 0':'Saldo 0';
+}
+
 function _sMbrRenderSummary(){
   const wrap=g('s-cust-summary');if(!wrap)return;
   if(!membershipEnabled){wrap.style.display='none';return;}
   wrap.style.display='';
   const all=Object.values(customers);
+  const isPkg=membershipStyle==='package';
+  if(isPkg){
+    const totalKg=all.reduce((s,c)=>s+(c.kiloanQuota||0),0);
+    const withKq=all.filter(c=>(c.kiloanQuota||0)>0).length;
+    const zeroKq=all.length-withKq;
+    wrap.innerHTML=`
+      <div class="cust-sum-card">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Total Quota</div>
+        <div style="font-size:20px;font-weight:800;color:var(--p)">${totalKg} kg</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">dari ${all.length} pelanggan</div>
+      </div>
+      <div class="cust-sum-card">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Ada Quota</div>
+        <div style="font-size:20px;font-weight:800;color:var(--p)">${withKq}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(withKq/all.length*100):0}% dari total</div>
+      </div>
+      <div class="cust-sum-card">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase">Quota 0</div>
+        <div style="font-size:20px;font-weight:800;color:var(--t2)">${zeroKq}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${all.length?Math.round(zeroKq/all.length*100):0}% dari total</div>
+      </div>`;
+    return;
+  }
   const totalBal=all.reduce((s,c)=>s+(c.balance||0),0);
   const withBal=all.filter(c=>(c.balance||0)>0).length;
   const zeroBal=all.length-withBal;
@@ -3729,7 +3803,7 @@ function _sMbrRenderSummary(){
 function _sMbrRenderTable(list){
   const tb=g('s-cust-tb');if(!tb)return;
   const balHdr=g('s-cust-bal-hdr');
-  if(balHdr&&membershipEnabled)balHdr.textContent=membershipStyle==='package'?'Quota Kiloan':'Saldo';
+  if(balHdr&&membershipEnabled)balHdr.textContent=membershipStyle==='package'?'Saldo / Quota':'Saldo';
   if(!list.length){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t2)">Tidak ada pelanggan ditemukan</td></tr>`;return;}
   try{tb.innerHTML=list.map(c=>{
     const initials=(c.name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
@@ -3740,6 +3814,10 @@ function _sMbrRenderTable(list){
       if(membershipStyle==='package'){
         let bHtml=kq>0?`<span style="font-weight:700;color:var(--p);font-size:14px">${kq} kg</span>`:`<span style="color:var(--t2);font-size:14px">0 kg</span>`;
         if(kq>0&&c.kiloanQuotaExpiry){const dl=Math.round((new Date(c.kiloanQuotaExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.kiloanQuotaExpiry)}</div>`;}
+        if(bal>0){
+          bHtml+=`<div style="font-size:11px;color:var(--t2);margin-top:3px">Sisa saldo: <strong style="color:var(--p)">${fmt(bal)}</strong></div>`;
+          if(membershipExpiryEnabled&&c.balanceExpiry){const dl=Math.round((new Date(c.balanceExpiry+'T00:00:00')-new Date(todayISO()+'T00:00:00'))/86400000);const ec=dl<0?'var(--re,#c62828)':dl<=7?'var(--amb,#e65100)':'var(--t2)';bHtml+=`<div style="font-size:10px;color:${ec};margin-top:1px">${dl<0?'Kadaluarsa':'sd '+fmtExpiry(c.balanceExpiry)}</div>`;}
+        }
         balCell=bHtml;
       } else {
         let bHtml=bal>0?`<span style="font-weight:700;color:var(--p);font-size:14px">${fmt(bal)}</span>`:`<span style="color:var(--t2);font-size:14px">Rp 0</span>`;
@@ -3786,6 +3864,7 @@ function _sMbrRenderCards(list){
     if(membershipEnabled){
       if(membershipStyle==='package'){
         balBadge=`<div style="font-size:${kq>0?'15px':'13px'};font-weight:${kq>0?'800':'500'};color:${kq>0?'var(--p)':'var(--t2)'};">${kq} kg</div><div style="font-size:10px;color:var(--t2)">${kq>0?'Quota aktif':'Belum ada quota'}</div>`;
+        if(bal>0) balBadge+=`<div style="font-size:11px;color:var(--t2);margin-top:3px">Sisa: <strong style="color:var(--p)">${fmt(bal)}</strong></div>`;
       } else {
         balBadge=`<div style="font-size:${bal>0?'15px':'13px'};font-weight:${bal>0?'800':'500'};color:${bal>0?'var(--p)':'var(--t2)'};">${fmt(bal)}</div><div style="font-size:10px;color:var(--t2)">${bal>0?'Saldo aktif':'Tidak ada saldo'}</div>`;
       }
@@ -5989,7 +6068,8 @@ function renderReports(){
     return true;
   });
   const _rptMemberPay=['Dompet Member','Quota Kiloan'];
-  const rev=filtered.filter(o=>o.payStatus==='Lunas'&&!_rptMemberPay.includes(o.payMethod)).reduce((s,o)=>s+o.total,0);
+  const _rptNet=o=>Math.max(0,(o.total||0)-(o.walletAmt||0));
+  const rev=filtered.filter(o=>o.payStatus==='Lunas'&&!_rptMemberPay.includes(o.payMethod)).reduce((s,o)=>s+_rptNet(o),0);
   const totalExp=filtExp.reduce((s,e)=>s+e.nominal,0);
   const profit=rev-totalExp;
   _rptUpdateSummary(filtered.filter(o=>!o.isDeposit).length);
@@ -6049,7 +6129,7 @@ function renderReports(){
 
   // --- Payment breakdown ---
   const pm={Tunai:0,QRIS:0,Transfer:0};
-  filtered.filter(o=>o.payStatus==='Lunas'&&!_rptMemberPay.includes(o.payMethod)).forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=o.total;});
+  filtered.filter(o=>o.payStatus==='Lunas'&&!_rptMemberPay.includes(o.payMethod)).forEach(o=>{if(pm[o.payMethod]!==undefined)pm[o.payMethod]+=_rptNet(o);});
   const pmTotal=Object.values(pm).reduce((s,v)=>s+v,0)||1;
   const rp=g('rpt-pay');
   if(rp)rp.innerHTML=Object.entries(pm).map(([k,v])=>`
@@ -6239,7 +6319,14 @@ function buildEscReceipt(o){
   parts.push(BOLD_ON);
   parts.push(escText(pad('Total:','Rp '+fmtAmt(o.total))));
   parts.push(BOLD_OFF);
-  parts.push(escText(pad('Metode:',o.payMethod||'')));
+  var _wAmt=Number(o.walletAmt||0);
+  if(_wAmt>0){
+    parts.push(escText(pad('Saldo Member:','-Rp '+fmtAmt(_wAmt))));
+    var _cashPart=Math.max(0,(o.total||0)-_wAmt);
+    if(_cashPart>0)parts.push(escText(pad((o.payMethod||'Tunai')+':','Rp '+fmtAmt(_cashPart))));
+  } else {
+    parts.push(escText(pad('Metode:',o.payMethod||'')));
+  }
   parts.push(escText(pad('Status:',o.payStatus||'')));
   parts.push(dash,ALIGN_C);
   if(storeFooter){storeFooter.split('\n').forEach(function(line){if(line.trim())parts.push(escText(line+'\n'));});}
@@ -6369,15 +6456,16 @@ function exportReport(){
   const filtered=filterOrdersByDate();const wb=XLSX.utils.book_new();
   const outLbl=rptOutlet==='all'?'Semua Outlet':(outlets.find(o=>o.id===rptOutlet)?.name||'');
   const perLbl={'today':'Hari Ini','week':'7 Hari Terakhir','month':'Bulan Ini','3month':'3 Bulan Terakhir','year':'1 Tahun Terakhir','custom':'Custom'}[rptFilter]||rptFilter;
-  const rev=filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0);
+  const _xNet=o=>Math.max(0,(o.total||0)-(o.walletAmt||0));
+  const rev=filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+_xNet(o),0);
   const baseExp=rptOutlet==='all'?expenses:expenses.filter(e=>!e.outletId||e.outletId===rptOutlet);
   const totalExp=baseExp.reduce((s,e)=>s+e.nominal,0);const profit=rev-totalExp;
   const info='Outlet: '+outLbl+'  |  Periode: '+perLbl+'  |  Export: '+TODAY_STR;
   const sumAoa=[['LAPORAN KEUANGAN \u2014 CleanPOS Laundry'],[''],['Outlet',outLbl],['Periode',perLbl],['Tanggal Export',TODAY_STR],[''],['KETERANGAN','JUMLAH (Rp)'],['Pendapatan',rev],['Pengeluaran',totalExp],['Profit Bersih',profit],[''],['Total Pesanan',filtered.length],['Pesanan Lunas',filtered.filter(o=>o.payStatus==='Lunas').length],['Pesanan Belum Bayar',filtered.filter(o=>o.payStatus==='Belum Bayar').length],['Jumlah Pelanggan',Object.keys(customers).length]];
   const wsSUM=XLSX.utils.aoa_to_sheet(sumAoa);wsSUM['!cols']=[{wch:28},{wch:20}];wsSUM['!merges']=[{s:{r:0,c:0},e:{r:0,c:1}}];XLSX.utils.book_append_sheet(wb,wsSUM,'Ringkasan');
   const txHeaders=['No','Tanggal','No. Pesanan','Pelanggan','Outlet','Layanan','Qty','Metode','Status Bayar','Debet (Masuk)','Kredit (Keluar)','Saldo'];
-  const txRows=[];let saldo=0;filtered.forEach((o,i)=>{const masuk=o.payStatus==='Lunas'?o.total:0;saldo+=masuk;txRows.push([i+1,o.date,o.id,o.name,outlets.find(x=>x.id===o.outletId)?.name||'\u2014',o.svcType+' '+o.svcCat,o.qty+(getSvcUnit(o.svcType)),o.payMethod,o.payStatus,masuk||0,0,saldo]);});
-  const txTots=['','','\u2014','JUMLAH','','','','','',filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+o.total,0),0,saldo];
+  const txRows=[];let saldo=0;filtered.forEach((o,i)=>{const masuk=o.payStatus==='Lunas'?_xNet(o):0;saldo+=masuk;txRows.push([i+1,o.date,o.id,o.name,outlets.find(x=>x.id===o.outletId)?.name||'\u2014',o.svcType+' '+o.svcCat,o.qty+(getSvcUnit(o.svcType)),o.payMethod,o.payStatus,masuk||0,0,saldo]);});
+  const txTots=['','','\u2014','JUMLAH','','','','','',filtered.filter(o=>o.payStatus==='Lunas').reduce((s,o)=>s+_xNet(o),0),0,saldo];
   XLSX.utils.book_append_sheet(wb,makeSheet('LAPORAN TRANSAKSI \u2014 CleanPOS Laundry',info,txHeaders,txRows,txTots,[5,14,22,22,16,14,8,12,13,16,16,16]),'Transaksi');
   const kasHeaders=['No','Jam','Jenis','Keterangan','Catatan','Debet (Masuk)','Kredit (Keluar)','Saldo'];
   const kasRows=[];let kSaldo=0;const filtKas=rptOutlet==='all'?kasLog:kasLog.filter(l=>!l.outletId||l.outletId===rptOutlet);
@@ -6403,11 +6491,11 @@ submitO = function(role) {
   if (!o.tracking_token) o.tracking_token = genTrackingToken();
   syncOrder(o);
   syncCustomer(customers[o.phone] || { name: o.name, phone: o.phone, orders: 1, total: o.total, balance: 0, lastDate: o.date });
-  if (membershipEnabled && o.payMethod === 'Dompet Member') {
+  if (membershipEnabled && (o.walletAmt||0) > 0) {
     const deductTxn = memberTxns.find(t => t.orderId === o.id);
     if (deductTxn) syncMemberTxn(deductTxn);
   }
-  if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas') {
+  if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas' && (o.total - (o.walletAmt||0)) > 0) {
     const kasEntry = kasLog[kasLog.length - 1];
     if (kasEntry && String(kasEntry.note).includes(o.id)) syncKas(kasEntry);
   }

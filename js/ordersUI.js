@@ -129,7 +129,7 @@ function buildOrderForm(pre) {
 }
 
 function updWalletOption(pre) {
-  if (!membershipEnabled) return;
+  if (!membershipEnabled) { _updateShortfall(pre); return; }
   const pmSel = g(pre+'-pm');
   const infoEl = g(pre+'-wallet-info');
   if (!pmSel) return;
@@ -180,6 +180,64 @@ function updWalletOption(pre) {
     }
     if (infoEl) infoEl.style.display='none';
   }
+  _updateShortfall(pre);
+}
+
+// Panel kekurangan bayar: muncul saat payMethod=Dompet Member & saldo < total
+function _updateShortfall(pre) {
+  const panel = g(pre+'-shortfall');
+  if (!panel) return;
+  const pmSel = g(pre+'-pm');
+  const phone = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
+  const cust = phone ? customers[phone] : null;
+  const bal = Number(cust?.balance||0);
+  const total = _getOrderTotal(pre);
+  const isWallet = pmSel && pmSel.value === 'Dompet Member';
+  if (!isWallet || !cust || bal <= 0 || bal >= total || total <= 0) {
+    panel.style.display = 'none';
+    panel.removeAttribute('data-shortfall-method');
+    return;
+  }
+  const shortfall = total - bal;
+  const curMethod = panel.getAttribute('data-shortfall-method') || 'Tunai';
+  const methods = ['Tunai','QRIS','Transfer'];
+  panel.style.display = '';
+  panel.setAttribute('data-shortfall-method', curMethod);
+  panel.innerHTML = `
+    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:2px"><span>Total pesanan</span><span>${fmt(total)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:2px"><span>Dari saldo member</span><span>&ndash; ${fmt(bal)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#e65100;border-top:1px dashed #ffcc80;padding-top:5px;margin-top:5px"><span>Kurang bayar</span><span>${fmt(shortfall)}</span></div>
+      <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Bayar kekurangan dengan</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${methods.map(m=>`<button type="button" class="btn bsm${m===curMethod?' bp':''}" onclick="_setShortfallMethod('${pre}','${m}')">${m}</button>`).join('')}</div>
+    </div>`;
+}
+
+function _setShortfallMethod(pre, method) {
+  const panel = g(pre+'-shortfall'); if (!panel) return;
+  panel.setAttribute('data-shortfall-method', method);
+  _updateShortfall(pre);
+  if (pre === 'no') calcO(); else calcS();
+}
+
+// Read total dari summary/hidden field, fallback ke doCalc
+function _getOrderTotal(pre) {
+  const tv = g(pre+'-total');
+  if (tv) { const n = parseInt((tv.textContent||'').replace(/\D/g,''))||0; if (n) return n; }
+  try { const res = doCalc(pre, pre==='no'); return Number(res?.total||0); } catch(e) { return 0; }
+}
+
+function _getShortfallInfo(pre) {
+  const pmSel = g(pre+'-pm');
+  const phone = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
+  const cust = phone ? customers[phone] : null;
+  const bal = Number(cust?.balance||0);
+  const total = _getOrderTotal(pre);
+  const isWallet = pmSel && pmSel.value === 'Dompet Member';
+  if (!isWallet || !cust || bal <= 0 || bal >= total) return { active:false, walletAmt: isWallet && cust ? Math.min(bal,total) : 0, shortfall:0, method:null, total };
+  const panel = g(pre+'-shortfall');
+  const method = (panel?.getAttribute('data-shortfall-method')) || 'Tunai';
+  return { active:true, walletAmt: bal, shortfall: total - bal, method, total };
 }
 
 function custSearch(pre) {
@@ -636,12 +694,26 @@ function _noUpdateSummary(res, pre='no') {
   financeHtml += `<a class="no-sum-discount" onclick="_noTogglePromo('${pre}')">+ Tambah Diskon</a>`;
   financeHtml += `<div class="no-sum-row total"><span>Total</span><span>${fmt(total)}</span></div>`;
 
+  // Split payment breakdown (Dompet Member + kekurangan)
+  const pmSel = g(pre+'-pm');
+  const phoneS = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
+  const custS = phoneS ? customers[phoneS] : null;
+  const balS = Number(custS?.balance||0);
+  if (pmSel && pmSel.value === 'Dompet Member' && custS && balS > 0 && total > 0 && balS < total) {
+    const shortfall = total - balS;
+    financeHtml += `<div class="no-sum-row" style="color:var(--t2)"><span>Dari saldo member</span><span>&ndash;${fmt(balS)}</span></div>`;
+    financeHtml += `<div class="no-sum-row" style="color:#e65100;font-weight:800"><span>Kurang bayar</span><span>${fmt(shortfall)}</span></div>`;
+  }
+
   el.innerHTML = custHtml + outletHtml + itemsHtml + addonsHtml + financeHtml;
 
   // Update total element (for calcChg) and change display
   const tv = g(pre+'-total'); if (tv) tv.textContent = fmt(total);
+  _updateShortfall(pre);
   const cash = parseFloat(g(pre+'-cash')?.value||'0')||0;
-  const chgEl = g(pre+'-chg'); if(chgEl) chgEl.textContent = fmt(Math.max(0,cash-total));
+  const sInfo = _getShortfallInfo(pre);
+  const dueAmt = sInfo.active ? sInfo.shortfall : (pmSel && pmSel.value === 'Dompet Member' ? 0 : total);
+  const chgEl = g(pre+'-chg'); if(chgEl) chgEl.textContent = fmt(Math.max(0,cash-dueAmt));
 }
 
 // New order wrappers for new HTML
@@ -675,6 +747,7 @@ function pickNewCust(pre, phone) {
   const phoneEl = g(pre+'-phone'); if (phoneEl) phoneEl.value = c.phone;
   const srchEl = g(pre+'-cust-search'); if (srchEl) srchEl.value = '';
   const resEl = g(pre+'-cust-results'); if (resEl) resEl.innerHTML = '';
+  updWalletOption(pre);
   if (pre === 'no') calcO(); else calcS();
 }
 
@@ -694,7 +767,10 @@ function calcS() { const res = doCalc('sno', false); if (typeof _noUpdateSummary
 function calcChg(pre) {
   const tot = parseInt((g(pre + '-total')?.textContent || '').replace(/\D/g, '')) || 0;
   const rcv = parseInt(g(pre + '-cash')?.value) || 0;
-  const ch = g(pre + '-chg'); if (ch) ch.textContent = fmt(Math.max(0, rcv - tot));
+  const pmSel = g(pre + '-pm');
+  const sInfo = typeof _getShortfallInfo === 'function' ? _getShortfallInfo(pre) : { active:false };
+  const due = sInfo.active ? sInfo.shortfall : (pmSel && pmSel.value === 'Dompet Member' ? 0 : tot);
+  const ch = g(pre + '-chg'); if (ch) ch.textContent = fmt(Math.max(0, rcv - due));
 }
 function dpTgl(pre) {
   const el = g(pre + '-dp-g'); if (el) el.style.display = g(pre + '-ps')?.value === 'DP' ? 'block' : 'none';
@@ -744,11 +820,30 @@ function buildOrder(pre) {
       toast('Saldo member telah kadaluarsa!');
       return null;
     }
-    if (!walletCust || walletBal < walletTotal) {
-      toast('Saldo tidak cukup! Saldo: ' + fmt(walletBal) + ' | Total: ' + fmt(walletTotal));
+    if (!walletCust || walletBal <= 0) {
+      toast('Customer tidak punya saldo member!');
       return null;
     }
-    o.payStatus = 'Lunas';
+    if (walletBal >= walletTotal) {
+      // Full wallet
+      o.walletAmt = walletTotal;
+      o.payStatus = 'Lunas';
+    } else {
+      // Split: wallet + secondary method
+      const panel = g(pre+'-shortfall');
+      const secMethod = (panel?.getAttribute('data-shortfall-method')) || 'Tunai';
+      const shortfall = walletTotal - walletBal;
+      if (secMethod === 'Tunai') {
+        const cashRcv = Number(g(pre+'-cash')?.value||0);
+        if (cashRcv < shortfall) {
+          toast('Uang diterima kurang dari kekurangan bayar ('+fmt(shortfall)+')');
+          return null;
+        }
+      }
+      o.walletAmt = walletBal;
+      o.payMethod = secMethod;
+      o.payStatus = 'Lunas';
+    }
   }
   // Quota Kiloan: validate before pushing order
   if (membershipEnabled && o.payMethod === 'Quota Kiloan') {
@@ -779,14 +874,16 @@ function buildOrder(pre) {
   const vi = g(pre + '-voucher-input'); if (vi) vi.value = '';
   _dismissedPromo[pre] = null;
   if (phone !== '—') addCust(name, phone, o.total, TODAY_STR);
-  if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas')
-    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: o.total, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
-  if (membershipEnabled && o.payMethod === 'Dompet Member' && phone !== '—') {
+  const walletAmt = Number(o.walletAmt||0);
+  const cashPortion = o.total - walletAmt;
+  if (o.payMethod === 'Tunai' && o.payStatus === 'Lunas' && cashPortion > 0)
+    kasLog.push({ id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: name + ' · ' + o.id, amount: cashPortion, time: NOW(), date: TODAY_ISO, outletId: o.outletId });
+  if (membershipEnabled && walletAmt > 0 && phone !== '—') {
     const cust = customers[phone];
     if (cust) {
-      cust.balance = (cust.balance||0) - o.total;
+      cust.balance = (cust.balance||0) - walletAmt;
       const txnId = 'MBR-'+String(memberTxnCtr++).padStart(5,'0');
-      const txn = { id: txnId, phone, type: 'deduct', amount: o.total, kgAmount: null, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() };
+      const txn = { id: txnId, phone, type: 'deduct', amount: walletAmt, kgAmount: null, baseAmount: null, bonusAmount: null, note: null, orderId: o.id, time: NOW() };
       memberTxns.push(txn);
       syncMemberTxn(txn);
       syncCustomer(cust);
@@ -1351,7 +1448,12 @@ function showRcpt(id) {
       + '<hr class="rdash">'
       + '<div class="rrow"><span>Status</span><span>' + esc(o.payStatus || '') + '</span></div>'
       + '<div class="rrow rb"><span>Total</span><span>' + Number(o.total || 0).toLocaleString('id-ID') + '</span></div>'
-      + '<div class="rrow"><span>Metode</span><span>' + esc(o.payMethod || '') + '</span></div>'
+      + (Number(o.walletAmt||0) > 0
+        ? '<div class="rrow"><span>Saldo Member</span><span>- ' + Number(o.walletAmt).toLocaleString('id-ID') + '</span></div>'
+          + (Number(o.total||0) - Number(o.walletAmt||0) > 0
+              ? '<div class="rrow"><span>' + esc(o.payMethod || 'Tunai') + '</span><span>' + (Number(o.total||0) - Number(o.walletAmt||0)).toLocaleString('id-ID') + '</span></div>'
+              : '')
+        : '<div class="rrow"><span>Metode</span><span>' + esc(o.payMethod || '') + '</span></div>')
       + '<hr class="rdash">'
       + '<div class="rc">Terima kasih!</div>'
       + '</div>';
@@ -1406,6 +1508,7 @@ function showDetail(id) {
     ${o.itemCount ? `<div class="rrow"><span style="color:var(--t2)">Jumlah Item</span><span>${o.itemCount} item</span></div>` : ''}
     <div class="rrow"><span style="color:var(--t2)">Metode Bayar</span><span style="font-weight:600">${esc(o.payMethod || '—')}</span></div>
     <div class="rrow rb" style="border-top:1px dashed #ccc;padding-top:5px;margin-top:4px"><span>Total</span><span>${fmt(o.total)}</span></div>
+    ${Number(o.walletAmt||0)>0?`<div class="rrow" style="color:var(--t2)"><span>Saldo Member</span><span>&ndash; ${fmt(o.walletAmt)}</span></div>${(o.total-(o.walletAmt||0))>0?`<div class="rrow" style="color:var(--t2)"><span>${esc(o.payMethod||'Tunai')}</span><span>${fmt(o.total-(o.walletAmt||0))}</span></div>`:''}`:''}
   </div>
   ${o.status === 'Selesai' || o.status === 'Diambil' ? `<div style="padding:10px;background:${o.waSent ? 'var(--pl)' : 'var(--amb)'};border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:${o.waSent ? '#3d6b10' : 'var(--am)'}">${o.waSent ? '✓ Notif WA terkirim' : 'Notif WA belum dikirim'}</span>${!o.waSent ? `<button class="btn bp bsm bpill" onclick="cm('m-detail');openWaMod('${o.id}')">💬 Kirim WA</button>` : ''}</div>` : ''}
   <div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Update Status Pesanan</div>
@@ -1644,7 +1747,7 @@ function buildMsg(tpl, o) {
   if (typeof membershipEnabled !== 'undefined' && membershipEnabled && o.phone && o.phone !== '—') {
     const cust = (typeof customers !== 'undefined') ? customers[o.phone] : null;
     if (cust) {
-      if (o.payMethod === 'Dompet Member') sisaMember = `\n${typeof waSisaSaldoLabel!=='undefined'?waSisaSaldoLabel:'Sisa saldo member'}: *${fmt(cust.balance||0)}*`;
+      if (o.payMethod === 'Dompet Member' || Number(o.walletAmt||0) > 0) sisaMember = `\n${typeof waSisaSaldoLabel!=='undefined'?waSisaSaldoLabel:'Sisa saldo member'}: *${fmt(cust.balance||0)}*`;
       else if (o.payMethod === 'Quota Kiloan') sisaMember = `\n${typeof waSisaKuotaLabel!=='undefined'?waSisaKuotaLabel:'Sisa kuota kiloan'}: *${cust.kiloanQuota||0} kg*`;
     }
   }

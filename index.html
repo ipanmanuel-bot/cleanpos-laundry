@@ -1244,7 +1244,7 @@ tr:hover td{background:#F6F7F9}
         </div>
         <div class="g2" style="margin-bottom:12px">
           <div class="fg"><label>Nama *</label><input id="no-name" placeholder="Nama pelanggan" oninput="calcO()"></div>
-          <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="calcO()"></div>
+          <div class="fg"><label>No. WhatsApp *</label><input id="no-phone" placeholder="08xxxxxxxxxx" oninput="updWalletOption('no');calcO()"></div>
         </div>
         <div class="fg"><label>Catatan</label><input id="no-note" placeholder="Catatan pesanan (opsional)" oninput="calcO()"></div>
         <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1.5px solid var(--b1);border-radius:var(--rs);cursor:pointer;margin-top:6px;user-select:none">
@@ -1344,15 +1344,17 @@ tr:hover td{background:#F6F7F9}
           </div>
         </div>
         <div class="no-sum-pay">
+          <div id="no-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-bottom:10px"></div>
           <div class="fg" style="margin-bottom:10px">
             <label>Metode Pembayaran</label>
-            <select id="no-pm" onchange="calcO()">
+            <select id="no-pm" onchange="updWalletOption('no');calcO()">
               <option value="cash">Tunai</option>
               <option value="transfer">Transfer</option>
               <option value="qris">QRIS</option>
               <option value="other">Lainnya</option>
             </select>
           </div>
+          <div id="no-shortfall" style="display:none;margin-bottom:10px"></div>
           <div class="fg" style="margin-bottom:10px">
             <label>Status Pembayaran</label>
             <select id="no-ps" onchange="calcO()">
@@ -2552,8 +2554,9 @@ tr:hover td{background:#F6F7F9}
             <div id="sno-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-bottom:10px"></div>
             <div class="fg" style="margin-bottom:10px">
               <label>Metode Pembayaran</label>
-              <select id="sno-pm"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select>
+              <select id="sno-pm" onchange="updWalletOption('sno');calcS()"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select>
             </div>
+            <div id="sno-shortfall" style="display:none;margin-bottom:10px"></div>
             <div class="fg" style="margin-bottom:10px">
               <label>Status Pembayaran</label>
               <select id="sno-ps" onchange="dpTgl('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select>
