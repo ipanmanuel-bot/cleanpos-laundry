@@ -193,6 +193,35 @@ function _saveSettingsLocal() {
     }));
   } catch(e) { console.warn('[ls] gagal simpan settings lokal:', e); }
 }
+// Reassign duplicate IDs (from an old counter-reset bug). Returns whether any change was made.
+function _dedupeIdList(list, prefix) {
+  if (!Array.isArray(list) || !list.length) return false;
+  let maxN = list.reduce((m,x)=>{const n=parseInt((x.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0);
+  const seen = new Set();
+  let changed = false;
+  list.forEach(x => {
+    if (!x.id || seen.has(x.id)) {
+      x.id = prefix + (++maxN);
+      changed = true;
+    }
+    seen.add(x.id);
+  });
+  return changed;
+}
+
+function _normalizeSatuanItems() {
+  const changed = _dedupeIdList(satuanItems, 'sat');
+  const maxN = satuanItems.reduce((m,x)=>{const n=parseInt((x.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0);
+  if (maxN + 1 > satItemCtr) satItemCtr = maxN + 1;
+  return changed;
+}
+function _normalizeAddons() {
+  const changed = _dedupeIdList(addons, 'a');
+  const maxN = addons.reduce((m,x)=>{const n=parseInt((x.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0);
+  if (maxN + 1 > addonCtr) addonCtr = maxN + 1;
+  return changed;
+}
+
 function _applySettingsObj(s) {
   if (!s) return;
   if (s.store_name)   storeName   = s.store_name;
@@ -204,7 +233,9 @@ function _applySettingsObj(s) {
   try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) {}
   try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) {}
   try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) {}
+  const _needResync = _normalizeSatuanItems() | _normalizeAddons();
   if (promos.length) { const mx=promos.reduce((m,p)=>{const n=parseInt((p.id||'').replace(/\D/g,''));return isNaN(n)?m:Math.max(m,n);},0); if(mx>=promoCtr)promoCtr=mx+1; }
+  if (_needResync) { try { setTimeout(()=>{ if(typeof syncSettings==='function') syncSettings(); }, 500); } catch(e){} }
   if (s.wa_tpl_selesai) waTplSelesai = s.wa_tpl_selesai;
   try { if (s.wa_tpl_new)    waTplNew     = JSON.parse(s.wa_tpl_new);    } catch(e) {}
   if (s.wa_tpl_deposit) waTplDeposit = s.wa_tpl_deposit;
@@ -307,6 +338,8 @@ async function supaLoadAll() {
     try { if (s.satuan_items)  satuanItems  = JSON.parse(s.satuan_items);  } catch(e) { console.error('[parse] satuan_items:', e); }
     try { if (s.addons)        addons       = JSON.parse(s.addons);        } catch(e) { console.error('[parse] addons:', e); }
     try { if (s.promos)        promos       = JSON.parse(s.promos);        } catch(e) { console.error('[parse] promos:', e); }
+    const _needResync2 = _normalizeSatuanItems() | _normalizeAddons();
+    if (_needResync2) { try { setTimeout(()=>{ if(typeof syncSettings==='function') syncSettings(); }, 500); } catch(e){} }
     // Recalibrate promoCtr so new promos never collide with loaded IDs
     if (promos.length) {
       const _maxN = promos.reduce((mx, p) => { const n = parseInt((p.id||'').replace(/\D/g,'')); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
@@ -447,6 +480,9 @@ function supaSubscribeSettings() {
       if (s.satuan_items) { try { satuanItems = JSON.parse(s.satuan_items); } catch(e){} }
       if (s.addons) { try { addons = JSON.parse(s.addons); } catch(e){} }
       if (s.promos) { try { promos = JSON.parse(s.promos); } catch(e){} }
+      // Normalize IDs from realtime payload too — but don't re-sync (avoid loop with sender)
+      _normalizeSatuanItems();
+      _normalizeAddons();
       if (s.wa_tpl_selesai !== undefined) waTplSelesai = s.wa_tpl_selesai;
       if (s.wa_tpl_new) { try { waTplNew = JSON.parse(s.wa_tpl_new); } catch(e){} }
       if (s.wa_tpl_deposit !== undefined) waTplDeposit = s.wa_tpl_deposit;
