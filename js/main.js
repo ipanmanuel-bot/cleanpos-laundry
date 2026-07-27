@@ -1898,11 +1898,16 @@ function _calcDashStats(cur, prev, curISO, curEndISO, prevISO, prevEndISO){
   const _expFilter=e=>dashOutlet==='all'||!e.outletId||e.outletId===dashOutlet;
   const pengeluaran=expenses.filter(e=>e.date>=curISO&&e.date<=curEndISO&&_expFilter(e)).reduce((s,e)=>s+e.nominal,0);
   const prevPengeluaran=expenses.filter(e=>e.date>=prevISO&&e.date<=prevEndISO&&_expFilter(e)).reduce((s,e)=>s+e.nominal,0);
+  // Transaksi Membership: order pakai saldo/quota (full wallet, full quota, atau split), exclude deposit top-up
+  const _isMbrTx=o=>!o.isDeposit && (MEMBER_PAY.includes(o.payMethod) || (o.walletAmt||0) > 0);
+  const mbrTrx=laundry(cur).filter(_isMbrTx).length;
+  const prevMbrTrx=laundry(prev).filter(_isMbrTx).length;
   return { total, prevTotal, belum, bayar,
     trx, prevTrx, diterima, prevDiterima, selesai, prevSelesai,
-    pengeluaran, prevPengeluaran,
+    pengeluaran, prevPengeluaran, mbrTrx, prevMbrTrx,
     pctTotal:_pct(total,prevTotal), pctTrx:_pct(trx,prevTrx),
     pctPengeluaran:_pct(pengeluaran,prevPengeluaran),
+    pctMbrTrx:_pct(mbrTrx,prevMbrTrx),
     pctDiterima:_pct(diterima,prevDiterima), pctSelesai:_pct(selesai,prevSelesai)
   };
 }
@@ -1940,9 +1945,10 @@ function _renderDashStats(s, range){
     <div class="dsc-val">${s.trx}</div>
   </div>`;
 
-  const scPengeluaran=`<div class="dsc">
-    <div class="dsc-lbl">Pengeluaran ${_fmtPct(s.pctPengeluaran)}</div>
-    <div class="dsc-val">${fmt(s.pengeluaran)}</div>
+  const scMbrTrx=`<div class="dsc">
+    <div class="dsc-lbl">Transaksi Membership ${_fmtPct(s.pctMbrTrx)}</div>
+    <div class="dsc-val">${s.mbrTrx}</div>
+    <div class="dsc-sub">dari saldo / quota</div>
   </div>`;
 
   const scDiterima=`<div class="dsc">
@@ -1955,7 +1961,7 @@ function _renderDashStats(s, range){
     <div class="dsc-val">${s.selesai}</div>
   </div>`;
 
-  el.innerHTML = scTotal + scBelum + scTrx + scPengeluaran + scBayar + scDiterima + scSelesai;
+  el.innerHTML = scTotal + scBelum + scTrx + scMbrTrx + scBayar + scDiterima + scSelesai;
 }
 
 function _renderDashChart(curOrders, prevOrders, range, _retry){
@@ -1971,8 +1977,10 @@ function _renderDashChart(curOrders, prevOrders, range, _retry){
   const N=range.buckets;
   const curData=Array(N).fill(0);
   const prevData=Array(N).fill(0);
-  curOrders.forEach(o=>{const i=range.bucketOf(o);if(i>=0&&i<N)curData[i]+=o.total||0;});
-  prevOrders.forEach(o=>{const i=range.prevBucketOf(o);if(i>=0&&i<N)prevData[i]+=o.total||0;});
+  const _MEMBER_PAY=['Dompet Member','Quota Kiloan'];
+  const _chartNet=o=>_MEMBER_PAY.includes(o.payMethod)?0:Math.max(0,(o.total||0)-(o.walletAmt||0));
+  curOrders.forEach(o=>{const i=range.bucketOf(o);if(i>=0&&i<N)curData[i]+=_chartNet(o);});
+  prevOrders.forEach(o=>{const i=range.prevBucketOf(o);if(i>=0&&i<N)prevData[i]+=_chartNet(o);});
   const labels=Array.from({length:N},(_,i)=>range.bucketLabel(i));
 
   const ctx=canvas.getContext('2d');
