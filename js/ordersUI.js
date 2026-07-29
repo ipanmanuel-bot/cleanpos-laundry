@@ -128,6 +128,9 @@ function buildOrderForm(pre) {
   if (typeof _applyKgStep === 'function') _applyKgStep();
 }
 
+// Track last-resolved customer per prefix — auto-select hanya trigger saat customer benar-benar berubah
+const _lastWalletPhone = {};
+
 function updWalletOption(pre) {
   if (!membershipEnabled) { _updateShortfall(pre); return; }
   const pmSel = g(pre+'-pm');
@@ -160,25 +163,41 @@ function updWalletOption(pre) {
     pmSel.add(new Option('Quota Kiloan ('+kq+' kg tersisa)', 'Quota Kiloan'));
   }
 
-  // Auto-select & info panel
-  if (showQuota) {
-    pmSel.value = 'Quota Kiloan';
+  // Auto-select hanya trigger saat customer berubah (identitas phone berbeda dari terakhir kali resolve).
+  // Kalau sama, biarkan pilihan user apa adanya — user boleh pilih Tunai/QRIS/Transfer meski saldo/quota ada.
+  const custKey = cust ? phone : '';
+  const customerChanged = _lastWalletPhone[pre] !== custKey;
+  _lastWalletPhone[pre] = custKey;
+
+  // Info panel: selalu update sesuai state customer aktif
+  if (cust && bal > 0 && !balExpired) {
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>${showQuota?` &middot; Quota: <strong>${kq} kg</strong>`:''}`; infoEl.style.color=''; }
+  } else if (showQuota) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota kiloan: <strong>${kq} kg</strong> tersisa`; infoEl.style.color=''; }
-    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
-  } else if (cust && bal > 0 && !balExpired) {
-    pmSel.value = 'Dompet Member';
-    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>`; infoEl.style.color=''; }
-    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
   } else if (cust && bal > 0 && balExpired) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo <strong>${fmt(bal)}</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
-    if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
   } else if (cust && kq > 0 && quotaExpired) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota <strong>${kq} kg</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
   } else {
-    if (pmSel.value === 'Dompet Member' || pmSel.value === 'Quota Kiloan') {
-      pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); }
-    }
     if (infoEl) infoEl.style.display='none';
+  }
+
+  // Kalau opsi yg sedang dipilih sudah tidak valid (misal customer berubah & tidak punya saldo lagi), fallback ke Tunai
+  const curVal = pmSel.value;
+  const curValStillInList = Array.from(pmSel.options).some(o=>o.value===curVal);
+  if (!curValStillInList) {
+    pmSel.value = 'Tunai';
+    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); }
+  } else if (customerChanged) {
+    // Customer baru dipilih → default ke member method paling nyaman
+    if (showQuota) {
+      pmSel.value = 'Quota Kiloan';
+      const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+    } else if (cust && bal > 0 && !balExpired) {
+      pmSel.value = 'Dompet Member';
+      const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+    }
+    // Kalau tidak ada saldo/quota, biarkan pilihan default form (Tunai)
   }
   _updateShortfall(pre);
 }

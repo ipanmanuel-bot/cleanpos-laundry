@@ -1347,7 +1347,7 @@ tr:hover td{background:#F6F7F9}
           <div id="no-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-bottom:10px"></div>
           <div class="fg" style="margin-bottom:10px">
             <label>Metode Pembayaran</label>
-            <select id="no-pm" onchange="updWalletOption('no');calcO()">
+            <select id="no-pm" onchange="_updateShortfall('no');calcO()">
               <option value="cash">Tunai</option>
               <option value="transfer">Transfer</option>
               <option value="qris">QRIS</option>
@@ -2554,7 +2554,7 @@ tr:hover td{background:#F6F7F9}
             <div id="sno-wallet-info" style="display:none;font-size:12px;background:var(--pl);color:#3d6b10;padding:7px 11px;border-radius:8px;margin-bottom:10px"></div>
             <div class="fg" style="margin-bottom:10px">
               <label>Metode Pembayaran</label>
-              <select id="sno-pm" onchange="updWalletOption('sno');calcS()"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select>
+              <select id="sno-pm" onchange="_updateShortfall('sno');calcS()"><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option><option value="Transfer">Transfer</option></select>
             </div>
             <div id="sno-shortfall" style="display:none;margin-bottom:10px"></div>
             <div class="fg" style="margin-bottom:10px">
