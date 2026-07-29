@@ -128,6 +128,9 @@ function buildOrderForm(pre) {
   if (typeof _applyKgStep === 'function') _applyKgStep();
 }
 
+// Track last-resolved customer per prefix — auto-select hanya trigger saat customer benar-benar berubah
+const _lastWalletPhone = {};
+
 function updWalletOption(pre) {
   if (!membershipEnabled) { _updateShortfall(pre); return; }
   const pmSel = g(pre+'-pm');
@@ -160,25 +163,41 @@ function updWalletOption(pre) {
     pmSel.add(new Option('Quota Kiloan ('+kq+' kg tersisa)', 'Quota Kiloan'));
   }
 
-  // Auto-select & info panel
-  if (showQuota) {
-    pmSel.value = 'Quota Kiloan';
+  // Auto-select hanya trigger saat customer berubah (identitas phone berbeda dari terakhir kali resolve).
+  // Kalau sama, biarkan pilihan user apa adanya — user boleh pilih Tunai/QRIS/Transfer meski saldo/quota ada.
+  const custKey = cust ? phone : '';
+  const customerChanged = _lastWalletPhone[pre] !== custKey;
+  _lastWalletPhone[pre] = custKey;
+
+  // Info panel: selalu update sesuai state customer aktif
+  if (cust && bal > 0 && !balExpired) {
+    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>${showQuota?` &middot; Quota: <strong>${kq} kg</strong>`:''}`; infoEl.style.color=''; }
+  } else if (showQuota) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota kiloan: <strong>${kq} kg</strong> tersisa`; infoEl.style.color=''; }
-    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
-  } else if (cust && bal > 0 && !balExpired) {
-    pmSel.value = 'Dompet Member';
-    if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo member: <strong>${fmt(bal)}</strong>`; infoEl.style.color=''; }
-    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
   } else if (cust && bal > 0 && balExpired) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Saldo <strong>${fmt(bal)}</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
-    if (pmSel.value === 'Dompet Member') { pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); } }
   } else if (cust && kq > 0 && quotaExpired) {
     if (infoEl) { infoEl.style.display=''; infoEl.innerHTML=`Quota <strong>${kq} kg</strong> telah kadaluarsa`; infoEl.style.color='var(--re,#c62828)'; }
   } else {
-    if (pmSel.value === 'Dompet Member' || pmSel.value === 'Quota Kiloan') {
-      pmSel.value = 'Tunai'; const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); }
-    }
     if (infoEl) infoEl.style.display='none';
+  }
+
+  // Kalau opsi yg sedang dipilih sudah tidak valid (misal customer berubah & tidak punya saldo lagi), fallback ke Tunai
+  const curVal = pmSel.value;
+  const curValStillInList = Array.from(pmSel.options).some(o=>o.value===curVal);
+  if (!curValStillInList) {
+    pmSel.value = 'Tunai';
+    const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Belum Bayar'; dpTgl(pre); }
+  } else if (customerChanged) {
+    // Customer baru dipilih → default ke member method paling nyaman
+    if (showQuota) {
+      pmSel.value = 'Quota Kiloan';
+      const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+    } else if (cust && bal > 0 && !balExpired) {
+      pmSel.value = 'Dompet Member';
+      const psSel = g(pre+'-ps'); if (psSel) { psSel.value = 'Lunas'; dpTgl(pre); }
+    }
+    // Kalau tidak ada saldo/quota, biarkan pilihan default form (Tunai)
   }
   _updateShortfall(pre);
 }
@@ -188,6 +207,7 @@ function _updateShortfall(pre) {
   const panel = g(pre+'-shortfall');
   if (!panel) return;
   const pmSel = g(pre+'-pm');
+  const psSel = g(pre+'-ps');
   const phone = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
   const cust = phone ? customers[phone] : null;
   const bal = Number(cust?.balance||0);
@@ -200,16 +220,40 @@ function _updateShortfall(pre) {
   }
   const shortfall = total - bal;
   const curMethod = panel.getAttribute('data-shortfall-method') || 'Tunai';
+  // Baca payStatus — tetapi 'no' pakai token cash/dp/unpaid, sedangkan 'sno' pakai label langsung
+  const psRaw = psSel?.value || 'paid';
+  const psMap = { paid:'Lunas', dp:'DP', unpaid:'Belum Bayar' };
+  const ps = psMap[psRaw] || psRaw;
   const methods = ['Tunai','QRIS','Transfer'];
   panel.style.display = '';
   panel.setAttribute('data-shortfall-method', curMethod);
+
+  let breakdown = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:2px"><span>Total pesanan</span><span>${fmt(total)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:2px"><span>Dari saldo member</span><span>&ndash; ${fmt(bal)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#e65100;border-top:1px dashed #ffcc80;padding-top:5px;margin-top:5px"><span>Kurang bayar</span><span>${fmt(shortfall)}</span></div>`;
+
+  let action = '';
+  if (ps === 'Lunas') {
+    action = `
+      <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Bayar kekurangan dengan</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${methods.map(m=>`<button type="button" class="btn bsm${m===curMethod?' bp':''}" onclick="_setShortfallMethod('${pre}','${m}')">${m}</button>`).join('')}</div>`;
+  } else if (ps === 'DP') {
+    action = `
+      <div style="margin-top:8px;padding:7px 10px;background:#fffdf4;border:1px dashed #ffcc80;border-radius:6px;font-size:12px;color:#6d4c00">
+        Saldo <strong>${fmt(bal)}</strong> dipotong sekarang. Sisa <strong>${fmt(shortfall)}</strong> dibayar saat customer ambil pesanan.
+      </div>`;
+  } else { // Belum Bayar
+    action = `
+      <div style="margin-top:8px;padding:7px 10px;background:#fff2f2;border:1px dashed #ffb4b4;border-radius:6px;font-size:12px;color:#a13030">
+        Status "Belum Bayar" &mdash; saldo <strong>tidak</strong> akan dipotong, seluruh <strong>${fmt(total)}</strong> jadi tagihan. Pilih <strong>DP/Cicilan</strong> kalau ingin pakai saldo untuk pembayaran sebagian.
+      </div>`;
+  }
+
   panel.innerHTML = `
     <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 12px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:2px"><span>Total pesanan</span><span>${fmt(total)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:2px"><span>Dari saldo member</span><span>&ndash; ${fmt(bal)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#e65100;border-top:1px dashed #ffcc80;padding-top:5px;margin-top:5px"><span>Kurang bayar</span><span>${fmt(shortfall)}</span></div>
-      <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Bayar kekurangan dengan</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${methods.map(m=>`<button type="button" class="btn bsm${m===curMethod?' bp':''}" onclick="_setShortfallMethod('${pre}','${m}')">${m}</button>`).join('')}</div>
+      ${breakdown}
+      ${action}
     </div>`;
 }
 
@@ -229,15 +273,19 @@ function _getOrderTotal(pre) {
 
 function _getShortfallInfo(pre) {
   const pmSel = g(pre+'-pm');
+  const psSel = g(pre+'-ps');
+  const psRaw = psSel?.value || 'paid';
+  const psMap = { paid:'Lunas', dp:'DP', unpaid:'Belum Bayar' };
+  const ps = psMap[psRaw] || psRaw;
   const phone = (g(pre+'-phone')?.value||'').trim().replace(/^[-—]+$/, '');
   const cust = phone ? customers[phone] : null;
   const bal = Number(cust?.balance||0);
   const total = _getOrderTotal(pre);
   const isWallet = pmSel && pmSel.value === 'Dompet Member';
-  if (!isWallet || !cust || bal <= 0 || bal >= total) return { active:false, walletAmt: isWallet && cust ? Math.min(bal,total) : 0, shortfall:0, method:null, total };
+  if (!isWallet || !cust || bal <= 0 || bal >= total) return { active:false, walletAmt: isWallet && cust ? Math.min(bal,total) : 0, shortfall:0, method:null, total, ps };
   const panel = g(pre+'-shortfall');
   const method = (panel?.getAttribute('data-shortfall-method')) || 'Tunai';
-  return { active:true, walletAmt: bal, shortfall: total - bal, method, total };
+  return { active:true, walletAmt: bal, shortfall: total - bal, method, total, ps };
 }
 
 function custSearch(pre) {
@@ -829,20 +877,30 @@ function buildOrder(pre) {
       o.walletAmt = walletTotal;
       o.payStatus = 'Lunas';
     } else {
-      // Split: wallet + secondary method
+      // Split flow — cabang berdasarkan payStatus yang user pilih
       const panel = g(pre+'-shortfall');
       const secMethod = (panel?.getAttribute('data-shortfall-method')) || 'Tunai';
       const shortfall = walletTotal - walletBal;
-      if (secMethod === 'Tunai') {
-        const cashRcv = Number(g(pre+'-cash')?.value||0);
-        if (cashRcv < shortfall) {
-          toast('Uang diterima kurang dari kekurangan bayar ('+fmt(shortfall)+')');
-          return null;
+      if (o.payStatus === 'Lunas') {
+        // Wajib bayar kekurangan sekarang
+        if (secMethod === 'Tunai') {
+          const cashRcv = Number(g(pre+'-cash')?.value||0);
+          if (cashRcv < shortfall) {
+            toast('Uang diterima kurang dari kekurangan bayar ('+fmt(shortfall)+')');
+            return null;
+          }
         }
+        o.walletAmt = walletBal;
+        o.payMethod = secMethod;
+      } else if (o.payStatus === 'DP') {
+        // Saldo dipotong sekarang, sisa jadi tagihan yang dibayar saat ambil
+        o.walletAmt = walletBal;
+        o.payMethod = secMethod;
+      } else {
+        // Belum Bayar: saldo TIDAK dipotong, semua jadi tagihan (payMethod balik ke metode kekurangan default)
+        o.walletAmt = 0;
+        o.payMethod = secMethod;
       }
-      o.walletAmt = walletBal;
-      o.payMethod = secMethod;
-      o.payStatus = 'Lunas';
     }
   }
   // Quota Kiloan: validate before pushing order
@@ -1541,16 +1599,17 @@ function setPayModal(id, ps, btn) {
   const o = orders.find(x => x.id === id); if (!o) return;
   const prev = o.payStatus;
   if (prev === ps) { btn.classList.add('bp'); return; }
-  const willKoreksi = prev === 'Lunas' && o.payMethod === 'Tunai';
+  const cashAmt = Math.max(0, (o.total||0) - (o.walletAmt||0));
+  const willKoreksi = prev === 'Lunas' && o.payMethod === 'Tunai' && cashAmt > 0;
   function _applyPayModal() {
     o.payStatus = ps;
     btn.closest('div').querySelectorAll('.btn').forEach(b => { if (b.onclick && b.onclick.toString().includes('setPayModal')) b.classList.remove('bp'); });
     btn.classList.add('bp');
-    if (ps === 'Lunas' && o.payMethod === 'Tunai') {
-      const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    if (ps === 'Lunas' && o.payMethod === 'Tunai' && cashAmt > 0) {
+      const entry = { id: kasCtr++, type: 'in', desc: 'Penjualan Cash', note: o.name + ' · ' + o.id, amount: cashAmt, time: NOW(), outletId: o.outletId };
       kasLog.push(entry); syncKas(entry);
-    } else if (prev === 'Lunas' && o.payMethod === 'Tunai') {
-      const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: o.total, time: NOW(), outletId: o.outletId };
+    } else if (prev === 'Lunas' && o.payMethod === 'Tunai' && cashAmt > 0) {
+      const entry = { id: kasCtr++, type: 'out', desc: 'Koreksi Kas – ' + o.id, note: o.name + ' · ' + o.id, amount: cashAmt, time: NOW(), outletId: o.outletId };
       kasLog.push(entry); syncKas(entry);
     }
     renderOrders();
@@ -1558,7 +1617,7 @@ function setPayModal(id, ps, btn) {
     toast('✓ Status bayar: ' + ps);
   }
   if (willKoreksi) {
-    confirm_('Batalkan Pembayaran Tunai?', 'Ini akan membuat Koreksi Kas –' + fmt(o.total) + ' di kas kasir. Lanjutkan?', () => { _applyPayModal(); if (typeof syncOrder === 'function') syncOrder(o); });
+    confirm_('Batalkan Pembayaran Tunai?', 'Ini akan membuat Koreksi Kas –' + fmt(cashAmt) + ' di kas kasir. Lanjutkan?', () => { _applyPayModal(); if (typeof syncOrder === 'function') syncOrder(o); });
   } else {
     _applyPayModal();
   }
