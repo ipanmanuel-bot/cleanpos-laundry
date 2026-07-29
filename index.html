@@ -1357,7 +1357,7 @@ tr:hover td{background:#F6F7F9}
           <div id="no-shortfall" style="display:none;margin-bottom:10px"></div>
           <div class="fg" style="margin-bottom:10px">
             <label>Status Pembayaran</label>
-            <select id="no-ps" onchange="calcO()">
+            <select id="no-ps" onchange="_updateShortfall('no');calcO()">
               <option value="paid">Lunas</option>
               <option value="dp">DP / Cicilan</option>
               <option value="unpaid">Belum Bayar</option>
@@ -2559,7 +2559,7 @@ tr:hover td{background:#F6F7F9}
             <div id="sno-shortfall" style="display:none;margin-bottom:10px"></div>
             <div class="fg" style="margin-bottom:10px">
               <label>Status Pembayaran</label>
-              <select id="sno-ps" onchange="dpTgl('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select>
+              <select id="sno-ps" onchange="dpTgl('sno');_updateShortfall('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select>
             </div>
             <div class="fg" id="sno-dp-g" style="display:none;margin-bottom:10px"><label>Jumlah DP</label><input type="number" id="sno-dp" placeholder="0"></div>
             <div class="fg" style="margin-bottom:6px">
