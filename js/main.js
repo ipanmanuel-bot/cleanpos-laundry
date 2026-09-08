@@ -4350,6 +4350,7 @@ function _renderKiloanLeft(){
         const isOn=tierApply[po.key]!==false;
         return `<div class="prc-tier-chip${isOn?' on':''}" id="chip-${s.id}-${po.key}" onclick="_toggleTierChip(this)">${CHECK_OFF}${CHECK_ON}${esc(po.label)}</div>`;
       }).join('');
+      const CHEV_ICON=`<svg class="prc-svc-settings-chev-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
       html+=`<div class="prc-svc-wrap" id="prc-svc-wrap-${s.id}">
         <div class="prc-svc-row">
           <div class="prc-svc-col-name">
@@ -4364,8 +4365,11 @@ function _renderKiloanLeft(){
             ${serviceTypes.length>1?`<button class="btn bre bsm" title="Hapus" onclick="delSvc('${s.id}')">${DEL_ICON}</button>`:''}
           </div>
         </div>
-        <div class="prc-svc-settings">
-          <div class="prc-svc-settings-hdr">${GEAR_ICON} Pengaturan Layanan</div>
+        <div class="prc-svc-settings" data-collapsed="true">
+          <div class="prc-svc-settings-hdr" onclick="_toggleSvcSettings(this)">
+            <span style="display:inline-flex;align-items:center;gap:5px">${GEAR_ICON} Pengaturan Layanan</span>
+            <span class="prc-svc-settings-chev">${CHEV_ICON}</span>
+          </div>
           <div class="prc-svc-settings-body">
             <div class="prc-minkg-group">
               <div class="prc-minkg-lbl">Min. berat ${INFO_ICON}</div>
@@ -4394,6 +4398,15 @@ function _renderKiloanLeft(){
 
 function _renderKiloanRight(){
   return _renderPriceOptsPanel('Kiloan');
+}
+
+// Toggle open/close for the per-service "Pengaturan Layanan" accordion.
+// Delegates to a data attribute so CSS handles the show/hide.
+function _toggleSvcSettings(hdr){
+  const box = hdr && hdr.closest('.prc-svc-settings');
+  if (!box) return;
+  const now = box.getAttribute('data-collapsed') === 'true';
+  box.setAttribute('data-collapsed', now ? 'false' : 'true');
 }
 function _renderKiloanRight_unused(){
   const tiers=[...priceOptions].sort((a,b)=>(a.order||0)-(b.order||0));

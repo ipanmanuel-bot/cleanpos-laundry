@@ -918,23 +918,96 @@ tr:hover td{background:#F6F7F9}
 @media(max-width:900px){.kas-sum-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.kas-qa-row{grid-template-columns:1fr}.kas-ph{margin-bottom:14px}}
 @media(max-width:500px){.kas-sum-grid{grid-template-columns:1fr 1fr}.kas-sc-main .kas-sc-val{font-size:22px}.kas-tx-badge{display:none}}
+/* Collapsible settings section — desktop + mobile */
+.prc-svc-settings-hdr{cursor:pointer;user-select:none;justify-content:space-between;padding:2px 0}
+.prc-svc-settings-hdr:hover{color:var(--t1)}
+.prc-svc-settings-chev{transition:transform .18s ease;display:inline-flex;align-items:center;color:var(--t2)}
+.prc-svc-settings[data-collapsed="true"] .prc-svc-settings-body,
+.prc-svc-settings[data-collapsed="true"] .prc-svc-save-row{display:none}
+.prc-svc-settings[data-collapsed="true"] .prc-svc-settings-hdr{margin-bottom:0}
+.prc-svc-settings[data-collapsed="false"] .prc-svc-settings-chev{transform:rotate(180deg)}
 @media(max-width:640px){
-  /* Kiloan: sembunyikan header baris & kolom Satuan, buat kolom lain adaptif */
+  /* ── Kiloan cards: reflow ke 2 baris supaya Aksi tidak terpotong ── */
   .prc-col-hdr{display:none}
   .prc-svc-col-unit{display:none}
-  .prc-svc-col-price{width:auto;font-size:11px;flex-shrink:1;min-width:0}
-  .prc-svc-col-status{width:auto}
-  .prc-svc-row{gap:6px;padding:10px 12px}
-  /* Pengaturan layanan kiloan: stack vertikal, simpan di kiri */
-  .prc-svc-settings{padding:10px 12px 12px}
-  .prc-svc-settings-body{gap:10px}
-  .prc-svc-save-row{justify-content:flex-start}
-  /* Tabel Satuan: sembunyikan kolom Satuan (2) dan Opsi Harga (4) */
-  #prc-sat-tbl-wrap .prc-tbl th:nth-child(2),
+  .prc-svc-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-areas:
+      "name aksi"
+      "price status";
+    gap:6px 10px;
+    padding:12px 14px;
+    align-items:center;
+  }
+  .prc-svc-col-name{grid-area:name;min-width:0}
+  .prc-svc-col-aksi{grid-area:aksi;justify-self:end}
+  .prc-svc-col-price{grid-area:price;width:auto;font-size:12px;color:var(--t2)}
+  .prc-svc-col-status{grid-area:status;width:auto;justify-self:end;text-align:right}
+  .prc-svc-col-aksi .btn{padding:7px 9px;min-height:34px}
+  /* Pengaturan Layanan: tighter body + tombol Simpan full-width */
+  .prc-svc-settings{padding:12px 14px 14px;background:#F9FAF7}
+  .prc-svc-settings-body{gap:12px;flex-direction:column}
+  .prc-minkg-group{width:100%;justify-content:space-between}
+  .prc-tier-apply-group{width:100%}
+  .prc-svc-save-row{justify-content:stretch;margin-top:10px}
+  .prc-svc-save-row .btn{width:100%;padding:11px}
+
+  /* ── Satuan tab: tabel → kartu compact ── */
+  #prc-sat-tbl-wrap .prc-tbl,
+  #prc-sat-tbl-wrap .prc-tbl thead,
+  #prc-sat-tbl-wrap .prc-tbl tbody,
+  #prc-sat-tbl-wrap .prc-tbl tr,
+  #prc-sat-tbl-wrap .prc-tbl td{display:block;width:auto}
+  #prc-sat-tbl-wrap .prc-tbl thead{display:none}
+  #prc-sat-tbl-wrap .prc-tbl tr{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-areas:
+      "name status"
+      "price aksi";
+    gap:6px 10px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--b1);
+    align-items:center;
+  }
+  #prc-sat-tbl-wrap .prc-tbl tr:last-child{border-bottom:none}
+  #prc-sat-tbl-wrap .prc-tbl td{padding:0;border:none}
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(1){grid-area:name;font-size:13px}
   #prc-sat-tbl-wrap .prc-tbl td:nth-child(2),
-  #prc-sat-tbl-wrap .prc-tbl th:nth-child(4),
   #prc-sat-tbl-wrap .prc-tbl td:nth-child(4){display:none}
-  /* Tabel Tambahan: sembunyikan kolom Satuan (3), padding lebih kecil */
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(3){grid-area:price;font-size:12px;color:var(--t2)}
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(5){grid-area:status;justify-self:end}
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(6){grid-area:aksi;justify-self:end}
+  #prc-sat-tbl-wrap .prc-tbl td:nth-child(6) .btn{padding:6px 9px;min-height:34px}
+
+  /* ── Opsi Harga panel: kolom hemat, badge kecil ── */
+  .prc-opts-panel .prc-tbl,
+  .prc-opts-panel .prc-tbl thead,
+  .prc-opts-panel .prc-tbl tbody,
+  .prc-opts-panel .prc-tbl tr,
+  .prc-opts-panel .prc-tbl td{display:block;width:auto}
+  .prc-opts-panel .prc-tbl thead{display:none}
+  .prc-opts-panel .prc-tbl tr{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-areas:
+      "name status"
+      "est   aksi";
+    gap:4px 10px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--b1);
+    align-items:center;
+  }
+  .prc-opts-panel .prc-tbl tr:last-child{border-bottom:none}
+  .prc-opts-panel .prc-tbl td{padding:0;border:none}
+  .prc-opts-panel .prc-tbl td:nth-child(1){grid-area:name;font-size:13px}
+  .prc-opts-panel .prc-tbl td:nth-child(2){grid-area:est;font-size:12px;color:var(--t2)}
+  .prc-opts-panel .prc-tbl td:nth-child(3){display:none}
+  .prc-opts-panel .prc-tbl td:nth-child(4){grid-area:status;justify-self:end}
+  .prc-opts-panel .prc-tbl td:nth-child(5){grid-area:aksi;justify-self:end}
+
+  /* ── Tambahan tab: kolom Satuan disembunyikan, harga input dilebarkan ── */
   #ptab-tambahan .prc-tbl th:nth-child(3),
   #ptab-tambahan .prc-tbl td:nth-child(3){display:none}
   #ptab-tambahan .prc-tbl td:nth-child(2) input{width:80px}
