@@ -195,7 +195,7 @@ async function renderTrackingPage(token) {
 
   const { data, error } = await supabase
     .from('orders')
-    .select('id,name,status,svc_type,svc_cat,qty,satuan_lines,add_ons,add_on_amt,total,pay_status,iso_date,picked_up_at,tracking_token,store_name')
+    .select('id,name,status,svc_type,svc_cat,qty,satuan_lines,add_ons,add_on_amt,total,pay_status,iso_date,picked_up_at,tracking_token,store_name,status_history')
     .eq('tracking_token', token)
     .single();
 
@@ -228,6 +228,12 @@ async function renderTrackingPage(token) {
     pill.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:100px;background:${pillBg};color:${pillColor};font-weight:700;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:${pillColor};display:block;flex-shrink:0"></span>${isDone ? 'Selesai' : 'Sedang Diproses'}</span>`;
   }
 
+  // Build timestamp map from status_history (each Next click logs {status, at})
+  let _hist = [];
+  try { _hist = Array.isArray(data.status_history) ? data.status_history : JSON.parse(data.status_history || '[]'); } catch(e) {}
+  const _tsMap = { Diterima: data.iso_date, Diambil: data.picked_up_at };
+  _hist.forEach(h => { if (h && h.status) _tsMap[h.status] = h.at; });
+
   // Vertical timeline
   const tl = g('trk-timeline');
   if (tl) {
@@ -237,7 +243,7 @@ async function renderTrackingPage(token) {
       const active = i === curIdx;
       const future = i > curIdx;
       const isLast = i === SL.length - 1;
-      const ts     = i === 0 ? _fmtTs(data.iso_date) : (s === 'Diambil' && done ? _fmtTs(data.picked_up_at) : '');
+      const ts     = (done || active) && _tsMap[s] ? _fmtTs(_tsMap[s]) : '';
       const circBorder  = done || active ? 'var(--p)' : '#D8D8D3';
       const circBg      = done ? 'var(--p)' : active ? 'var(--pl)' : '#F4F5F0';
       const iconColor   = done ? '#fff' : active ? 'var(--p)' : '#C5C5BE';
@@ -294,6 +300,197 @@ async function renderTrackingPage(token) {
     if (ri) ri.textContent = 'Diperbarui otomatis setiap 30 detik';
   } else {
     if (ri) ri.textContent = '🎉 Pesanan sudah diambil — terima kasih!';
+  }
+}
+
+// ===== SCAN PROGRESS PAGE (staff, ?scan=<token>) =====
+// Flow only advances up to "Selesai". "Diambil" stays a POS/kasir action.
+const SCAN_FLOW = ['Diterima','Mencuci','Mengeringkan','Menyetrika','Selesai'];
+let _scnState = { token: null, order: null, storeName: null, phone: null };
+
+function _scnShow(id){
+  ['scn-loading','scn-notfound','scn-card'].forEach(k => {
+    const el = g(k); if (el) el.style.display = k === id ? '' : 'none';
+  });
+}
+function _scnFmtTs(iso){
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'}) + ', '
+       + d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function renderScanPage(token){
+  _scnState.token = token;
+  _scnShow('scn-loading');
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,name,phone,status,svc_type,svc_cat,qty,pay_status,iso_date,tracking_token,store_name,status_history')
+    .eq('tracking_token', token)
+    .single();
+
+  if (error || !data){ _scnShow('scn-notfound'); return; }
+
+  _scnState.order     = data;
+  _scnState.storeName = data.store_name || 'Laundry';
+  _scnState.phone     = data.phone || '';
+  _scnRender();
+}
+
+function _scnRender(){
+  const d = _scnState.order; if (!d) return;
+  _scnShow('scn-card');
+
+  // Header
+  const sn = g('scn-store-name'); if (sn) sn.textContent = _scnState.storeName;
+  const od = g('scn-order-date'); if (od) od.textContent = 'Masuk ' + _scnFmtTs(d.iso_date);
+
+  // Order details block
+  const dEl = g('scn-order-details');
+  if (dEl){
+    const svcLbl = d.svc_type === 'satuan'
+      ? 'Satuan · ' + (d.svc_cat||'')
+      : (d.svc_type||'') + ' · ' + (d.svc_cat||'') + ' · ' + d.qty + (d.svc_type === 'kiloan' ? ' kg' : ' pcs');
+    const payCls = {'Belum Bayar':'gr_','DP':'gam','Lunas':'gg'}[d.pay_status] || 'gy';
+    dEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:700;font-size:16px;color:#1A1A1A">${esc(d.name||'')}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${esc(d.id||'')} · ${esc(svcLbl)}</div>
+        </div>
+        <span class="badge ${payCls}" style="flex-shrink:0">${esc(d.pay_status||'-')}</span>
+      </div>`;
+  }
+
+  // Current status pill
+  const cur = d.status;
+  const isPickedUp = cur === 'Diambil';
+  const isDone = cur === 'Selesai';
+  const pill = g('scn-status-pill');
+  if (pill){
+    const isSelesai = cur === 'Selesai';
+    const color = isSelesai ? '#2e7d32' : '#1976D2';
+    const bg    = isSelesai ? '#E8F5E9' : '#E3F2FD';
+    pill.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;background:${bg};color:${color};font-weight:700;font-size:12px">
+      <span style="width:7px;height:7px;border-radius:50%;background:${color};display:block"></span>${esc(cur||'-')}</span>`;
+  }
+
+  // Timeline with timestamps from status_history
+  const tl = g('scn-timeline');
+  if (tl){
+    // Build a lookup: last timestamp per status
+    let hist = [];
+    try { hist = Array.isArray(d.status_history) ? d.status_history : JSON.parse(d.status_history||'[]'); } catch(e){}
+    const tsMap = { Diterima: d.iso_date };
+    hist.forEach(h => { if (h && h.status) tsMap[h.status] = h.at; });
+
+    const curIdx = SCAN_FLOW.indexOf(cur);
+    tl.innerHTML = SCAN_FLOW.map((s, i) => {
+      const done   = curIdx >= 0 && i < curIdx;
+      const active = curIdx >= 0 && i === curIdx;
+      const future = curIdx >= 0 && i > curIdx;
+      const isLast = i === SCAN_FLOW.length - 1;
+      const ts = tsMap[s] ? _scnFmtTs(tsMap[s]) : '';
+      const circBorder = done || active ? 'var(--p)' : '#D8D8D3';
+      const circBg     = done ? 'var(--p)' : active ? 'var(--pl)' : '#F4F5F0';
+      const dotColor   = done ? '#fff' : active ? 'var(--p)' : '#C5C5BE';
+      const nameColor  = future ? '#ABABAB' : '#1A1A1A';
+      const nameWeight = active ? '700' : done ? '600' : '500';
+      const connector  = !isLast
+        ? `<div style="width:2px;height:20px;background:${done ? 'var(--p)' : '#E8E8E4'};border-radius:2px;margin:3px 0 3px 13px"></div>`
+        : '';
+      return `<div>
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${circBorder};background:${circBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;${active ? 'box-shadow:0 0 0 4px var(--p20)' : ''}">
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:block"></span>
+          </div>
+          <div style="flex:1;padding-top:4px;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <div style="font-weight:${nameWeight};font-size:14px;color:${nameColor}">${s}</div>
+              ${ts ? `<div style="font-size:11px;color:#ABABAB;white-space:nowrap;flex-shrink:0">${ts}</div>` : ''}
+            </div>
+          </div>
+        </div>
+        ${connector}
+      </div>`;
+    }).join('');
+  }
+
+  // Next button / done banner
+  const btn = g('scn-next-btn');
+  const banner = g('scn-done-banner');
+  const info = g('scn-done-info');
+  const nextLabel = g('scn-next-label');
+  const noteEl = g('scn-note');
+
+  if (isPickedUp){
+    if (btn) btn.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+    if (noteEl) noteEl.textContent = 'Pesanan sudah diambil customer.';
+  } else if (isDone){
+    if (btn) btn.style.display = 'none';
+    if (banner) banner.style.display = '';
+    if (info) info.textContent = `Kabari ${d.name||'customer'} bahwa cucian sudah bisa diambil.`;
+    if (noteEl) noteEl.textContent = 'Status Diambil di-update dari kasir saat customer datang.';
+  } else {
+    const idx = SCAN_FLOW.indexOf(cur);
+    const nextStatus = (idx >= 0 && idx < SCAN_FLOW.length - 1) ? SCAN_FLOW[idx + 1] : null;
+    if (!nextStatus){
+      if (btn) btn.style.display = 'none';
+      if (banner) banner.style.display = 'none';
+    } else {
+      if (btn){ btn.style.display = ''; btn.disabled = false; }
+      if (banner) banner.style.display = 'none';
+      if (nextLabel) nextLabel.textContent = 'Next → ' + nextStatus;
+    }
+  }
+}
+
+async function scanAdvanceStatus(){
+  const token = _scnState.token; if (!token) return;
+  const btn = g('scn-next-btn');
+  if (btn){ btn.disabled = true; if (g('scn-next-label')) g('scn-next-label').textContent = 'Memproses...'; }
+
+  const { data, error } = await supabase.rpc('advance_order_status', { p_token: token });
+
+  if (error){
+    console.error('[scan] RPC error:', error);
+    toast('Gagal update: ' + (error.message||'server error'));
+    if (btn){ btn.disabled = false; }
+    _scnRender();
+    return;
+  }
+  if (data && data.error){
+    if (data.error === 'already_final') toast('Status sudah di tahap akhir.');
+    else if (data.error === 'not_in_flow') toast('Status tidak dapat dimajukan.');
+    else if (data.error === 'not_found') { _scnShow('scn-notfound'); return; }
+    else toast('Gagal update: ' + data.error);
+    if (btn){ btn.disabled = false; }
+    _scnRender();
+    return;
+  }
+
+  // Success — patch local state and re-render
+  _scnState.order.status = data.status;
+  _scnState.order.status_history = data.history || _scnState.order.status_history;
+  if (data.phone) _scnState.phone = data.phone;
+  _scnRender();
+}
+
+function scanOpenWa(){
+  const phone = _scnState.phone; const d = _scnState.order;
+  if (!phone){ toast('Nomor customer tidak tersedia.'); return; }
+  const p = String(phone).replace(/^0/, '62').replace(/\D/g, '');
+  const nama = (d && d.name) || 'Pelanggan';
+  const idPesanan = (d && d.id) || '';
+  const store = _scnState.storeName || 'Laundry';
+  const msg = `Halo ${nama}, cucian Anda (No: ${idPesanan}) sudah selesai dan siap diambil di ${store}. Terima kasih.`;
+  const t = encodeURIComponent(msg);
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    window.location.href = 'whatsapp://send?phone=' + p + '&text=' + t;
+  } else {
+    window.open('https://web.whatsapp.com/send?phone=' + p + '&text=' + t, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -6342,17 +6539,82 @@ function buildEscReceipt(o){
   parts.push(NL,NL,NL,CUT);
   return concat.apply(null,parts);
 }
+// Build a scan URL that a customer/staff phone can open. Uses current origin
+// so it works on both localhost dev and the deployed Vercel site.
+function _scanUrlFor(token){
+  try { return window.location.origin + '/?scan=' + encodeURIComponent(token); }
+  catch(e){ return '?scan=' + encodeURIComponent(token); }
+}
+// Convert a string into ESC/POS raster bit-image bytes containing its QR code.
+// Uses the qrcode-generator global (window.qrcode) loaded via CDN in index.html.
+// Returns Uint8Array (empty on failure) so buildEscLabel can fall back to text.
+function qrToRasterEsc(text,scale){
+  if (typeof qrcode !== 'function') return new Uint8Array(0);
+  var s = Math.max(3, Math.min(8, scale|0 || 5)); // dots per QR module
+  var quiet = 4;                                   // spec-compliant quiet zone
+  try {
+    var qr = qrcode(0, 'M');                       // type=0 auto, ECC medium
+    qr.addData(String(text||''));
+    qr.make();
+    var n  = qr.getModuleCount();
+    var mm = n + quiet * 2;                        // modules including quiet zone
+    var wp = mm * s;                               // width in dots
+    var bw = Math.ceil(wp / 8);                    // width in bytes
+    var hp = wp;                                   // height in dots (square)
+    var data = new Uint8Array(bw * hp);
+    for (var y = 0; y < hp; y++) {
+      var my = Math.floor(y / s) - quiet;
+      var rowOff = y * bw;
+      for (var x = 0; x < wp; x++) {
+        var mx = Math.floor(x / s) - quiet;
+        var dark = (my >= 0 && mx >= 0 && my < n && mx < n) ? qr.isDark(my, mx) : false;
+        if (dark) data[rowOff + (x >> 3)] |= (0x80 >> (x & 7));
+      }
+    }
+    // GS v 0 m xL xH yL yH d1..dn  (m=0 normal density)
+    var header = new Uint8Array([0x1D, 0x76, 0x30, 0x00, bw & 0xFF, (bw >> 8) & 0xFF, hp & 0xFF, (hp >> 8) & 0xFF]);
+    var out = new Uint8Array(header.length + data.length);
+    out.set(header, 0); out.set(data, header.length);
+    return out;
+  } catch(e){ console.warn('[qr] gagal generate:', e); return new Uint8Array(0); }
+}
 function buildEscLabel(o){
-  const ESC=0x1B,GS=0x1D,LF=0x0A;
-  const INIT=escCmd(ESC,0x40),ALIGN_C=escCmd(ESC,0x61,0x01),ALIGN_L=escCmd(ESC,0x61,0x00);
-  const BOLD_ON=escCmd(ESC,0x45,0x01),BOLD_OFF=escCmd(ESC,0x45,0x00);
-  const FONT_LARGE=escCmd(GS,0x21,0x11),FONT_NORM=escCmd(GS,0x21,0x00);
-  const CUT=escCmd(GS,0x56,0x42,0x00),NL=escCmd(LF);
-  const activePrinter=printers.find(p=>p.conn==='bluetooth'&&p.role==='label')||printers.find(p=>p.conn==='bluetooth')||null;
-  const W=activePrinter?.width==='58'?32:48;
-  const dash=escText('-'.repeat(W)+'\n');
-  const outlet=outlets.find(x=>x.id===o.outletId);
-  return concat(INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(o.name+'\n'),FONT_NORM,BOLD_OFF,dash,ALIGN_L,escText('No: '+o.id+'\n'),escText('Outlet: '+(outlet?.name||'')+'\n'),escText('Layanan: '+(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType)+' | '+o.qty+(getSvcUnit(o.svcType)||'')+'\n'),escText('Masuk: '+o.date+'\n'),dash,ALIGN_C,escText(storeName+'\n'),NL,NL,CUT);
+  var ESC=0x1B,GS=0x1D,LF=0x0A;
+  var INIT=escCmd(ESC,0x40),ALIGN_C=escCmd(ESC,0x61,0x01),ALIGN_L=escCmd(ESC,0x61,0x00);
+  var BOLD_ON=escCmd(ESC,0x45,0x01),BOLD_OFF=escCmd(ESC,0x45,0x00);
+  var FONT_LARGE=escCmd(GS,0x21,0x11),FONT_NORM=escCmd(GS,0x21,0x00);
+  var CUT=escCmd(GS,0x56,0x42,0x00),NL=escCmd(LF);
+  var activePrinter=printers.find(function(p){return p.conn==='bluetooth'&&p.role==='label';})||printers.find(function(p){return p.conn==='bluetooth';})||null;
+  var W=(activePrinter&&activePrinter.width==='58')?32:48;
+  var dash=escText('-'.repeat(W)+'\n');
+  var outlet=outlets.find(function(x){return x.id===o.outletId;});
+  var svcLine=(getSvcLbl(o.svcType+'-'+o.svcCat)||o.svcType||'')+' | '+String(o.qty||0)+(getSvcUnit(o.svcType)||'');
+
+  var parts=[INIT,ALIGN_C,BOLD_ON,FONT_LARGE,escText(String(o.name||'')+'\n'),FONT_NORM,BOLD_OFF,dash,ALIGN_L,
+    escText('No     : '+String(o.id||'')+'\n'),
+    escText('Outlet : '+String((outlet&&outlet.name)||'')+'\n'),
+    escText('Layanan: '+svcLine+'\n'),
+    escText('Masuk  : '+String(o.date||'')+'\n'),
+    BOLD_ON,escText('Bayar  : '+String(o.payStatus||'-')+'\n'),BOLD_OFF,
+    dash];
+
+  // QR code block (bottom of label) — falls back to plain URL if lib missing
+  if (o.tracking_token){
+    var url = _scanUrlFor(o.tracking_token);
+    // 58mm paper is narrower → smaller QR module scale
+    var scale = (W===32) ? 4 : 5;
+    var qrRaster = qrToRasterEsc(url, scale);
+    parts.push(ALIGN_C);
+    if (qrRaster.length){
+      parts.push(qrRaster,NL,escText('Scan untuk update status\n'));
+    } else {
+      parts.push(escText(url+'\n'),escText('Buka link untuk update status\n'));
+    }
+    parts.push(NL);
+  }
+
+  parts.push(ALIGN_C,escText(String(storeName||'')+'\n'),NL,NL,CUT);
+  return concat.apply(null,parts);
 }
 function _btRegisterDevice(device){
   _btConnectedDevice=device;
@@ -6513,8 +6775,21 @@ submitO = function(role) {
 };
 
 // Status & pay updates
+// Append an entry to o.statusHistory when the status actually changes. Called
+// after the original setter runs (which mutates o.status) so we detect the diff
+// by comparing against the captured previous value.
+function _logStatusChange(o, prev) {
+  if (!o || !o.status || o.status === prev) return;
+  if (!Array.isArray(o.statusHistory)) o.statusHistory = [];
+  o.statusHistory.push({ status: o.status, at: new Date().toISOString(), from: prev || null });
+}
 const _origSetStModal = setStModal;
-setStModal = function(id, st, btn) { _origSetStModal(id, st, btn); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
+setStModal = function(id, st, btn) {
+  const o0 = orders.find(x => x.id === id); const prev = o0 ? o0.status : null;
+  _origSetStModal(id, st, btn);
+  const o = orders.find(x => x.id === id);
+  if (o) { _logStatusChange(o, prev); syncOrder(o); }
+};
 const _origSetPayModal = setPayModal;
 setPayModal = function(id, ps, btn) { _origSetPayModal(id, ps, btn); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
 const _origSetPayStatus = setPayStatus;
@@ -6522,7 +6797,12 @@ setPayStatus = function(id, ps) { _origSetPayStatus(id, ps); const o = orders.fi
 // changePayMethod now delegates to _doChangePayMethod (which calls syncOrder internally)
 // No additional wrapping needed — syncOrder is called at the end of _doChangePayMethod
 const _origUpdSt = updSt;
-updSt = function(id, st, role) { _origUpdSt(id, st, role); const o = orders.find(x => x.id === id); if (o) syncOrder(o); };
+updSt = function(id, st, role) {
+  const o0 = orders.find(x => x.id === id); const prev = o0 ? o0.status : null;
+  _origUpdSt(id, st, role);
+  const o = orders.find(x => x.id === id);
+  if (o) { _logStatusChange(o, prev); syncOrder(o); }
+};
 
 // Outlets
 const _origSaveOutlet = saveOutlet;
@@ -6614,6 +6894,13 @@ function _showNewPasswordModal() {
     if (_trackToken) {
       showScr('scr-track');
       renderTrackingPage(_trackToken);
+      return; // skip all POS auth setup
+    }
+    // ── Scan progress page (staff): intercept before auth, no login required ──
+    const _scanToken = new URLSearchParams(location.search).get('scan');
+    if (_scanToken) {
+      showScr('scr-scan');
+      renderScanPage(_scanToken);
       return; // skip all POS auth setup
     }
 
