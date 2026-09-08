@@ -4569,7 +4569,7 @@ function _renderTambahanTab(){
     addons.forEach(a=>{
       html+=`<tr>
         <td><input value="${esc(a.name)}" onchange="updAddon('${a.id}','name',this.value)" style="border:none;background:none;font-size:13px;font-weight:600;width:100%;padding:0;font-family:inherit;color:var(--t1)"></td>
-        <td><input type="number" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)" style="width:90px;font-size:13px;padding:4px 6px"></td>
+        <td><div class="rp-wrap rp-sm" style="width:130px;display:inline-flex"><span class="rp-prefix">Rp</span><input type="number" class="rp-input" value="${a.price}" onchange="updAddon('${a.id}','price',this.value)"></div></td>
         <td><select onchange="updAddon('${a.id}','unit',this.value)" style="font-size:12px;padding:4px 6px;width:120px"><option value="flat" ${a.unit==='flat'?'selected':''}>per pesanan</option><option value="per_qty" ${a.unit==='per_qty'?'selected':''}>per kg/pcs</option></select></td>
         <td><button class="btn bre bsm" onclick="delAddon('${a.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
       </tr>`;
@@ -4743,7 +4743,7 @@ function _renderItemSettingsPage(item){
       <div class="fg" style="margin-bottom:0">
         <label>Harga Dasar</label>
         <div style="display:flex;align-items:center;gap:8px">
-          <input type="number" id="ips-base" value="${activePo.length?item.prices?.[activePo[0].key]||0:0}" min="0" style="flex:1;font-size:14px;font-weight:700;padding:8px 10px" oninput="_ipsUpdateBaseInPanel()">
+          <div class="rp-wrap" style="flex:1"><span class="rp-prefix">Rp</span><input type="number" id="ips-base" class="rp-input" value="${activePo.length?item.prices?.[activePo[0].key]||0:0}" min="0" oninput="_ipsUpdateBaseInPanel()"></div>
           <span style="color:var(--t2);font-size:13px">/ ${esc(item.unit||'pcs')}</span>
         </div>
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Harga mulai dari untuk opsi termurah.</div>
@@ -4772,7 +4772,7 @@ function _renderItemSettingsPage(item){
     const price=item.prices?.[po.key]||0;
     html+=`<tr id="ips-row-${po.key}" style="${itemOn?'':'opacity:.55'}">
       <td><div style="font-weight:600">${esc(po.label)}</div>${po.est?`<div style="font-size:11px;color:var(--t2)">${esc(po.est)}</div>`:''}</td>
-      <td><input type="number" id="ips-price-${po.key}" value="${price}" min="0" style="width:90px;font-size:13px;font-weight:700;padding:5px 8px;text-align:right"></td>
+      <td><div class="rp-wrap rp-sm" style="width:130px;display:inline-flex"><span class="rp-prefix">Rp</span><input type="number" id="ips-price-${po.key}" class="rp-input" value="${price}" min="0"></div></td>
       <td><button class="toggle ${itemOn?'on':'off'}" id="ips-tier-btn-${po.key}" style="transform:scale(.85);transform-origin:center" onclick="toggleItemTierApply('${item.id}','${po.key}')"></button></td>
     </tr>`;
   });
@@ -5549,7 +5549,8 @@ function _mpStep3Html(){
     {v:'persen_qty', l:'Persentase Satuan',     desc:'Potongan persen per kg atau per item.'},
     {v:'per_qty',    l:'Rp per Kg / Unit',      desc:'Potongan nominal tetap per kg atau per item.'},
   ];
-  const labels={flat:'Nominal (Rp)',persen:'Persentase (%)',persen_qty:'Persentase per Kg/Unit (%)',per_qty:'Nominal per Kg/Unit (Rp)'};
+  const labels={flat:'Nominal',persen:'Persentase',persen_qty:'Persentase per Kg/Unit',per_qty:'Nominal per Kg/Unit'};
+  const prefix={flat:'Rp',persen:'%',persen_qty:'%',per_qty:'Rp'};
   const helpers={flat:'Contoh: 5000 untuk potongan Rp 5.000 dari total.',persen:'Contoh: 10 untuk potongan 10% dari total pesanan.',persen_qty:'Contoh: 5 untuk potongan 5% per kg atau per item.',per_qty:'Contoh: 2000 untuk potongan Rp 2.000 per kg atau item.'};
   return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">3. Diskon</div>
   <div class="fg" style="margin-bottom:16px">
@@ -5566,7 +5567,7 @@ function _mpStep3Html(){
   </div>
   <div class="fg" style="margin-bottom:0">
     <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
-    <input type="number" id="mp-dv" placeholder="0" min="0" value="${s.discVal||''}" oninput="_mpState.discVal=parseFloat(this.value)||0">
+    <div class="rp-wrap"><span class="rp-prefix">${prefix[dt]||'Rp'}</span><input type="number" id="mp-dv" class="rp-input" placeholder="0" min="0" value="${s.discVal||''}" oninput="_mpState.discVal=parseFloat(this.value)||0"></div>
     <div style="font-size:11px;color:var(--t2);margin-top:5px">${helpers[dt]||''}</div>
   </div>`;
 }
@@ -6173,7 +6174,7 @@ function renderExpenses(){
   const filter=g('ex-filter')?.value||'all';
   const list=[...filtExp].reverse().filter(e=>{if(filter==='today')return e.date===today;if(filter==='month')return e.date.startsWith(thisMonth);return true;});
   const el=g('exp-log');if(!el)return;
-  el.innerHTML=list.length?list.map(e=>{const _oc=e.outletId?go(e.outletId):null;const _oColor=_oc?.color?safeColor(_oc.color):'var(--t2)';return `<div class="li_" style="align-items:flex-start;flex-wrap:wrap;gap:6px"><div class="lic" style="margin-top:2px">${CAT_ICONS[e.cat]||'\uD83D\uDCE6'}</div><div id="exp-view-${e.id}" style="flex:1;min-width:0"><div style="font-weight:600">${esc(e.label)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${esc(e.note||'')} \u00B7 ${e.src==='cash'?'\uD83D\uDCB5 Cash':'\uD83C\uDFE6 Transfer'} \u00B7 ${esc(e.date)}${_oc?` \u00B7 <span style='color:${_oColor};font-weight:600'>${esc(_oc.name||'')}</span>`:''}</div></div><div id="exp-edit-${e.id}" style="flex:1;min-width:0;display:none"><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px"><input id="ee-nom-${e.id}" type="number" value="${e.nominal}" placeholder="Nominal" style="font-size:12px;padding:6px 8px"><input id="ee-date-${e.id}" type="date" value="${esc(e.date)}" style="font-size:12px;padding:6px 8px"></div><input id="ee-note-${e.id}" value="${esc(e.note||'')}" placeholder="Catatan..." style="font-size:12px;padding:6px 8px;width:100%;margin-bottom:5px"><div style="display:flex;gap:5px"><button class="btn bp bsm" onclick="saveExpEdit(${e.id})">Simpan</button><button class="btn bsm" onclick="cancelExpEdit(${e.id})">Batal</button></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><div style="font-weight:700;color:var(--re)">-${fmt(e.nominal)}</div><div style="display:flex;gap:4px"><button class="btn bsm" onclick="startExpEdit(${e.id})">Edit</button><button class="btn bre bsm" onclick="delExpense(${e.id})">Hapus</button></div></div></div>`;}).join(''):'<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Tidak ada data</div>';
+  el.innerHTML=list.length?list.map(e=>{const _oc=e.outletId?go(e.outletId):null;const _oColor=_oc?.color?safeColor(_oc.color):'var(--t2)';return `<div class="li_" style="align-items:flex-start;flex-wrap:wrap;gap:6px"><div class="lic" style="margin-top:2px">${CAT_ICONS[e.cat]||'\uD83D\uDCE6'}</div><div id="exp-view-${e.id}" style="flex:1;min-width:0"><div style="font-weight:600">${esc(e.label)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${esc(e.note||'')} \u00B7 ${e.src==='cash'?'\uD83D\uDCB5 Cash':'\uD83C\uDFE6 Transfer'} \u00B7 ${esc(e.date)}${_oc?` \u00B7 <span style='color:${_oColor};font-weight:600'>${esc(_oc.name||'')}</span>`:''}</div></div><div id="exp-edit-${e.id}" style="flex:1;min-width:0;display:none"><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px"><div class="rp-wrap rp-sm"><span class="rp-prefix">Rp</span><input id="ee-nom-${e.id}" class="rp-input" type="number" value="${e.nominal}" placeholder="Nominal"></div><input id="ee-date-${e.id}" type="date" value="${esc(e.date)}" style="font-size:12px;padding:6px 8px"></div><input id="ee-note-${e.id}" value="${esc(e.note||'')}" placeholder="Catatan..." style="font-size:12px;padding:6px 8px;width:100%;margin-bottom:5px"><div style="display:flex;gap:5px"><button class="btn bp bsm" onclick="saveExpEdit(${e.id})">Simpan</button><button class="btn bsm" onclick="cancelExpEdit(${e.id})">Batal</button></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><div style="font-weight:700;color:var(--re)">-${fmt(e.nominal)}</div><div style="display:flex;gap:4px"><button class="btn bsm" onclick="startExpEdit(${e.id})">Edit</button><button class="btn bre bsm" onclick="delExpense(${e.id})">Hapus</button></div></div></div>`;}).join(''):'<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Tidak ada data</div>';
 }
 function startExpEdit(id){document.getElementById('exp-view-'+id).style.display='none';document.getElementById('exp-edit-'+id).style.display='block';}
 function cancelExpEdit(id){document.getElementById('exp-view-'+id).style.display='block';document.getElementById('exp-edit-'+id).style.display='none';}

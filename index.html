@@ -654,6 +654,18 @@ tr:hover td{background:#F6F7F9}
 .msvc-price-rp{padding:5px 8px;font-size:12px;font-weight:700;background:var(--bg);border-right:1.5px solid var(--b1);color:var(--t2);flex-shrink:0;line-height:1.4}
 .msvc-price-input{border:none!important;border-radius:0!important;width:72px;text-align:right;font-size:13px;font-weight:700;padding:5px 7px!important;background:transparent!important;box-shadow:none!important}
 .msvc-price-input:focus{outline:none!important;border:none!important;box-shadow:none!important}
+/* Generic "Rp | amount" input pattern — mirrors msvc-price-row but stretches
+   to the parent's width so it works in form fields, tables, and inline rows. */
+.rp-wrap{display:flex;align-items:stretch;border:2px solid var(--b1);border-radius:var(--rs);overflow:hidden;background:var(--ca);width:100%;transition:border-color .15s}
+.rp-wrap:focus-within{border-color:var(--p)}
+.rp-wrap.rp-sm{border-width:1.5px;border-radius:8px}
+.rp-prefix{padding:0 12px;display:flex;align-items:center;font-size:12px;font-weight:700;background:var(--bg);border-right:1.5px solid var(--b1);color:var(--t2);flex-shrink:0;line-height:1}
+.rp-wrap.rp-sm .rp-prefix{padding:0 10px;font-size:11px}
+.rp-input{border:none!important;border-radius:0!important;flex:1;min-width:0;width:auto!important;text-align:right;font-size:14px;font-weight:600;padding:12px 14px!important;background:transparent!important;box-shadow:none!important;color:var(--t1)}
+.rp-wrap.rp-sm .rp-input{padding:6px 10px!important;font-size:13px;font-weight:700}
+.rp-input:focus{outline:none!important;border:none!important;box-shadow:none!important}
+.rp-input::-webkit-outer-spin-button,.rp-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.rp-input[type=number]{-moz-appearance:textfield}
 .msvc-tier-del{width:26px;height:26px;border:none;background:none;cursor:pointer;color:#e53935;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s;flex-shrink:0;padding:0}
 .msvc-tier-del:hover{background:#ffebee}
 .msvc-add-tier{width:100%;padding:10px;border:1.5px dashed var(--b1);border-radius:10px;background:none;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;font-family:inherit;margin-top:4px}
@@ -1530,7 +1542,7 @@ tr:hover td{background:#F6F7F9}
           <div id="no-cash-sect">
             <div class="fg" style="margin-bottom:6px">
               <label>Uang Diterima</label>
-              <input type="number" id="no-cash" placeholder="0" oninput="calcO()">
+              <div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="no-cash" class="rp-input" placeholder="0" oninput="calcO()"></div>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0">
               <span style="color:var(--t2)">Kembalian</span>
@@ -1814,7 +1826,7 @@ tr:hover td{background:#F6F7F9}
       </div>
       <div class="fg" id="ex-lain-w" style="display:none"><label>Nama Pengeluaran</label><input id="ex-lain-n" placeholder="Nama pengeluaran..."></div>
       <div class="g2">
-        <div class="fg" style="margin-bottom:0"><label>Nominal (Rp)</label><input type="number" id="ex-nom" placeholder="0" oninput="exNomChg()"></div>
+        <div class="fg" style="margin-bottom:0"><label>Nominal</label><div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="ex-nom" class="rp-input" placeholder="0" oninput="exNomChg()"></div></div>
         <div class="fg" style="margin-bottom:0"><label>Tanggal</label><input type="date" id="ex-date"></div>
       </div>
       <div class="fg" style="margin-top:10px"><label>Sumber Dana</label>
@@ -2269,8 +2281,8 @@ tr:hover td{background:#F6F7F9}
             <div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4">Isi 10 → deposit Rp 100.000 = saldo Rp 110.000</div>
           </div>
           <div class="fg" style="margin-bottom:0">
-            <label>Minimum Deposit (Rp)</label>
-            <input type="number" id="s-mbr-min-deposit" min="0" value="0" placeholder="0" style="width:120px">
+            <label>Minimum Deposit</label>
+            <div class="rp-wrap" style="max-width:180px"><span class="rp-prefix">Rp</span><input type="number" id="s-mbr-min-deposit" class="rp-input" min="0" value="0" placeholder="0"></div>
             <div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4">Isi 0 untuk tanpa minimum.</div>
           </div>
         </div>
@@ -2332,8 +2344,8 @@ tr:hover td{background:#F6F7F9}
           <div style="font-size:11px;color:var(--t2);margin-top:4px">Jarak maksimal dari outlet. Toleransi otomatis +300 meter.</div>
         </div>
         <div class="fg">
-          <label>Biaya Tambahan di Luar Radius (Rp)</label>
-          <input type="number" id="s-pickup-charge" placeholder="5000" min="0" step="500">
+          <label>Biaya Tambahan di Luar Radius</label>
+          <div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="s-pickup-charge" class="rp-input" placeholder="5000" min="0" step="500"></div>
           <div style="font-size:11px;color:var(--t2);margin-top:4px">Dikenakan sekali per siklus jemput+antar jika melebihi radius.</div>
         </div>
         <div style="display:flex;justify-content:flex-end"><button class="btn bp bsm bpill" onclick="savePickupSettings()">Simpan</button></div>
@@ -2725,10 +2737,10 @@ tr:hover td{background:#F6F7F9}
               <label>Status Pembayaran</label>
               <select id="sno-ps" onchange="dpTgl('sno');_updateShortfall('sno')"><option value="Belum Bayar">Belum Bayar</option><option value="DP">DP</option><option value="Lunas">Lunas</option></select>
             </div>
-            <div class="fg" id="sno-dp-g" style="display:none;margin-bottom:10px"><label>Jumlah DP</label><input type="number" id="sno-dp" placeholder="0"></div>
+            <div class="fg" id="sno-dp-g" style="display:none;margin-bottom:10px"><label>Jumlah DP</label><div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="sno-dp" class="rp-input" placeholder="0"></div></div>
             <div class="fg" style="margin-bottom:6px">
               <label>Uang Diterima</label>
-              <input type="number" id="sno-cash" oninput="calcChg('sno')" placeholder="0">
+              <div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="sno-cash" class="rp-input" oninput="calcChg('sno')" placeholder="0"></div>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0;margin-bottom:12px">
               <span style="color:var(--t2)">Kembalian</span>
@@ -3059,8 +3071,8 @@ tr:hover td{background:#F6F7F9}
     <button class="btn bp" onclick="savePriceOpt()" style="min-width:120px;font-weight:600">Simpan Tier</button>
   </div>
 </div></div>
-<div class="mbg" id="m-addon"><div class="mbox"><div class="mhd"><span class="mht">Tambah Layanan Tambahan</span><button class="xb" onclick="cm('m-addon')">×</button></div><div class="mbd"><div class="fg"><label>Nama Layanan *</label><input id="mad-n" placeholder="Contoh: Parfum Premium"></div><div class="g2"><div class="fg" style="margin-bottom:0"><label>Harga (Rp)</label><input type="number" id="mad-p" placeholder="0"></div><div class="fg" style="margin-bottom:0"><label>Satuan</label><select id="mad-u"><option value="flat">per pesanan</option><option value="per_qty">per kg/pcs</option></select></div></div></div><div class="mft"><button class="btn" onclick="cm('m-addon')">Batal</button><button class="btn bp" onclick="saveAddon()">Simpan</button></div></div></div>
-<div class="mbg" id="m-kas"><div class="mbox"><div class="mhd"><span class="mht" id="m-kas-title">Setor Modal</span><button class="xb" onclick="cm('m-kas')">×</button></div><div class="mbd"><div class="fg"><label>Nominal (Rp)</label><input type="number" id="mk-nom" placeholder="0" min="0" oninput="kasNomHint()"></div><div id="mk-hint" style="font-size:12px;color:var(--t2);margin-top:-8px;margin-bottom:10px"></div><div class="fg" style="margin-bottom:0"><label>Keterangan</label><input id="mk-note" placeholder="Contoh: modal kembalian pagi"></div></div><div class="mft"><button class="btn" onclick="cm('m-kas')">Batal</button><button class="btn bp" onclick="submitKas()">Simpan</button></div></div></div>
+<div class="mbg" id="m-addon"><div class="mbox"><div class="mhd"><span class="mht">Tambah Layanan Tambahan</span><button class="xb" onclick="cm('m-addon')">×</button></div><div class="mbd"><div class="fg"><label>Nama Layanan *</label><input id="mad-n" placeholder="Contoh: Parfum Premium"></div><div class="g2"><div class="fg" style="margin-bottom:0"><label>Harga</label><div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="mad-p" class="rp-input" placeholder="0"></div></div><div class="fg" style="margin-bottom:0"><label>Satuan</label><select id="mad-u"><option value="flat">per pesanan</option><option value="per_qty">per kg/pcs</option></select></div></div></div><div class="mft"><button class="btn" onclick="cm('m-addon')">Batal</button><button class="btn bp" onclick="saveAddon()">Simpan</button></div></div></div>
+<div class="mbg" id="m-kas"><div class="mbox"><div class="mhd"><span class="mht" id="m-kas-title">Setor Modal</span><button class="xb" onclick="cm('m-kas')">×</button></div><div class="mbd"><div class="fg"><label>Nominal</label><div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="mk-nom" class="rp-input" placeholder="0" min="0" oninput="kasNomHint()"></div></div><div id="mk-hint" style="font-size:12px;color:var(--t2);margin-top:-8px;margin-bottom:10px"></div><div class="fg" style="margin-bottom:0"><label>Keterangan</label><input id="mk-note" placeholder="Contoh: modal kembalian pagi"></div></div><div class="mft"><button class="btn" onclick="cm('m-kas')">Batal</button><button class="btn bp" onclick="submitKas()">Simpan</button></div></div></div>
 <div class="mbg" id="m-printer"><div class="mbox"><div class="mhd"><span class="mht" id="m-printer-title">Tambah Printer</span><button class="xb" onclick="cm('m-printer')">×</button></div>
   <div class="mbd">
     <div class="fg"><label>Metode Koneksi</label><select id="mpr-c" onchange="prConnChg()"><option value="usb">USB</option><option value="bluetooth">Bluetooth</option><option value="network">LAN / WiFi</option></select></div>
@@ -3371,8 +3383,8 @@ tr:hover td{background:#F6F7F9}
       <div style="font-size:13px;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:10px" id="md-cust-info"></div>
       <!-- Free deposit mode -->
       <div id="md-deposit-mode">
-        <div class="fg"><label>Jumlah Bayar (Rp)</label>
-          <input type="number" id="md-amount" placeholder="0" min="0" oninput="calcDepositPreview()">
+        <div class="fg"><label>Jumlah Bayar</label>
+          <div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="md-amount" class="rp-input" placeholder="0" min="0" oninput="calcDepositPreview()"></div>
         </div>
         <div id="md-min-hint" style="display:none;font-size:11px;color:var(--t2);margin-top:-8px;margin-bottom:12px">Minimum deposit: <strong id="md-min-lbl"></strong></div>
         <div id="md-preview" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
@@ -3408,7 +3420,7 @@ tr:hover td{background:#F6F7F9}
     <div class="mhd"><span class="mht" id="mpkg-title">Tambah Paket</span><button class="xb" onclick="cm('m-mbr-pkg')">×</button></div>
     <div class="mbd">
       <div class="fg"><label>Nama Paket</label><input id="mpkg-name" placeholder="Contoh: Paket 10kg, Premium..."></div>
-      <div class="fg"><label>Harga (Rp)</label><input type="number" id="mpkg-price" min="0" placeholder="0"></div>
+      <div class="fg"><label>Harga</label><div class="rp-wrap"><span class="rp-prefix">Rp</span><input type="number" id="mpkg-price" class="rp-input" min="0" placeholder="0"></div></div>
       <div class="fg"><label>Quota Kiloan (kg)</label><input type="number" id="mpkg-kgquota" min="0" step="0.5" placeholder="0">
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Jumlah kg cucian yang didapat customer</div>
       </div>
