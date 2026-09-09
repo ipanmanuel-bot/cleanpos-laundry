@@ -5554,9 +5554,9 @@ function _mpStep3Html(){
   const helpers={flat:'Contoh: 5000 untuk potongan Rp 5.000 dari total.',persen:'Contoh: 10 untuk potongan 10% dari total pesanan.',persen_qty:'Contoh: 5 untuk potongan 5% per kg atau per item.',per_qty:'Contoh: 2000 untuk potongan Rp 2.000 per kg atau item.'};
   return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">3. Diskon</div>
   <div class="fg" style="margin-bottom:16px">
-    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block">Jenis Diskon <span style="color:#e53935">*</span></label>
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px;display:block;text-transform:none;letter-spacing:0">Jenis Diskon <span style="color:#e53935">*</span></label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${types.map(x=>`<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;padding:10px 12px;border:1.5px solid ${dt===x.v?'var(--p)':'var(--b1)'};border-radius:9px;background:${dt===x.v?'var(--pl)':'var(--ca)'}">
+      ${types.map(x=>`<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;padding:10px 12px;border:1.5px solid ${dt===x.v?'var(--p)':'var(--b1)'};border-radius:9px;background:${dt===x.v?'var(--pl)':'var(--ca)'};text-transform:none;letter-spacing:0;color:var(--t1)">
         <input type="radio" name="mp-dt-r" value="${x.v}" ${dt===x.v?'checked':''} onchange="_mpDiscTypeChg('${x.v}')" style="margin-top:2px;flex-shrink:0">
         <div>
           <div style="font-weight:600;color:${dt===x.v?'var(--p)':'var(--t1)'}">${x.l}</div>
@@ -5566,7 +5566,7 @@ function _mpStep3Html(){
     </div>
   </div>
   <div class="fg" style="margin-bottom:0">
-    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
+    <label style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:7px;display:block;text-transform:none;letter-spacing:0">${labels[dt]||'Nilai'} <span style="color:#e53935">*</span></label>
     <div class="rp-wrap"><span class="rp-prefix">${prefix[dt]||'Rp'}</span><input type="number" id="mp-dv" class="rp-input" placeholder="0" min="0" value="${s.discVal||''}" oninput="_mpState.discVal=parseFloat(this.value)||0"></div>
     <div style="font-size:11px;color:var(--t2);margin-top:5px">${helpers[dt]||''}</div>
   </div>`;
