@@ -5544,12 +5544,12 @@ function _mpStep3Html(){
   const s=_mpState;
   const dt=s.discType||'flat';
   const types=[
-    {v:'flat',       l:'Rp Nominal',           desc:'Potongan tetap dalam Rupiah dari total harga.'},
+    {v:'flat',       l:'Rp Nominal',            desc:'Potongan tetap dalam Rupiah dari total harga.'},
     {v:'persen',     l:'Persentase Total',      desc:'Potongan persen dari total harga pesanan.'},
     {v:'persen_qty', l:'Persentase Satuan',     desc:'Potongan persen per kg atau per item.'},
-    {v:'per_qty',    l:'Rp per Kg / Unit',      desc:'Potongan nominal tetap per kg atau per item.'},
+    {v:'per_qty',    l:'Rp Per Kg / Unit',      desc:'Potongan nominal tetap per kg atau per item.'},
   ];
-  const labels={flat:'Nominal',persen:'Persentase',persen_qty:'Persentase per Kg/Unit',per_qty:'Nominal per Kg/Unit'};
+  const labels={flat:'Nominal',persen:'Persentase',persen_qty:'Persentase Per Kg / Unit',per_qty:'Nominal Per Kg / Unit'};
   const prefix={flat:'Rp',persen:'%',persen_qty:'%',per_qty:'Rp'};
   const helpers={flat:'Contoh: 5000 untuk potongan Rp 5.000 dari total.',persen:'Contoh: 10 untuk potongan 10% dari total pesanan.',persen_qty:'Contoh: 5 untuk potongan 5% per kg atau per item.',per_qty:'Contoh: 2000 untuk potongan Rp 2.000 per kg atau item.'};
   return `<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:18px">3. Diskon</div>

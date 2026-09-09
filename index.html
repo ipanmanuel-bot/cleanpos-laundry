@@ -739,6 +739,13 @@ tr:hover td{background:#F6F7F9}
 .mp-sl{font-size:12px;font-weight:600;color:var(--t2);line-height:1.35}
 .mp-step-item.act .mp-sl{color:var(--p)}
 .mp-step-item.done .mp-sl{color:var(--p)}
+@media(max-width:640px){
+  /* Sidebar hemat: hanya angka, teks judul sudah tampil di panel kanan */
+  .mp-sidebar{width:58px;min-width:58px;padding:16px 8px;gap:4px}
+  .mp-step-item{justify-content:center;padding:8px 4px}
+  .mp-step-item .mp-sl{display:none}
+  .mp-content{padding:18px 16px}
+}
 /* Accordion */
 .mp-accord{border:1.5px solid var(--b1);border-radius:10px;overflow:hidden;margin-bottom:10px}
 .mp-accord-hd{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;user-select:none;background:var(--ca);transition:background .1s}
