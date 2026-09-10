@@ -23,7 +23,8 @@ function orderToRow(o) {
     picked_up_at: o.pickedUpAt || null,
     want_delivery: o.wantDelivery || false,
     store_name: (typeof storeName !== 'undefined' ? storeName : null),
-    is_deposit: o.isDeposit || false
+    is_deposit: o.isDeposit || false,
+    status_history: Array.isArray(o.statusHistory) ? o.statusHistory : []
   };
 }
 function rowToOrder(r) {
@@ -47,7 +48,8 @@ function rowToOrder(r) {
     pickedUpAt: r.picked_up_at || null,
     wantDelivery: r.want_delivery || false,
     storeName: r.store_name || null,
-    isDeposit: r.is_deposit || false
+    isDeposit: r.is_deposit || false,
+    statusHistory: Array.isArray(r.status_history) ? r.status_history : (function(){ try { return JSON.parse(r.status_history || '[]'); } catch(e){ return []; } })()
   };
 }
 
